@@ -33,7 +33,8 @@ import {
   Calendar,
   Users,
   Target,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronDown
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -83,11 +84,110 @@ const ACTION_TYPES = {
   trigger_webhook: { label: "Trigger Webhook", icon: Webhook, description: "Call an external URL" },
 };
 
+interface AutomationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  triggerType: string;
+  triggerLabel: string;
+  actionType: string;
+  actionLabel: string;
+}
+
+const AUTOMATION_CATEGORIES = [
+  { id: "status_progress", name: "Status & Progress", color: "bg-purple-500" },
+  { id: "updates_comments", name: "Updates & Comments", color: "bg-orange-500" },
+  { id: "column_updates", name: "Column Updates", color: "bg-gray-500" },
+  { id: "cross_board", name: "Cross-Board", color: "bg-orange-500" },
+  { id: "approvals_reviews", name: "Approvals & Reviews", color: "bg-green-500" },
+  { id: "recurring_work", name: "Recurring Work", color: "bg-teal-500" },
+  { id: "forms_intake", name: "Forms & Intake", color: "bg-blue-500" },
+  { id: "email", name: "Email", color: "bg-orange-500" },
+  { id: "files_assets", name: "Files & Assets", color: "bg-green-500" },
+];
+
+const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
+  {
+    id: "move_item_done",
+    name: "Move item when status changes",
+    description: "When status changes to 'Done', move item to the Completed group",
+    category: "status_progress",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "move_to_group",
+    actionLabel: "Move to group",
+  },
+  {
+    id: "notify_blocked",
+    name: "Notify when item is blocked",
+    description: "When status changes to 'Stuck', notify the owner",
+    category: "status_progress",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "send_notification",
+    actionLabel: "Send notification",
+  },
+  {
+    id: "clear_assignee_done",
+    name: "Clear assignee when done",
+    description: "When status changes to 'Done', clear the assignee for next cycle",
+    category: "status_progress",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "update_field",
+    actionLabel: "Update field",
+  },
+  {
+    id: "set_progress_status",
+    name: "Set progress when status changes",
+    description: "When status changes to 'Working on it', set progress to 50%",
+    category: "status_progress",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "update_field",
+    actionLabel: "Update field",
+  },
+  {
+    id: "create_followup",
+    name: "Assign reviewer when done",
+    description: "When item is marked done, assign a reviewer for final check",
+    category: "recurring_work",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "assign_person",
+    actionLabel: "Assign person",
+  },
+  {
+    id: "notify_on_create",
+    name: "Notify team on new item",
+    description: "When a new item is created, send notification to the team",
+    category: "recurring_work",
+    triggerType: "item_created",
+    triggerLabel: "When item is created",
+    actionType: "send_notification",
+    actionLabel: "Send notification",
+  },
+  {
+    id: "auto_priority_high",
+    name: "Set priority when due soon",
+    description: "When due date is within 2 days, set priority to high",
+    category: "recurring_work",
+    triggerType: "due_date_approaching",
+    triggerLabel: "When due date is approaching",
+    actionType: "change_priority",
+    actionLabel: "Change priority",
+  },
+];
+
 export default function AutomationsPage() {
   const { toast } = useToast();
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
   const [selectedRule, setSelectedRule] = useState<AutomationRule | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   
   const [ruleForm, setRuleForm] = useState({
     name: "",
@@ -97,6 +197,36 @@ export default function AutomationsPage() {
     actionType: "change_status" as keyof typeof ACTION_TYPES,
     actionConfig: {} as Record<string, any>,
   });
+
+  const filteredTemplates = AUTOMATION_TEMPLATES.filter((template) => {
+    const matchesSearch = templateSearchQuery
+      ? template.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+        template.description.toLowerCase().includes(templateSearchQuery.toLowerCase())
+      : true;
+    const matchesCategory = selectedCategory ? template.category === selectedCategory : true;
+    return matchesSearch && matchesCategory;
+  });
+
+  const handleUseTemplate = (template: AutomationTemplate) => {
+    setRuleForm({
+      name: template.name,
+      description: template.description,
+      triggerType: template.triggerType as keyof typeof TRIGGER_TYPES,
+      triggerValue: "",
+      actionType: template.actionType as keyof typeof ACTION_TYPES,
+      actionConfig: {},
+    });
+    setShowTemplatesDialog(false);
+    setSelectedCategory(null);
+    setTemplateSearchQuery("");
+    setShowCreateDialog(true);
+  };
+
+  const handleOpenTemplates = () => {
+    setSelectedCategory(null);
+    setTemplateSearchQuery("");
+    setShowTemplatesDialog(true);
+  };
 
   const { data: boards = [] } = useQuery<Board[]>({
     queryKey: ["/api/boards"],
@@ -259,11 +389,20 @@ export default function AutomationsPage() {
           </Select>
 
           {selectedBoardId && (
+            <>
+            <Button 
+              variant="outline"
+              onClick={handleOpenTemplates}
+              data-testid="button-add-automation"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-automation">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Automation
+                  Create Custom
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
@@ -369,6 +508,89 @@ export default function AutomationsPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Add Automation</DialogTitle>
+                  <DialogDescription>Choose from {AUTOMATION_TEMPLATES.length} automation recipes organized by category</DialogDescription>
+                </DialogHeader>
+                <div className="relative mb-4">
+                  <Input
+                    value={templateSearchQuery}
+                    onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                    placeholder="Search automations..."
+                    className="w-full"
+                    data-testid="input-search-templates"
+                  />
+                </div>
+                <div className="flex-1 overflow-auto min-h-0">
+                  <div className="space-y-3">
+                    {AUTOMATION_CATEGORIES.map((category) => {
+                      const allCategoryTemplates = AUTOMATION_TEMPLATES.filter(t => t.category === category.id);
+                      const categoryTemplates = filteredTemplates.filter(t => t.category === category.id);
+                      const isExpanded = selectedCategory === category.id;
+                      
+                      if (allCategoryTemplates.length === 0) return null;
+                      
+                      return (
+                        <div key={category.id} className="border rounded-lg">
+                          <button
+                            className="w-full flex items-center justify-between p-3 hover-elevate rounded-lg"
+                            onClick={() => setSelectedCategory(isExpanded ? null : category.id)}
+                            data-testid={`category-${category.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${category.color}`} />
+                              <span className="font-medium">{category.name}</span>
+                              <Badge variant="secondary" className="text-xs">{allCategoryTemplates.length}</Badge>
+                            </div>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+                          
+                          {isExpanded && categoryTemplates.length > 0 && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {categoryTemplates.map((template) => (
+                                <Card 
+                                  key={template.id} 
+                                  className="cursor-pointer hover-elevate"
+                                  onClick={() => handleUseTemplate(template)}
+                                  data-testid={`template-${template.id}`}
+                                >
+                                  <CardContent className="p-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                                        <Zap className="h-4 w-4 text-primary" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium text-sm">{template.name}</h4>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{template.description}</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                          <Badge variant="outline" className="text-xs">{template.triggerLabel}</Badge>
+                                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                          <Badge variant="outline" className="text-xs">{template.actionLabel}</Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <DialogFooter className="pt-4 border-t">
+                  <Button variant="outline" onClick={() => setShowTemplatesDialog(false)}>Cancel</Button>
+                  <Button onClick={() => { setShowTemplatesDialog(false); setShowCreateDialog(true); }}>
+                    Create Automation
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            </>
           )}
         </div>
       </div>

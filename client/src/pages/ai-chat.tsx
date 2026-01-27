@@ -332,17 +332,45 @@ export default function AIChatPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <Bot className="h-20 w-20 text-muted-foreground mb-6" />
-            <h2 className="text-2xl font-semibold mb-3">VERICASE AI Assistant</h2>
-            <p className="text-muted-foreground max-w-md mb-6">
-              Powered by advanced AI models to help you with legal research,
-              document analysis, evidence review, and case preparation.
-            </p>
-            <Button onClick={handleNewChat} size="lg" data-testid="button-start-chat">
-              <Plus className="h-4 w-4 mr-2" />
-              Start New Conversation
-            </Button>
+          <div className="flex flex-col items-center justify-center h-full p-8">
+            <Card className="max-w-md w-full text-center">
+              <CardContent className="pt-8 pb-8">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Bot className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-2xl font-semibold mb-3">AI Assistant</h2>
+                <p className="text-muted-foreground mb-6">
+                  Start a new conversation to chat with Claude or GPT. Ask questions, 
+                  analyze documents, or get help with your legal work.
+                </p>
+                <Button onClick={handleNewChat} size="lg" className="gap-2" data-testid="button-start-chat">
+                  <Plus className="h-4 w-4" />
+                  Start New Chat
+                </Button>
+                
+                <div className="mt-6 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-3">Available Models:</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {models.filter(m => m.available).map((model) => (
+                      <span
+                        key={model.id}
+                        className="px-3 py-1 text-sm bg-muted rounded-md"
+                      >
+                        {model.name}
+                      </span>
+                    ))}
+                    {models.filter(m => m.available).length === 0 && (
+                      <>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md">GPT-5</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md">GPT-4o</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md">Claude Sonnet</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md">Claude Opus</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

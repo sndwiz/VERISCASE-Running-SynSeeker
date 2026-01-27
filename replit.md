@@ -6,13 +6,14 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 ## Features
 - **Board System**: Multiple customizable boards for different practice areas
 - **Task Groups**: Organize tasks within collapsible groups
-- **Multiple Column Types**: Status, priority, date, person, progress, time tracking columns (7 types)
+- **Multiple Column Types**: Status, priority, date, person, progress, time tracking, files columns (8 types)
 - **Dynamic Column Management**: Add, remove, toggle visibility, and reorder columns
+- **Group By**: Organize tasks by Default/Status/Priority/Owner
 - **Task Management**: Create, update, delete tasks with full CRUD operations
 - **AI Assistant**: Multi-model AI chat with Anthropic integration (OpenAI/DeepSeek planned)
 - **Evidence Vault**: Immutable file storage with SHA-256 chain-of-custody tracking
 - **Detective Board**: Visual investigation board with draggable nodes and connections
-- **Automations**: Event-driven automation rules with triggers and actions
+- **Automations**: Event-driven automation rules with triggers and actions, plus template library with pre-built recipes organized by category
 - **Matter Management**: Full matter/client lifecycle with contacts, threads, timeline
 - **Theme Support**: Dark and light mode with teal accents, smooth transitions
 - **Collapsible Sidebar**: Hierarchical navigation with workspace selector, collapsible sections

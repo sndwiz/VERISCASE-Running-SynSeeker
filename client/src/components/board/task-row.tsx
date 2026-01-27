@@ -15,7 +15,8 @@ import { PersonCell } from "./cells/person-cell";
 import { ProgressCell } from "./cells/progress-cell";
 import { TextCell } from "./cells/text-cell";
 import { TimeCell } from "./cells/time-cell";
-import type { Task, ColumnDef, StatusType, Priority, Person } from "@shared/schema";
+import { FileCell } from "./cells/file-cell";
+import type { Task, ColumnDef, StatusType, Priority, Person, FileAttachment } from "@shared/schema";
 
 interface TaskRowProps {
   task: Task;
@@ -92,6 +93,14 @@ export function TaskRow({
           <TimeCell
             value={task.timeTracked}
             onChange={(value: number) => onUpdate({ timeTracked: value })}
+            {...cellProps}
+          />
+        );
+      case "files":
+        return (
+          <FileCell
+            value={task.files || []}
+            onChange={(value: FileAttachment[]) => onUpdate({ files: value })}
             {...cellProps}
           />
         );

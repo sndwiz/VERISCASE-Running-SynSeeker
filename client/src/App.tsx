@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -14,12 +14,16 @@ import { CreateBoardDialog } from "@/components/dialogs/create-board-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Bot, Calendar } from "lucide-react";
+import { Link } from "wouter";
 
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import BoardPage from "@/pages/board";
 import SettingsPage from "@/pages/settings";
 import AIChatPage from "@/pages/ai-chat";
+import LandingPage from "@/pages/landing";
 import {
   DocumentsPage,
   TimeTrackingPage,
@@ -55,13 +59,29 @@ function Router() {
   );
 }
 
+interface User {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+  role: string;
+}
+
 function AppLayout() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [createBoardOpen, setCreateBoardOpen] = useState(false);
+  const [location, setLocation] = useLocation();
+
+  const { data: user, isLoading: isLoadingUser } = useQuery<User>({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+  });
 
   const { data: boards = [] } = useQuery<Board[]>({
     queryKey: ["/api/boards"],
+    enabled: !!user,
   });
 
   const createBoardMutation = useMutation({
@@ -75,6 +95,22 @@ function AppLayout() {
       toast({ title: "Failed to create board", variant: "destructive" });
     },
   });
+
+  const handleLogin = () => {
+    window.location.href = "/api/login";
+  };
+
+  if (isLoadingUser) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage onLogin={handleLogin} />;
+  }
 
   const style = {
     "--sidebar-width": "16rem",
@@ -92,6 +128,16 @@ function AppLayout() {
           <header className="flex items-center justify-between gap-2 px-4 py-2 border-b shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
+              <Link href="/ai-chat">
+                <Button variant="default" size="sm" className="gap-2" data-testid="button-ai-assistant">
+                  <Bot className="h-4 w-4" />
+                  AI Assistant
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
+                <Calendar className="h-4 w-4" />
+                Daily Briefing
+              </Button>
               <ThemeToggle />
               <UserMenu />
             </div>

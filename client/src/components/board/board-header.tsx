@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, List, LayoutDashboard, CalendarDays, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -22,7 +22,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Link } from "wouter";
 import type { Board, ColumnDef, ColumnType } from "@shared/schema";
+
+export type GroupByOption = "default" | "status" | "priority" | "owner";
 
 const COLUMN_TYPES: { type: ColumnType; label: string; icon: typeof Type }[] = [
   { type: "text", label: "Text", icon: Type },
@@ -32,6 +35,14 @@ const COLUMN_TYPES: { type: ColumnType; label: string; icon: typeof Type }[] = [
   { type: "person", label: "Person", icon: Users },
   { type: "progress", label: "Progress", icon: BarChart3 },
   { type: "time", label: "Time Tracking", icon: Clock },
+  { type: "files", label: "Files", icon: Paperclip },
+];
+
+const GROUP_BY_OPTIONS: { value: GroupByOption; label: string }[] = [
+  { value: "default", label: "Default (Groups)" },
+  { value: "status", label: "Status" },
+  { value: "priority", label: "Priority" },
+  { value: "owner", label: "Owner" },
 ];
 
 interface BoardHeaderProps {
@@ -46,6 +57,9 @@ interface BoardHeaderProps {
   onAddColumn?: (column: Omit<ColumnDef, "id" | "order">) => void;
   onRemoveColumn?: (columnId: string) => void;
   onReorderColumn?: (columnId: string, direction: "up" | "down") => void;
+  groupBy?: GroupByOption;
+  onGroupByChange?: (value: GroupByOption) => void;
+  taskCount?: number;
 }
 
 export function BoardHeader({
@@ -60,6 +74,9 @@ export function BoardHeader({
   onAddColumn,
   onRemoveColumn,
   onReorderColumn,
+  groupBy = "default",
+  onGroupByChange,
+  taskCount = 0,
 }: BoardHeaderProps) {
   const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
@@ -102,6 +119,7 @@ export function BoardHeader({
               </p>
             )}
           </div>
+          <span className="ml-2 text-sm text-muted-foreground">{taskCount} items</span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -110,16 +128,59 @@ export function BoardHeader({
             <Input
               type="search"
               placeholder="Search tasks..."
-              className="pl-9 w-64"
+              className="pl-9 w-48"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               data-testid="input-search-tasks"
             />
           </div>
 
-          <Button variant="outline" size="icon" data-testid="button-filter">
+          <div className="flex items-center border rounded-md">
+            <Button variant="ghost" size="icon" className="rounded-r-none" data-testid="button-view-list">
+              <List className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-none border-x" data-testid="button-view-grid">
+              <LayoutDashboard className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="rounded-l-none" data-testid="button-view-calendar">
+              <CalendarDays className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <Button variant="outline" size="sm" className="gap-2" data-testid="button-filter">
             <Filter className="h-4 w-4" />
+            Filter
           </Button>
+
+          <Button variant="outline" size="sm" className="gap-2" data-testid="button-sort">
+            <ArrowUpDown className="h-4 w-4" />
+            Sort
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2" data-testid="button-group-by">
+                <Layers className="h-4 w-4" />
+                Group
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-2">
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm px-2 py-1.5">Group by</h4>
+                {GROUP_BY_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className="flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-md hover-elevate"
+                    onClick={() => onGroupByChange?.(option.value)}
+                    data-testid={`group-by-${option.value}`}
+                  >
+                    <span>{option.label}</span>
+                    {groupBy === option.value && <Check className="h-4 w-4 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Popover>
             <PopoverTrigger asChild>
@@ -252,6 +313,13 @@ export function BoardHeader({
               </div>
             </DialogContent>
           </Dialog>
+
+          <Link href="/automations">
+            <Button variant="outline" size="sm" className="gap-2" data-testid="button-automations">
+              <Zap className="h-4 w-4" />
+              Automations
+            </Button>
+          </Link>
 
           <Button onClick={onAddTask} data-testid="button-add-task">
             <Plus className="h-4 w-4 mr-1" />

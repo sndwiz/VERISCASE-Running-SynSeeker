@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { BoardHeader } from "@/components/board/board-header";
+import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
@@ -22,6 +22,7 @@ export default function BoardPage() {
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [defaultGroupId, setDefaultGroupId] = useState<string | undefined>();
+  const [groupBy, setGroupBy] = useState<GroupByOption>("default");
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards", boardId],
@@ -227,6 +228,9 @@ export default function BoardPage() {
         onAddColumn={handleAddColumn}
         onRemoveColumn={handleRemoveColumn}
         onReorderColumn={handleReorderColumn}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
+        taskCount={tasks.length}
       />
 
       <div className="flex-1 overflow-auto p-4">
