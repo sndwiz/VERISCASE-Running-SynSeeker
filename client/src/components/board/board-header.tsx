@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Link } from "wouter";
 import type { Board, ColumnDef, ColumnType } from "@shared/schema";
 
 export type GroupByOption = "default" | "status" | "priority" | "owner";
@@ -60,6 +59,7 @@ interface BoardHeaderProps {
   groupBy?: GroupByOption;
   onGroupByChange?: (value: GroupByOption) => void;
   taskCount?: number;
+  onOpenAutomations?: () => void;
 }
 
 export function BoardHeader({
@@ -77,6 +77,7 @@ export function BoardHeader({
   groupBy = "default",
   onGroupByChange,
   taskCount = 0,
+  onOpenAutomations,
 }: BoardHeaderProps) {
   const [addColumnOpen, setAddColumnOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
@@ -314,12 +315,16 @@ export function BoardHeader({
             </DialogContent>
           </Dialog>
 
-          <Link href="/automations">
-            <Button variant="outline" size="sm" className="gap-2" data-testid="button-automations">
-              <Zap className="h-4 w-4" />
-              Automations
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2" 
+            onClick={onOpenAutomations}
+            data-testid="button-automations"
+          >
+            <Zap className="h-4 w-4" />
+            Automations
+          </Button>
 
           <Button onClick={onAddTask} data-testid="button-add-task">
             <Plus className="h-4 w-4 mr-1" />

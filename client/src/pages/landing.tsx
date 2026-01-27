@@ -57,11 +57,11 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center" data-testid="logo-icon">
               <Scale className="h-5 w-5 text-primary" />
             </div>
-            <span className="font-bold text-lg">VERICASE</span>
-            <span className="text-muted-foreground text-sm hidden sm:inline">Legal Practice OS</span>
+            <span className="font-bold text-lg" data-testid="text-brand-name">VERICASE</span>
+            <span className="text-muted-foreground text-sm hidden sm:inline" data-testid="text-brand-tagline">Legal Practice OS</span>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" data-testid="link-features">
@@ -78,17 +78,17 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <main>
         <section className="py-20 px-4">
           <div className="container mx-auto text-center max-w-4xl">
-            <Badge variant="secondary" className="mb-6 px-4 py-1.5">
+            <Badge variant="secondary" className="mb-6 px-4 py-1.5" data-testid="badge-ai-powered">
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               Powered by GPT-5 & Claude AI
             </Badge>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6" data-testid="text-hero-headline">
               The Complete Operating System for{" "}
               <span className="text-primary">Modern Law Firms</span>
             </h1>
             
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="text-hero-description">
               Manage matters, track evidence, automate workflows, and leverage AI for 
               document analysis. Everything your practice needs in one powerful platform — 
               completely free.
@@ -104,16 +104,16 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
               </Button>
             </div>
             
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground" data-testid="list-trust-bullets">
+              <div className="flex items-center gap-2" data-testid="trust-bullet-1">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 No credit card required
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" data-testid="trust-bullet-2">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 All features included
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" data-testid="trust-bullet-3">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 Bank-level security
               </div>
@@ -124,21 +124,21 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         <section className="py-20 px-4 bg-muted/30">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Everything You Need to Run Your Practice</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold mb-4" data-testid="text-features-headline">Everything You Need to Run Your Practice</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto" data-testid="text-features-description">
                 Purpose-built tools for legal professionals, from solo practitioners to large firms.
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="grid-features">
               {features.map((feature, index) => (
-                <Card key={index} className="hover-elevate">
+                <Card key={index} className="hover-elevate" data-testid={`card-feature-${index}`}>
                   <CardContent className="pt-6">
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                       <feature.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                    <h3 className="font-semibold text-lg mb-2" data-testid={`text-feature-title-${index}`}>{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm" data-testid={`text-feature-description-${index}`}>{feature.description}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -146,10 +146,10 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           </div>
         </section>
 
-        <section className="py-20 px-4">
+        <section className="py-20 px-4" data-testid="section-cta">
           <div className="container mx-auto max-w-4xl text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Practice?</h2>
-            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold mb-4" data-testid="text-cta-headline">Ready to Transform Your Practice?</h2>
+            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="text-cta-description">
               Join thousands of legal professionals who trust VERICASE to manage their cases efficiently.
             </p>
             <Button size="lg" onClick={onLogin} data-testid="button-get-started-bottom">
@@ -160,9 +160,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         </section>
       </main>
 
-      <footer className="border-t py-8 px-4">
+      <footer className="border-t py-8 px-4" data-testid="section-footer">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 VERICASE. All rights reserved.</p>
+          <p data-testid="text-copyright">&copy; 2026 VERICASE. All rights reserved.</p>
         </div>
       </footer>
     </div>

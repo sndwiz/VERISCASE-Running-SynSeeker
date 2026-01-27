@@ -197,19 +197,19 @@ export default function AIChatPage() {
         </div>
 
         <div className="p-4 border-b">
-          <label className="text-xs text-muted-foreground mb-2 block">AI Model</label>
+          <label className="text-xs text-muted-foreground mb-2 block" data-testid="label-ai-model">AI Model</label>
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger data-testid="select-model">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
               {models.filter(m => m.available).map((model) => (
-                <SelectItem key={model.id} value={model.id}>
+                <SelectItem key={model.id} value={model.id} data-testid={`select-item-model-${model.id}`}>
                   {model.name}
                 </SelectItem>
               ))}
               {models.filter(m => !m.available).length > 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1 pt-1">
+                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1 pt-1" data-testid="text-more-providers">
                   More providers coming soon
                 </div>
               )}
@@ -232,7 +232,7 @@ export default function AIChatPage() {
                 data-testid={`conversation-${conv.id}`}
               >
                 <MessageSquare className="h-4 w-4 shrink-0" />
-                <span className="flex-1 text-sm truncate">{conv.title}</span>
+                <span className="flex-1 text-sm truncate" data-testid={`text-conversation-title-${conv.id}`}>{conv.title}</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -248,7 +248,7 @@ export default function AIChatPage() {
               </div>
             ))}
             {conversations.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-4 text-center text-sm text-muted-foreground" data-testid="text-no-conversations">
                 No conversations yet
               </div>
             )}
@@ -265,10 +265,10 @@ export default function AIChatPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : displayMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="flex flex-col items-center justify-center h-full text-center" data-testid="section-empty-conversation">
                   <Bot className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">VERICASE AI Assistant</h2>
-                  <p className="text-muted-foreground max-w-md">
+                  <h2 className="text-xl font-semibold mb-2" data-testid="text-assistant-header">VERICASE AI Assistant</h2>
+                  <p className="text-muted-foreground max-w-md" data-testid="text-assistant-description">
                     Ask me anything about your legal cases, documents, or evidence.
                     I can help with research, analysis, and document review.
                   </p>
@@ -282,6 +282,7 @@ export default function AIChatPage() {
                         "flex gap-3",
                         msg.role === "user" ? "justify-end" : "justify-start"
                       )}
+                      data-testid={`message-${msg.id}`}
                     >
                       {msg.role === "assistant" && (
                         <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -295,7 +296,7 @@ export default function AIChatPage() {
                         )}
                       >
                         <CardContent className="p-3">
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          <p className="text-sm whitespace-pre-wrap" data-testid={`text-message-content-${msg.id}`}>{msg.content}</p>
                         </CardContent>
                       </Card>
                     </div>
@@ -338,8 +339,8 @@ export default function AIChatPage() {
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
                   <Bot className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-3">AI Assistant</h2>
-                <p className="text-muted-foreground mb-6">
+                <h2 className="text-2xl font-semibold mb-3" data-testid="text-ai-welcome-title">AI Assistant</h2>
+                <p className="text-muted-foreground mb-6" data-testid="text-ai-welcome-description">
                   Start a new conversation to chat with Claude or GPT. Ask questions, 
                   analyze documents, or get help with your legal work.
                 </p>
@@ -349,22 +350,23 @@ export default function AIChatPage() {
                 </Button>
                 
                 <div className="mt-6 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-3">Available Models:</p>
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <p className="text-sm text-muted-foreground mb-3" data-testid="text-available-models-label">Available Models:</p>
+                  <div className="flex flex-wrap justify-center gap-2" data-testid="list-available-models">
                     {models.filter(m => m.available).map((model) => (
                       <span
                         key={model.id}
                         className="px-3 py-1 text-sm bg-muted rounded-md"
+                        data-testid={`badge-model-${model.id}`}
                       >
                         {model.name}
                       </span>
                     ))}
                     {models.filter(m => m.available).length === 0 && (
                       <>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md">GPT-5</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md">GPT-4o</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md">Claude Sonnet</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md">Claude Opus</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-gpt5">GPT-5</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-gpt4o">GPT-4o</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-sonnet">Claude Sonnet</span>
+                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-opus">Claude Opus</span>
                       </>
                     )}
                   </div>

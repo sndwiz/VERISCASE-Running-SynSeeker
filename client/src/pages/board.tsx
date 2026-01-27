@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
+import { AutomationsPanel } from "@/components/board/automations-panel";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailDialog } from "@/components/dialogs/task-detail-dialog";
@@ -23,6 +24,7 @@ export default function BoardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [defaultGroupId, setDefaultGroupId] = useState<string | undefined>();
   const [groupBy, setGroupBy] = useState<GroupByOption>("default");
+  const [automationsPanelOpen, setAutomationsPanelOpen] = useState(false);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards", boardId],
@@ -231,6 +233,7 @@ export default function BoardPage() {
         groupBy={groupBy}
         onGroupByChange={setGroupBy}
         taskCount={tasks.length}
+        onOpenAutomations={() => setAutomationsPanelOpen(true)}
       />
 
       <div className="flex-1 overflow-auto p-4">
@@ -292,6 +295,14 @@ export default function BoardPage() {
         task={selectedTask}
         onUpdate={handleTaskUpdate}
       />
+
+      {boardId && (
+        <AutomationsPanel
+          boardId={boardId}
+          open={automationsPanelOpen}
+          onClose={() => setAutomationsPanelOpen(false)}
+        />
+      )}
     </div>
   );
 }
