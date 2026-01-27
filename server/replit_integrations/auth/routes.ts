@@ -4,6 +4,20 @@ import { isAuthenticated } from "./replitAuth";
 import { requireAdmin } from "./middleware";
 import type { UserRole } from "@shared/models/auth";
 
+const AVATAR_COLORS = [
+  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444",
+  "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1"
+];
+
+function getColorForUser(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 // Bootstrap: Make the first user an admin if no admins exist
 export async function bootstrapFirstAdmin(): Promise<void> {
   try {
@@ -32,6 +46,26 @@ export function registerAuthRoutes(app: Express): void {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Get team members (all authenticated users can access)
+  app.get("/api/team/members", isAuthenticated, async (_req, res) => {
+    try {
+      const users = await authStorage.getAllUsers();
+      // Return simplified team member list (no sensitive data)
+      const teamMembers = users.map(u => ({
+        id: u.id,
+        name: u.firstName && u.lastName 
+          ? `${u.firstName} ${u.lastName}` 
+          : u.email?.split("@")[0] || "User",
+        email: u.email,
+        color: getColorForUser(u.id)
+      }));
+      res.json(teamMembers);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Failed to fetch team members" });
     }
   });
 

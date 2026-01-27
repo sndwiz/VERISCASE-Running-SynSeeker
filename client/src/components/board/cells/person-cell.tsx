@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -15,16 +16,25 @@ interface PersonCellProps {
   onClick?: (e: React.MouseEvent) => void;
 }
 
-const mockTeamMembers: Person[] = [
-  { id: "1", name: "John Smith", color: "#3b82f6" },
-  { id: "2", name: "Sarah Johnson", color: "#10b981" },
-  { id: "3", name: "Michael Brown", color: "#f59e0b" },
-  { id: "4", name: "Emily Davis", color: "#8b5cf6" },
-  { id: "5", name: "David Wilson", color: "#ef4444" },
-];
+interface TeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  color: string;
+}
 
 export function PersonCell({ value, onChange, onClick }: PersonCellProps) {
   const [open, setOpen] = useState(false);
+
+  const { data: teamMembers, isLoading } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team/members"],
+    enabled: open,
+    staleTime: 30000,
+  });
+
+  const availableMembers: Person[] = teamMembers
+    ? teamMembers.map(m => ({ id: m.id, name: m.name, color: m.color }))
+    : [];
 
   const addPerson = (person: Person) => {
     if (!value.find((p) => p.id === person.id)) {
@@ -125,26 +135,40 @@ export function PersonCell({ value, onChange, onClick }: PersonCellProps) {
             <p className="text-xs font-medium text-muted-foreground px-1">
               Team Members
             </p>
-            {mockTeamMembers
-              .filter((m) => !value.find((v) => v.id === m.id))
-              .map((person) => (
-                <button
-                  key={person.id}
-                  className="flex items-center gap-2 w-full px-1 py-1 rounded text-left hover-elevate"
-                  onClick={() => addPerson(person)}
-                  data-testid={`button-add-person-${person.id}`}
-                >
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback
-                      className="text-xs text-white"
-                      style={{ backgroundColor: person.color }}
-                    >
-                      {getInitials(person.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm">{person.name}</span>
-                </button>
-              ))}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : availableMembers.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-1 py-2">
+                No team members found. Sign in to be added as a team member.
+              </p>
+            ) : availableMembers.filter((m) => !value.find((v) => v.id === m.id)).length === 0 ? (
+              <p className="text-xs text-muted-foreground px-1 py-2">
+                All team members assigned
+              </p>
+            ) : (
+              availableMembers
+                .filter((m) => !value.find((v) => v.id === m.id))
+                .map((person) => (
+                  <button
+                    key={person.id}
+                    className="flex items-center gap-2 w-full px-1 py-1 rounded text-left hover-elevate"
+                    onClick={() => addPerson(person)}
+                    data-testid={`button-add-person-${person.id}`}
+                  >
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback
+                        className="text-xs text-white"
+                        style={{ backgroundColor: person.color }}
+                      >
+                        {getInitials(person.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{person.name}</span>
+                  </button>
+                ))
+            )}
           </div>
         </div>
       </PopoverContent>

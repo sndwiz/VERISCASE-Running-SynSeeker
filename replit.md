@@ -185,6 +185,12 @@ The first user to register automatically becomes an admin. Subsequent users defa
 - Cookie security adapts to environment (secure in production, lax in development)
 - Logout properly destroys session
 
+### Team Members
+- All authenticated users are automatically team members
+- Team members are available for task assignment in the person picker
+- Admins can manage user roles via Settings > Team tab
+- Role determines access level (admin full access, member CRUD, viewer read-only)
+
 ## Important Schema Notes
 - Matter creation requires `openedDate` field (not openDate)
 - MatterContact role is enum: plaintiff, defendant, witness, expert, opposing-counsel, judge, client, other

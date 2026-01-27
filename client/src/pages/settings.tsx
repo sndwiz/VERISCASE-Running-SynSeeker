@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { User, Bell, Palette, Shield, Database, Globe } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,50 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/lib/theme-provider";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+interface AuthUser {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role: "admin" | "member" | "viewer";
+  createdAt?: string;
+}
+
+interface CurrentUser {
+  id: string;
+  role: "admin" | "member" | "viewer";
+}
+
+const AVATAR_COLORS = [
+  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444",
+  "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1"
+];
+
+function getColorForUser(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(firstName?: string, lastName?: string, email?: string): string {
+  if (firstName && lastName) {
+    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  }
+  if (email) {
+    return email.substring(0, 2).toUpperCase();
+  }
+  return "??";
+}
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -21,9 +64,33 @@ export default function SettingsPage() {
     updates: true,
   });
 
+  const { data: currentUser } = useQuery<CurrentUser>({
+    queryKey: ["/api/auth/user"],
+  });
+
+  const { data: users, isLoading: usersLoading } = useQuery<AuthUser[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: currentUser?.role === "admin",
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+      apiRequest("PATCH", `/api/admin/users/${userId}/role`, { role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      toast({ title: "Role updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update role", variant: "destructive" });
+    },
+  });
+
   const handleSave = () => {
     toast({ title: "Settings saved successfully" });
   };
+
+  const isAdmin = currentUser?.role === "admin";
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -50,6 +117,12 @@ export default function SettingsPage() {
             <Palette className="h-4 w-4 mr-2" />
             Appearance
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="team" data-testid="tab-team">
+              <Users className="h-4 w-4 mr-2" />
+              Team
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general">
@@ -220,6 +293,99 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="team">
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Management</CardTitle>
+                <CardDescription>
+                  Manage team members and their access levels
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !users || users.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No team members found
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3 rounded-md border"
+                        data-testid={`team-member-${user.id}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback
+                              className="text-white"
+                              style={{ backgroundColor: getColorForUser(user.id) }}
+                            >
+                              {getInitials(user.firstName, user.lastName, user.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {user.firstName && user.lastName
+                                ? `${user.firstName} ${user.lastName}`
+                                : user.email?.split("@")[0] || "User"}
+                            </p>
+                            {user.email && (
+                              <p className="text-sm text-muted-foreground">
+                                {user.email}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {user.id === currentUser?.id ? (
+                            <Badge variant="secondary">You</Badge>
+                          ) : (
+                            <Select
+                              value={user.role}
+                              onValueChange={(value) =>
+                                updateRoleMutation.mutate({ userId: user.id, role: value })
+                              }
+                              disabled={updateRoleMutation.isPending}
+                            >
+                              <SelectTrigger
+                                className="w-28"
+                                data-testid={`select-role-${user.id}`}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <Badge
+                            variant={
+                              user.role === "admin"
+                                ? "default"
+                                : user.role === "member"
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {user.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
