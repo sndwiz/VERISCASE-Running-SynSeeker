@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Plus, X, Loader2, ChevronDown, ArrowRight, Search } from "lucide-react";
+import { Zap, Plus, X, Loader2, ChevronDown, Search, Sparkles, Mail, MessageSquare, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { SiSlack, SiGmail } from "react-icons/si";
 
 interface AutomationRule {
   id: string;
@@ -33,72 +34,227 @@ interface AutomationTemplate {
   description: string;
   category: string;
   triggerType: string;
-  triggerLabel: string;
   actionType: string;
-  actionLabel: string;
+  icon?: "ai" | "slack" | "gmail" | "sms" | "monday";
 }
 
 const AUTOMATION_CATEGORIES = [
+  { id: "ai_powered", name: "AI-powered", color: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400" },
+  { id: "integrations", name: "Integrations", color: "bg-blue-500" },
   { id: "status_progress", name: "Status & Progress", color: "bg-purple-500" },
-  { id: "date_time", name: "Date & Time", color: "bg-yellow-500" },
-  { id: "assignees", name: "Assignees & Ownership", color: "bg-blue-500" },
-  { id: "notifications", name: "Notifications & Alerts", color: "bg-red-500" },
-  { id: "column_updates", name: "Column Updates", color: "bg-gray-500" },
   { id: "cross_board", name: "Cross-Board", color: "bg-orange-500" },
-  { id: "approvals_reviews", name: "Approvals & Reviews", color: "bg-green-500" },
+  { id: "notifications", name: "Notifications", color: "bg-red-500" },
+  { id: "date_time", name: "Date & Time", color: "bg-yellow-500" },
   { id: "recurring_work", name: "Recurring Work", color: "bg-teal-500" },
-  { id: "subitems", name: "Subitems", color: "bg-blue-400" },
-  { id: "forms_intake", name: "Forms & Intake", color: "bg-blue-500" },
-  { id: "email", name: "Email", color: "bg-orange-400" },
-  { id: "files_assets", name: "Files & Assets", color: "bg-green-400" },
 ];
 
 const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
+  // AI-powered - Use AI to fill in column
+  { id: "ai_fill_item_created", name: "When an item is created, use AI to fill in column", description: "When an item is created ✦use AI to fill in column", category: "ai_powered", triggerType: "item_created", actionType: "ai_fill", icon: "ai" },
+  { id: "ai_fill_update_created", name: "When an update is created, use AI to fill in column", description: "When an update is created ✦use AI to fill in column", category: "ai_powered", triggerType: "update_created", actionType: "ai_fill", icon: "ai" },
+  { id: "ai_fill_subitem_created", name: "When a subitem is created, use AI to fill in column", description: "When a subitem is created ✦use AI to fill in column", category: "ai_powered", triggerType: "subitem_created", actionType: "ai_fill", icon: "ai" },
+  { id: "ai_fill_name_changes", name: "When item name changes, use AI to fill in column", description: "When item name changes ✦use AI to fill in column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_fill", icon: "ai" },
+  { id: "ai_fill_column_changes", name: "When column changes, use AI to fill in column", description: "When column changes ✦use AI to fill in column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_fill", icon: "ai" },
+  { id: "ai_fill_email_activity", name: "When an activity/email is created, use AI to fill in column", description: "When an activity/email is created in Emails & Activities, ✦use AI to fill in column", category: "ai_powered", triggerType: "email_activity", actionType: "ai_fill", icon: "ai" },
+  
+  // AI-powered - Detect sentiment
+  { id: "ai_sentiment_item_created", name: "When an item is created, detect sentiment in column", description: "When an item is created ✦detect sentiment in column according to these instructions, and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_sentiment", icon: "ai" },
+  { id: "ai_sentiment_update_created", name: "When an update is created, detect sentiment in updates", description: "When an update is created ✦detect sentiment in updates according to these instructions, and insert into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_sentiment", icon: "ai" },
+  { id: "ai_sentiment_item_name", name: "When an item is created, detect sentiment in item name", description: "When an item is created ✦detect sentiment in item name according to these instructions, and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_sentiment", icon: "ai" },
+  { id: "ai_sentiment_column_changes", name: "When column changes, detect sentiment in column", description: "When column changes ✦detect sentiment in column according to these instructions, and insert into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_sentiment", icon: "ai" },
+  { id: "ai_sentiment_name_changes", name: "When item name changes, detect sentiment in item name", description: "When item name changes ✦detect sentiment in item name according to these instructions, and insert into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_sentiment", icon: "ai" },
+  { id: "ai_write_name_changes", name: "When item name changes, write with AI", description: "When item name changes ✦write with AI in a natural tone, keep it brief, and insert into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_write", icon: "ai" },
+  
+  // AI-powered - Write with AI
+  { id: "ai_write_item_created", name: "When an item is created, write with AI", description: "When an item is created ✦write with AI in a natural tone, keep it brief, and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_write", icon: "ai" },
+  { id: "ai_write_update_created", name: "When an update is created, write with AI", description: "When an update is created ✦write with AI in a natural tone, keep it brief, and insert into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_write", icon: "ai" },
+  { id: "ai_write_column_changes", name: "When column changes, write with AI", description: "When column changes ✦write with AI in a natural tone, keep it brief, and insert into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_write", icon: "ai" },
+  
+  // AI-powered - Extract info
+  { id: "ai_extract_item_created", name: "When an item is created, extract info from column", description: "When an item is created ✦extract info from column according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_extract", icon: "ai" },
+  { id: "ai_extract_column_changes", name: "When column changes, extract info from column", description: "When column changes ✦extract info from column according to these instructions, into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_extract", icon: "ai" },
+  { id: "ai_extract_item_name", name: "When an item is created, extract info from the item's name", description: "When an item is created ✦extract info from the item's name based on these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_extract", icon: "ai" },
+  { id: "ai_extract_updates", name: "When an update is created, extract info from the item's updates", description: "When an update is created ✦extract info from the item's updates based on these instructions, into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_extract", icon: "ai" },
+  { id: "ai_extract_name_changes", name: "When item name changes, extract info from the item's name", description: "When item name changes ✦extract info from the item's name according to these instructions, into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_extract", icon: "ai" },
+  
+  // AI-powered - Improve text
+  { id: "ai_improve_item_created", name: "When an item is created, improve text in column", description: "When an item is created ✦improve text in column, into column. With moderate changes, in a shorter length, and a natural tone.", category: "ai_powered", triggerType: "item_created", actionType: "ai_improve", icon: "ai" },
+  { id: "ai_improve_item_name", name: "When an item is created, improve text in item name", description: "When an item is created ✦improve text in item name, into column. With moderate changes, in a shorter length, and a natural tone.", category: "ai_powered", triggerType: "item_created", actionType: "ai_improve", icon: "ai" },
+  { id: "ai_improve_name_changes", name: "When item name changes, improve text in item name", description: "When item name changes ✦improve text in item name, into column. With moderate changes, in a shorter length, and a natural tone.", category: "ai_powered", triggerType: "name_changed", actionType: "ai_improve", icon: "ai" },
+  { id: "ai_improve_column_changes", name: "When column changes, improve text in column", description: "When column changes ✦improve text in column, into column. With moderate changes, in a shorter length, and a natural tone.", category: "ai_powered", triggerType: "column_changed", actionType: "ai_improve", icon: "ai" },
+  
+  // AI-powered - Translate text
+  { id: "ai_translate_item_created", name: "When an item is created, translate text in column", description: "When an item is created ✦translate text in column, to Language and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_translate", icon: "ai" },
+  { id: "ai_translate_item_name", name: "When an item is created, translate text in item name", description: "When an item is created ✦translate text in item name, to Language and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_translate", icon: "ai" },
+  { id: "ai_translate_column_changes", name: "When column changes, translate text in column", description: "When column changes ✦translate text in column, to Language and insert into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_translate", icon: "ai" },
+  { id: "ai_translate_name_changes", name: "When item name changes, translate text in item name", description: "When item name changes ✦translate text in item name, to Language and insert into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_translate", icon: "ai" },
+  
+  // AI-powered - Detect language
+  { id: "ai_language_item_created", name: "When an item is created, detect language in column", description: "When an item is created ✦detect language in column according to these instructions, and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_language", icon: "ai" },
+  { id: "ai_language_update_created", name: "When an update is created, detect language in updates", description: "When an update is created ✦detect language in updates according to these instructions, and insert into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_language", icon: "ai" },
+  { id: "ai_language_item_name", name: "When an item is created, detect language in item name", description: "When an item is created ✦detect language in item name according to these instructions, and insert into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_language", icon: "ai" },
+  { id: "ai_language_column_changes", name: "When column changes, detect language in column", description: "When column changes ✦detect language in column according to these instructions, and insert into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_language", icon: "ai" },
+  { id: "ai_language_name_changes", name: "When item name changes, detect language in item name", description: "When item name changes ✦detect language in item name according to these instructions, and insert into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_language", icon: "ai" },
+  
+  // AI-powered - Categorize
+  { id: "ai_categorize_item_created", name: "When an item is created, categorize column", description: "When an item is created ✦categorize column according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_item_name", name: "When an item is created, categorize item name", description: "When an item is created ✦categorize item name according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_update_created", name: "When an update is created, categorize updates", description: "When an update is created ✦categorize updates, into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_column_changes", name: "When column changes, categorize column", description: "When column changes ✦categorize column according to these instructions, into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_name_changes", name: "When item name changes, categorize item name", description: "When item name changes ✦categorize item name according to these instructions, into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_email", name: "When an activity/email is created, categorize Emails and Activities", description: "When an activity/email is created in Emails & Activities, ✦categorize Emails and Activities according to these instructions, into column", category: "ai_powered", triggerType: "email_activity", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_moved", name: "When an item is moved to this board, categorize item name", description: "When an item is moved to this board ✦categorize item name according to these instructions, into column", category: "ai_powered", triggerType: "item_moved", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_empty", name: "When an item is created and only if column is empty, categorize column", description: "When an item is created and only if column is empty ✦categorize column according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_categorize_item_name_empty", name: "When an item is created and only if column is empty, categorize item name", description: "When an item is created and only if column is empty ✦categorize item name according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_categorize", icon: "ai" },
+  { id: "ai_button_categorize", name: "When button clicked, categorize column", description: "When button clicked ✦categorize column according to these instructions, into column", category: "ai_powered", triggerType: "button_clicked", actionType: "ai_categorize", icon: "ai" },
+  
+  // AI-powered - Summarize text
+  { id: "ai_summarize_column_changes", name: "When column changes, summarize text in column", description: "When column changes ✦summarize text in column according to these instructions, into column", category: "ai_powered", triggerType: "column_changed", actionType: "ai_summarize", icon: "ai" },
+  { id: "ai_summarize_item_created", name: "When an item is created, summarize text in item name", description: "When an item is created ✦summarize text in item name according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_summarize", icon: "ai" },
+  { id: "ai_summarize_item_column", name: "When an item is created, summarize text in column", description: "When an item is created ✦summarize text in column according to these instructions, into column", category: "ai_powered", triggerType: "item_created", actionType: "ai_summarize", icon: "ai" },
+  { id: "ai_summarize_update_created", name: "When an update is created, summarize text in updates", description: "When an update is created ✦summarize text in updates according to these instructions, into column", category: "ai_powered", triggerType: "update_created", actionType: "ai_summarize", icon: "ai" },
+  { id: "ai_summarize_name_changes", name: "When item name changes, summarize text in column", description: "When item name changes ✦summarize text in column according to these instructions, into column", category: "ai_powered", triggerType: "name_changed", actionType: "ai_summarize", icon: "ai" },
+  { id: "ai_button_summarize", name: "When button clicked, summarize text in column", description: "When button clicked ✦summarize text in column according to these instructions, into column", category: "ai_powered", triggerType: "button_clicked", actionType: "ai_summarize", icon: "ai" },
+  
+  // Integrations - Slack
+  { id: "slack_notify_status", name: "When status changes, notify in channel", description: "When _____ changes to _____, notify in channel _____", category: "integrations", triggerType: "status_changed", actionType: "slack_notify", icon: "slack" },
+  { id: "slack_priority_high", name: "When priority changes to high, notify in channel urgent", description: "When priority changes to high, notify in channel urgent", category: "integrations", triggerType: "priority_changed", actionType: "slack_notify", icon: "slack" },
+  
+  // Integrations - Gmail
+  { id: "gmail_create_contact", name: "When an email is received, create an item in contacts", description: "When an email is received, create an item in contacts", category: "integrations", triggerType: "email_received", actionType: "create_item", icon: "gmail" },
+  
+  // Integrations - SMS
+  { id: "sms_status_stuck", name: "When a status changes to stuck, send SMS to everyone", description: "When a status changes to stuck, send SMS to everyone", category: "integrations", triggerType: "status_changed", actionType: "send_sms", icon: "sms" },
+  
   // Status & Progress
-  { id: "move_item_done", name: "Move item when status changes", description: "When status changes to 'Done', move item to the Completed group", category: "status_progress", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "move_to_group", actionLabel: "Move to group" },
-  { id: "notify_blocked", name: "Notify when item is blocked", description: "When status changes to 'Stuck', notify the owner", category: "status_progress", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "send_notification", actionLabel: "Send notification" },
-  { id: "clear_assignee_done", name: "Clear assignee when done", description: "When status changes to 'Done', clear the assignee for next cycle", category: "status_progress", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "update_field", actionLabel: "Update field" },
-  { id: "set_progress_status", name: "Set progress when status changes", description: "When status changes to 'Working on it', set progress to 50%", category: "status_progress", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "update_field", actionLabel: "Update field" },
-  { id: "mark_complete_auto", name: "Mark complete when progress is 100%", description: "Automatically set status to 'Done' when progress reaches 100%", category: "status_progress", triggerType: "progress_changed", triggerLabel: "When progress changes", actionType: "change_status", actionLabel: "Change status" },
-  { id: "auto_start_working", name: "Set working when assigned", description: "When someone is assigned, set status to 'Working on it'", category: "status_progress", triggerType: "person_assigned", triggerLabel: "When person is assigned", actionType: "change_status", actionLabel: "Change status" },
-  
-  // Recurring Work
-  { id: "create_followup", name: "Create follow-up when done", description: "When item is marked done, create a follow-up task", category: "recurring_work", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "move_to_group", actionLabel: "Duplicate item" },
-  { id: "create_from_template", name: "Create item from template", description: "When triggered, duplicate a template item with preset values", category: "recurring_work", triggerType: "item_created", triggerLabel: "When item is created", actionType: "move_to_group", actionLabel: "Duplicate item" },
-  { id: "create_item_board", name: "Create item in board when status changes", description: "When status changes to something, create an item in board", category: "recurring_work", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "move_to_group", actionLabel: "Duplicate item" },
-  { id: "assign_reviewer_done", name: "Assign reviewer when done", description: "When item is marked done, assign a reviewer for final check", category: "recurring_work", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "assign_person", actionLabel: "Assign person" },
-  { id: "notify_on_create", name: "Notify team on new item", description: "When a new item is created, send notification to the team", category: "recurring_work", triggerType: "item_created", triggerLabel: "When item is created", actionType: "send_notification", actionLabel: "Send notification" },
-  { id: "auto_priority_high", name: "Set priority when due soon", description: "When due date is within 2 days, set priority to high", category: "recurring_work", triggerType: "due_date_approaching", triggerLabel: "When due date is approaching", actionType: "change_priority", actionLabel: "Change priority" },
-  
-  // Subitems
-  { id: "auto_create_subitems", name: "Auto-create standard subitems", description: "When item is created, automatically add standard subtasks", category: "subitems", triggerType: "item_created", triggerLabel: "When item is created", actionType: "update_field", actionLabel: "Create subitems" },
-  { id: "sync_parent_status", name: "Sync parent status from subitems", description: "When all subitems are done, mark parent as done", category: "subitems", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "change_status", actionLabel: "Change status" },
-  { id: "copy_assignee_subitems", name: "Copy assignee to subitems", description: "When parent is assigned, assign the same person to all subitems", category: "subitems", triggerType: "person_assigned", triggerLabel: "When person is assigned", actionType: "assign_person", actionLabel: "Assign person" },
+  { id: "status_create_item", name: "When status changes to something, create an item in board", description: "When status changes to something create an item in board", category: "status_progress", triggerType: "status_changed", actionType: "create_item", icon: "monday" },
+  { id: "status_move_item", name: "When status changes to something, move item to board", description: "When status changes to something move item to board", category: "status_progress", triggerType: "status_changed", actionType: "move_item", icon: "monday" },
+  { id: "status_change_another", name: "When status changes to something, change another status to something", description: "When status changes to something, change another status to something", category: "status_progress", triggerType: "status_changed", actionType: "change_status", icon: "monday" },
+  { id: "status_dependency", name: "When a status changes to something, change the status of its dependency to something", description: "When a status changes to something, change the status of its dependency to something", category: "status_progress", triggerType: "status_changed", actionType: "change_status", icon: "monday" },
+  { id: "status_set_due_date", name: "When status changes to something, set due date to current date", description: "When status changes to something, set due date to current date", category: "status_progress", triggerType: "status_changed", actionType: "set_date", icon: "monday" },
+  { id: "status_time_tracking", name: "When status changes to something, start time tracking. When it changes to something stop.", description: "When status changes to something, start time tracking. When it changes to something stop.", category: "status_progress", triggerType: "status_changed", actionType: "time_tracking", icon: "monday" },
   
   // Cross-Board
-  { id: "move_to_group", name: "Move to another group", description: "When status changes, move item to a different group", category: "cross_board", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "move_to_group", actionLabel: "Move to group" },
-  { id: "mirror_columns", name: "Mirror columns between boards", description: "Sync key columns across related boards", category: "cross_board", triggerType: "status_changed", triggerLabel: "When value changes", actionType: "update_field", actionLabel: "Update field" },
+  { id: "cross_item_created_connect", name: "When an item is created, create an item in board and connect boards with column", description: "When an item is created create an item in board and connect boards with column", category: "cross_board", triggerType: "item_created", actionType: "create_connect", icon: "monday" },
+  { id: "cross_status_due_date", name: "When status changes to something, set due date to current date plus some days", description: "When status changes to something, set due date to current date plus some days", category: "cross_board", triggerType: "status_changed", actionType: "set_date", icon: "monday" },
+  { id: "cross_item_connect_another", name: "When an item is created in this board, create an item in another board and connect them", description: "When an item is created in this board, create an item in another board and connect them in the selected board", category: "cross_board", triggerType: "item_created", actionType: "create_connect", icon: "monday" },
+  { id: "cross_column_connect", name: "When column changes, connect the item where the new value matches this column in another board", description: "When column changes, connect the item where the new value matches this column in another board by this logic", category: "cross_board", triggerType: "column_changed", actionType: "connect_item", icon: "monday" },
+  { id: "cross_item_connect_match", name: "When an item is created in this board, connect the item where this column matches this column in another board", description: "When an item is created in this board, connect the item where this column matches this column in another board by this logic", category: "cross_board", triggerType: "item_created", actionType: "connect_item", icon: "monday" },
+  { id: "cross_status_create_connect", name: "When status changes to something, create an item in board and connect boards with column", description: "When status changes to something create an item in board and connect boards with column", category: "cross_board", triggerType: "status_changed", actionType: "create_connect", icon: "monday" },
+  { id: "cross_adjust_date", name: "Adjust this date to reflect the changes made in this other date of the same item", description: "Adjust this date to reflect the changes made in this other date of the same item", category: "cross_board", triggerType: "date_changed", actionType: "adjust_date", icon: "monday" },
+  { id: "cross_column_connect_logic", name: "When column changes, connect the item where this column matches another column in another board by this logic", description: "When column changes, connect the item where this column matches another column in another board by this logic", category: "cross_board", triggerType: "column_changed", actionType: "connect_item", icon: "monday" },
   
-  // Approvals & Reviews
-  { id: "notify_reviewer", name: "Notify reviewer on submit", description: "When item is submitted for review, notify the assigned reviewer", category: "approvals_reviews", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "send_notification", actionLabel: "Send notification" },
-  { id: "approve_next_stage", name: "Move to next stage on approval", description: "When approved, move item to the next workflow stage", category: "approvals_reviews", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "move_to_group", actionLabel: "Move to group" },
-  { id: "reject_reassign", name: "Reassign on rejection", description: "When rejected, assign back to original owner for revisions", category: "approvals_reviews", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "assign_person", actionLabel: "Assign person" },
-  { id: "escalate_approval", name: "Escalate if not approved in time", description: "If pending approval for more than 2 days, notify manager", category: "approvals_reviews", triggerType: "due_date_approaching", triggerLabel: "When time passes", actionType: "send_notification", actionLabel: "Send notification" },
+  // Notifications
+  { id: "notify_status_change", name: "Notify when status changes", description: "When status changes, send notification to assignee", category: "notifications", triggerType: "status_changed", actionType: "send_notification", icon: "monday" },
+  { id: "notify_due_soon", name: "Notify when due date approaches", description: "When due date is within 2 days, notify assignee", category: "notifications", triggerType: "due_date_approaching", actionType: "send_notification", icon: "monday" },
+  { id: "notify_overdue", name: "Notify when overdue", description: "When item is overdue, send notification to owner", category: "notifications", triggerType: "item_overdue", actionType: "send_notification", icon: "monday" },
   
-  // Forms & Intake
-  { id: "form_create_item", name: "Create item from form", description: "When form is submitted, create a new item with form data", category: "forms_intake", triggerType: "item_created", triggerLabel: "When form submitted", actionType: "change_status", actionLabel: "Create item" },
-  { id: "auto_triage", name: "Auto-triage by category", description: "Route items to different groups based on form answers", category: "forms_intake", triggerType: "item_created", triggerLabel: "When item is created", actionType: "move_to_group", actionLabel: "Move to group" },
+  // Date & Time
+  { id: "date_set_on_status", name: "Set due date when status changes", description: "When status changes to 'Working on it', set due date to 7 days from now", category: "date_time", triggerType: "status_changed", actionType: "set_date", icon: "monday" },
+  { id: "date_clear_on_done", name: "Clear date when done", description: "When status changes to 'Done', clear the due date", category: "date_time", triggerType: "status_changed", actionType: "update_field", icon: "monday" },
   
-  // Email
-  { id: "email_on_status", name: "Send email on status change", description: "When status changes to 'Done', send email to client", category: "email", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "send_notification", actionLabel: "Send email" },
-  { id: "email_followup", name: "Schedule follow-up email", description: "Send follow-up email X days after completion", category: "email", triggerType: "due_date_approaching", triggerLabel: "When date arrives", actionType: "send_notification", actionLabel: "Send email" },
-  { id: "email_reminder", name: "Send reminder before due date", description: "Email assignee 2 days before due date", category: "email", triggerType: "due_date_approaching", triggerLabel: "When due date approaches", actionType: "send_notification", actionLabel: "Send email" },
-  { id: "email_weekly_summary", name: "Weekly email summary", description: "Send weekly summary of open items to team", category: "email", triggerType: "due_date_approaching", triggerLabel: "On schedule", actionType: "send_notification", actionLabel: "Send email" },
-  
-  // Files & Assets
-  { id: "notify_file_added", name: "Notify when file added", description: "When a file is uploaded, notify the team", category: "files_assets", triggerType: "file_uploaded", triggerLabel: "When file is uploaded", actionType: "send_notification", actionLabel: "Send notification" },
-  { id: "request_file_status", name: "Request file on status change", description: "When status changes to 'Needs Documents', request file upload", category: "files_assets", triggerType: "status_changed", triggerLabel: "When status changes", actionType: "send_notification", actionLabel: "Send notification" },
+  // Recurring Work
+  { id: "recurring_weekly", name: "Create weekly recurring item", description: "Every Monday, create a new item in board", category: "recurring_work", triggerType: "schedule", actionType: "create_item", icon: "monday" },
+  { id: "recurring_monthly", name: "Create monthly recurring item", description: "On the 1st of each month, create a new item", category: "recurring_work", triggerType: "schedule", actionType: "create_item", icon: "monday" },
 ];
+
+// AI Icon component with gradient colors matching Monday.com
+function AISparkleIcon({ className }: { className?: string }) {
+  return (
+    <div className={`relative flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 ${className}`}>
+      <Sparkles className="h-4 w-4 text-white" />
+    </div>
+  );
+}
+
+// Render template description with bold keywords
+function TemplateDescription({ description }: { description: string }) {
+  // Split by ✦ to identify AI action parts
+  const parts = description.split('✦');
+  
+  if (parts.length === 1) {
+    // No AI action, just bold the keywords
+    const keywords = ['status', 'priority', 'column', 'item', 'board', 'something', 'stuck', 'high', 'urgent', 'email', 'contacts', 'everyone', 'channel', 'due date', 'time tracking'];
+    let result = description;
+    keywords.forEach(keyword => {
+      const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+      result = result.replace(regex, `<strong>$1</strong>`);
+    });
+    return <span dangerouslySetInnerHTML={{ __html: result }} />;
+  }
+  
+  // Has AI action - make the action text primary colored
+  const beforeAction = parts[0];
+  const afterAction = parts[1] || "";
+  
+  // Bold keywords in before part
+  const keywords = ['column', 'item', 'update', 'subitem', 'button', 'activity', 'email', 'Language', 'name'];
+  let beforeHtml = beforeAction;
+  keywords.forEach(keyword => {
+    const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+    beforeHtml = beforeHtml.replace(regex, `<strong>$1</strong>`);
+  });
+  
+  // Bold keywords in after part including "these instructions", "column", "moderate", "shorter", "natural"
+  const afterKeywords = ['column', 'these instructions', 'moderate', 'shorter', 'natural', 'Language', 'brief'];
+  let afterHtml = afterAction;
+  afterKeywords.forEach(keyword => {
+    const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+    afterHtml = afterHtml.replace(regex, `<strong>$1</strong>`);
+  });
+  
+  // Extract the AI action verb
+  const actionMatch = afterAction.match(/^([a-z\s]+)/i);
+  const actionVerb = actionMatch ? actionMatch[1].trim() : "";
+  const restOfAction = actionVerb ? afterAction.substring(actionVerb.length) : afterAction;
+  
+  // Bold the rest of the action text keywords
+  let restHtml = restOfAction;
+  afterKeywords.forEach(keyword => {
+    const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+    restHtml = restHtml.replace(regex, `<strong>$1</strong>`);
+  });
+  
+  return (
+    <span>
+      <span dangerouslySetInnerHTML={{ __html: beforeHtml }} />
+      <span className="text-primary font-medium">✦{actionVerb}</span>
+      <span dangerouslySetInnerHTML={{ __html: restHtml }} />
+    </span>
+  );
+}
+
+// Get icon component for template
+function TemplateIcon({ icon }: { icon?: string }) {
+  switch (icon) {
+    case "ai":
+      return <AISparkleIcon className="w-8 h-8 p-1.5" />;
+    case "slack":
+      return (
+        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+          <SiSlack className="h-5 w-5 text-[#4A154B]" />
+        </div>
+      );
+    case "gmail":
+      return (
+        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+          <SiGmail className="h-5 w-5 text-[#EA4335]" />
+        </div>
+      );
+    case "sms":
+      return (
+        <div className="w-8 h-8 rounded-lg bg-[#E52D27] flex items-center justify-center">
+          <MessageSquare className="h-4 w-4 text-white" />
+        </div>
+      );
+    default:
+      return (
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 via-red-500 to-green-500 flex items-center justify-center">
+          <Zap className="h-4 w-4 text-white" />
+        </div>
+      );
+  }
+}
 
 interface AutomationsPanelProps {
   boardId: string;
@@ -110,7 +266,7 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>("ai_powered");
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
 
   // Handle Escape key to close panel
@@ -150,15 +306,6 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
     },
   });
 
-  const filteredTemplates = AUTOMATION_TEMPLATES.filter((template) => {
-    const matchesSearch = templateSearchQuery
-      ? template.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
-        template.description.toLowerCase().includes(templateSearchQuery.toLowerCase())
-      : true;
-    const matchesCategory = selectedCategory ? template.category === selectedCategory : true;
-    return matchesSearch && matchesCategory;
-  });
-
   const handleUseTemplate = (template: AutomationTemplate) => {
     createRuleMutation.mutate({
       name: template.name,
@@ -170,10 +317,18 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
   };
 
   const handleOpenTemplates = () => {
-    setSelectedCategory(null);
-    setTemplateSearchQuery("");
     setShowTemplatesDialog(true);
+    setSelectedCategory("ai_powered");
+    setTemplateSearchQuery("");
   };
+
+  const filteredTemplates = AUTOMATION_TEMPLATES.filter(template => {
+    const matchesSearch = !templateSearchQuery || 
+      template.name.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(templateSearchQuery.toLowerCase());
+    const matchesCategory = !selectedCategory || template.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   if (!open) return null;
 
@@ -196,41 +351,32 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground px-4 pt-3">Automate repetitive tasks</p>
-
-        <ScrollArea className="flex-1 p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : rules.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Zap className="h-8 w-8 text-primary" />
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-3">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-              <h3 className="font-medium mb-2">Create your first automation to save time</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                You can also explore pre-built automation templates.
-              </p>
-              <Button variant="outline" onClick={handleOpenTemplates} data-testid="button-explore-templates">
-                Explore templates
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {rules.map((rule) => (
-                <Card key={rule.id} className={!rule.isActive ? "opacity-60" : ""} data-testid={`automation-card-${rule.id}`}>
-                  <CardContent className="p-4">
+            ) : rules.length === 0 ? (
+              <div className="text-center py-8">
+                <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground mb-4">
+                  No automations yet. Add your first automation to streamline your workflow.
+                </p>
+                <Button onClick={handleOpenTemplates}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Automation
+                </Button>
+              </div>
+            ) : (
+              rules.map((rule) => (
+                <Card key={rule.id} className="hover-elevate" data-testid={`automation-card-${rule.id}`}>
+                  <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-sm truncate">{rule.name}</h4>
-                          {rule.isActive && (
-                            <Badge className="bg-primary/20 text-primary text-xs">Active</Badge>
-                          )}
-                        </div>
+                        <h4 className="font-medium text-sm truncate">{rule.name}</h4>
                         {rule.description && (
-                          <p className="text-xs text-muted-foreground">{rule.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rule.description}</p>
                         )}
                       </div>
                       <Switch
@@ -241,96 +387,104 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </ScrollArea>
       </div>
 
       <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col" data-testid="dialog-automations">
-          <DialogHeader>
-            <DialogTitle data-testid="text-dialog-title">Add Automation</DialogTitle>
-            <DialogDescription data-testid="text-dialog-description">Choose from 136 automation recipes organized by category</DialogDescription>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0" data-testid="dialog-automations">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle data-testid="text-dialog-title">Automation Center</DialogTitle>
+            <DialogDescription data-testid="text-dialog-description">Choose from {AUTOMATION_TEMPLATES.length} automation recipes to automate your workflow</DialogDescription>
           </DialogHeader>
           
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={templateSearchQuery}
-              onChange={(e) => setTemplateSearchQuery(e.target.value)}
-              placeholder="Search automations..."
-              className="pl-9 focus-visible:ring-primary"
-              data-testid="input-search-templates"
-            />
-          </div>
-
-          <ScrollArea className="flex-1 min-h-0 pr-2">
-            <div className="space-y-2">
+          <div className="flex flex-1 min-h-0">
+            {/* Sidebar - Categories */}
+            <div className="w-48 border-r p-3 space-y-1 shrink-0">
               {AUTOMATION_CATEGORIES.map((category) => {
-                const allCategoryTemplates = AUTOMATION_TEMPLATES.filter(t => t.category === category.id);
-                const categoryTemplates = filteredTemplates.filter(t => t.category === category.id);
-                const isExpanded = selectedCategory === category.id;
-                
-                if (allCategoryTemplates.length === 0) return null;
-                
+                const count = AUTOMATION_TEMPLATES.filter(t => t.category === category.id).length;
+                const isSelected = selectedCategory === category.id;
                 return (
-                  <div key={category.id}>
-                    <button
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover-elevate ${isExpanded ? 'bg-primary/10 border border-primary/30' : ''}`}
-                      onClick={() => setSelectedCategory(isExpanded ? null : category.id)}
-                      data-testid={`category-${category.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${category.color}`} />
-                        <span className="font-medium text-sm">{category.name}</span>
-                        <Badge variant="secondary" className="text-xs">{allCategoryTemplates.length}</Badge>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {isExpanded && categoryTemplates.length > 0 && (
-                      <div className="mt-2 space-y-2 pl-2">
-                        {categoryTemplates.map((template) => (
-                          <Card 
-                            key={template.id} 
-                            className="cursor-pointer hover-elevate border-muted"
-                            onClick={() => handleUseTemplate(template)}
-                            data-testid={`template-${template.id}`}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                                  <Zap className="h-4 w-4 text-primary" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-medium text-sm">{template.name}</h4>
-                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{template.description}</p>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <Badge variant="secondary" className="text-xs">{template.triggerLabel}</Badge>
-                                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                                    <Badge variant="secondary" className="text-xs">{template.actionLabel}</Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    key={category.id}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                      isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover-elevate'
+                    }`}
+                    onClick={() => setSelectedCategory(category.id)}
+                    data-testid={`category-${category.id}`}
+                  >
+                    <span>{category.name}</span>
+                    <Badge variant="secondary" className="text-xs">{count}</Badge>
+                  </button>
                 );
               })}
             </div>
-          </ScrollArea>
-
-          <DialogFooter className="pt-4 border-t mt-4">
-            <Button variant="outline" onClick={() => setShowTemplatesDialog(false)}>Cancel</Button>
-            <Button disabled={createRuleMutation.isPending}>
-              {createRuleMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Automation
-            </Button>
-          </DialogFooter>
+            
+            {/* Main content - Templates grid */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="p-4 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={templateSearchQuery}
+                    onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                    placeholder="Search automations..."
+                    className="pl-9"
+                    data-testid="input-search-templates"
+                  />
+                </div>
+              </div>
+              
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold mb-4" data-testid="text-category-title">
+                    {AUTOMATION_CATEGORIES.find(c => c.id === selectedCategory)?.name || "All Templates"}
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredTemplates.map((template) => (
+                      <Card 
+                        key={template.id} 
+                        className="bg-slate-900 border-slate-800 flex flex-col h-full"
+                        data-testid={`template-${template.id}`}
+                      >
+                        <CardContent className="p-4 flex flex-col h-full">
+                          <div className="mb-3">
+                            <TemplateIcon icon={template.icon} />
+                          </div>
+                          <p className="text-sm text-slate-300 flex-1 leading-relaxed">
+                            <TemplateDescription description={template.description} />
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4 w-full border-slate-700 text-slate-300 hover:bg-slate-800"
+                            onClick={() => handleUseTemplate(template)}
+                            disabled={createRuleMutation.isPending}
+                            data-testid={`button-use-template-${template.id}`}
+                          >
+                            {createRuleMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Use template"
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  {filteredTemplates.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No templates found matching your search.</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
