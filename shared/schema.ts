@@ -775,11 +775,5 @@ export type InsertAutomationRule = z.infer<typeof insertAutomationRuleSchema>;
 export type InsertDetectiveNode = z.infer<typeof insertDetectiveNodeSchema>;
 export type InsertDetectiveConnection = z.infer<typeof insertDetectiveConnectionSchema>;
 
-// User schema (keeping for compatibility)
-export interface User {
-  id: string;
-  username: string;
-  password: string;
-}
-
-export type InsertUser = Omit<User, "id">;
+// Re-export auth models (for Drizzle migrations)
+export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";

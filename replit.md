@@ -1,7 +1,7 @@
 # VERICASE - Legal Practice OS
 
 ## Overview
-VERICASE is a comprehensive legal practice management system with a Monday.com-style board architecture. Built with React, TypeScript, Express, and in-memory storage. Features AI-powered document analysis, evidence management, detective board for investigations, and full legal practice management.
+VERICASE is a comprehensive legal practice management system with a Monday.com-style board architecture. Built with React, TypeScript, Express, PostgreSQL, and Drizzle ORM. Features AI-powered document analysis, evidence management, detective board for investigations, multi-user authentication via Replit Auth, and full legal practice management.
 
 ## Features
 - **Board System**: Multiple customizable boards for different practice areas
@@ -15,6 +15,7 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - **Matter Management**: Full matter/client lifecycle with contacts, threads, timeline
 - **Theme Support**: Dark and light mode with smooth transitions
 - **Responsive Design**: Works on desktop and mobile devices
+- **Authentication**: Multi-user support via Replit Auth (Google, GitHub, Apple, email login)
 
 ## Tech Stack
 
@@ -29,7 +30,9 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 ### Backend
 - Node.js with Express
 - TypeScript
-- In-memory storage (MemStorage)
+- PostgreSQL database with Drizzle ORM
+- In-memory storage (MemStorage) for non-auth data
+- Replit Auth for authentication
 - RESTful JSON API
 - Modular route architecture
 
@@ -65,9 +68,17 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 │   ├── ai/
 │   │   └── providers.ts   # AI provider configuration
 │   ├── routes.ts          # Main route entry point
-│   └── storage.ts         # Data storage layer
+│   ├── storage.ts         # Data storage layer
+│   ├── db.ts              # Database connection (Drizzle/PostgreSQL)
+│   └── replit_integrations/
+│       └── auth/          # Replit Auth integration
+│           ├── replitAuth.ts  # OIDC auth setup
+│           ├── storage.ts     # User storage operations
+│           └── routes.ts      # Auth API routes
 ├── shared/                 # Shared types and schemas
-│   └── schema.ts          # TypeScript interfaces and Zod schemas
+│   ├── schema.ts          # TypeScript interfaces and Zod schemas
+│   └── models/
+│       └── auth.ts        # User and session Drizzle tables
 └── replit.md              # Project documentation
 ```
 
@@ -139,6 +150,16 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - `POST /api/ai/conversations/:id/messages` - Add message
 - `POST /api/ai/chat` - Send message to AI (streaming)
 - `GET /api/ai/models` - List available AI models
+
+### Authentication
+- `GET /api/login` - Initiate Replit Auth login flow
+- `GET /api/callback` - OAuth callback handler
+- `GET /api/logout` - Logout and clear session
+- `GET /api/auth/user` - Get current authenticated user (protected)
+
+### Admin (Requires admin role)
+- `GET /api/admin/users` - List all users
+- `PATCH /api/admin/users/:id/role` - Update user role (admin/member/viewer)
 
 ## Important Schema Notes
 - Matter creation requires `openedDate` field (not openDate)
