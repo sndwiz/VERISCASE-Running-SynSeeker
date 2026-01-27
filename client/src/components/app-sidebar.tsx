@@ -13,11 +13,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -134,114 +129,123 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
         </SidebarGroup>
 
         {/* Boards - Collapsible */}
-        <Collapsible open={boardsOpen} onOpenChange={setBoardsOpen}>
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between pr-1">
-              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-boards-section">
-                <ChevronDown className={`h-3 w-3 transition-transform ${boardsOpen ? "" : "-rotate-90"}`} />
-                <span>Boards</span>
-              </CollapsibleTrigger>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5"
-                onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
-                data-testid="button-create-board"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {boards.map((board) => (
-                    <SidebarMenuItem key={board.id}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === `/boards/${board.id}`}
-                      >
-                        <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
-                          <LayoutGrid
-                            className="h-4 w-4"
-                            style={{ color: board.color }}
-                          />
-                          <span>{board.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                  {boards.length === 0 && (
-                    <div className="px-2 py-3 text-xs text-muted-foreground">
-                      No boards yet. Create one to get started.
-                    </div>
-                  )}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center justify-between pr-1">
+            <button
+              type="button"
+              className="flex items-center gap-1 hover:opacity-80"
+              onClick={() => setBoardsOpen(!boardsOpen)}
+              data-testid="toggle-boards-section"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${boardsOpen ? "" : "-rotate-90"}`} />
+              <span>Boards</span>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
+              data-testid="button-create-board"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </SidebarGroupLabel>
+          {boardsOpen && (
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {boards.map((board) => (
+                  <SidebarMenuItem key={board.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === `/boards/${board.id}`}
+                    >
+                      <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
+                        <LayoutGrid
+                          className="h-4 w-4"
+                          style={{ color: board.color }}
+                        />
+                        <span>{board.name}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                {boards.length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">
+                    No boards yet. Create one to get started.
+                  </div>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
 
         {/* AI & Investigation - Collapsible */}
-        <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
-          <SidebarGroup>
-            <SidebarGroupLabel>
-              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-ai-section">
-                <ChevronDown className={`h-3 w-3 transition-transform ${aiOpen ? "" : "-rotate-90"}`} />
-                <span>AI & Investigation</span>
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {aiInvestigationItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                      >
-                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <button
+              type="button"
+              className="flex items-center gap-1 hover:opacity-80"
+              onClick={() => setAiOpen(!aiOpen)}
+              data-testid="toggle-ai-section"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${aiOpen ? "" : "-rotate-90"}`} />
+              <span>AI & Investigation</span>
+            </button>
+          </SidebarGroupLabel>
+          {aiOpen && (
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {aiInvestigationItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url}
+                    >
+                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
 
         {/* Legal Practice - Collapsible */}
-        <Collapsible open={practiceOpen} onOpenChange={setPracticeOpen}>
-          <SidebarGroup>
-            <SidebarGroupLabel>
-              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-practice-section">
-                <ChevronDown className={`h-3 w-3 transition-transform ${practiceOpen ? "" : "-rotate-90"}`} />
-                <span>Legal Practice</span>
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigationItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                      >
-                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <button
+              type="button"
+              className="flex items-center gap-1 hover:opacity-80"
+              onClick={() => setPracticeOpen(!practiceOpen)}
+              data-testid="toggle-practice-section"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${practiceOpen ? "" : "-rotate-90"}`} />
+              <span>Legal Practice</span>
+            </button>
+          </SidebarGroupLabel>
+          {practiceOpen && (
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navigationItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url}
+                    >
+                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
