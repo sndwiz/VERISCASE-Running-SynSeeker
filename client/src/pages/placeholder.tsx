@@ -81,15 +81,6 @@ export function ApprovalsPage() {
   );
 }
 
-export function EvidenceVaultPage() {
-  return (
-    <PlaceholderPage
-      title="Evidence Vault"
-      description="Secure, immutable storage for case evidence with chain-of-custody tracking"
-    />
-  );
-}
-
 export function DetectiveBoardPage() {
   return (
     <PlaceholderPage

@@ -281,6 +281,79 @@ export class MemStorage implements IStorage {
       boardId: board2Id,
     };
     this.groups.set(docGroupId, docGroup);
+
+    // Create sample clients
+    const sampleClients = [
+      { name: "Smith Corporation", email: "legal@smithcorp.com", type: "company" as const, industry: "Technology" },
+      { name: "Johnson Family Trust", email: "johnson.trust@email.com", type: "individual" as const, industry: "Private" },
+      { name: "Metro Development LLC", email: "contracts@metrodev.com", type: "company" as const, industry: "Real Estate" },
+    ];
+
+    const clientIds: string[] = [];
+    sampleClients.forEach((c) => {
+      const clientId = randomUUID();
+      clientIds.push(clientId);
+      const client: Client = {
+        id: clientId,
+        name: c.name,
+        email: c.email,
+        phone: null,
+        address: null,
+        type: c.type,
+        status: "active",
+        industry: c.industry,
+        notes: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.clients.set(clientId, client);
+    });
+
+    // Create sample matters
+    const sampleMatters = [
+      { 
+        name: "Smith Corp Acquisition Review", 
+        caseNumber: "2026-CORP-001", 
+        clientIdx: 0, 
+        type: "corporate" as const,
+        description: "Review and due diligence for proposed acquisition" 
+      },
+      { 
+        name: "Johnson Estate Planning", 
+        caseNumber: "2026-ESTATE-042", 
+        clientIdx: 1, 
+        type: "estate" as const,
+        description: "Comprehensive estate planning and trust administration" 
+      },
+      { 
+        name: "Metro v. City Development Dispute", 
+        caseNumber: "2026-LIT-089", 
+        clientIdx: 2, 
+        type: "litigation" as const,
+        description: "Commercial real estate development dispute litigation" 
+      },
+    ];
+
+    sampleMatters.forEach((m) => {
+      const matterId = randomUUID();
+      const matter: Matter = {
+        id: matterId,
+        name: m.name,
+        caseNumber: m.caseNumber,
+        clientId: clientIds[m.clientIdx],
+        type: m.type,
+        status: "active",
+        description: m.description,
+        openDate: new Date().toISOString(),
+        closeDate: null,
+        practiceArea: m.type,
+        responsibleAttorney: null,
+        billingType: "hourly",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.matters.set(matterId, matter);
+    });
   }
 
   // ============ BOARD METHODS ============
