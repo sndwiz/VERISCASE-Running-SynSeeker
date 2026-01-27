@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +12,17 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   LayoutGrid,
   Briefcase,
@@ -26,9 +38,17 @@ import {
   Shield,
   Network,
   Zap,
+  ChevronDown,
+  Home,
+  Building2,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board } from "@shared/schema";
+
+const workspaces = [
+  { id: "default", name: "Main Workspace", icon: Building2 },
+];
 
 interface AppSidebarProps {
   boards: Board[];
@@ -53,12 +73,16 @@ const aiInvestigationItems = [
 
 export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
   const [location] = useLocation();
+  const [boardsOpen, setBoardsOpen] = useState(true);
+  const [aiOpen, setAiOpen] = useState(true);
+  const [practiceOpen, setPracticeOpen] = useState(true);
+  const [currentWorkspace] = useState(workspaces[0]);
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-3">
         <Link href="/">
-          <div className="flex items-center gap-2 cursor-pointer" data-testid="link-home">
+          <div className="flex items-center gap-2 cursor-pointer mb-3" data-testid="link-home">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
               <Scale className="h-4 w-4 text-primary-foreground" />
             </div>
@@ -68,90 +92,156 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
             </div>
           </div>
         </Link>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-between h-9 px-2"
+              data-testid="button-workspace-selector"
+            >
+              <div className="flex items-center gap-2">
+                <currentWorkspace.icon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm truncate">{currentWorkspace.name}</span>
+              </div>
+              <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {workspaces.map((ws) => (
+              <DropdownMenuItem key={ws.id} data-testid={`menu-workspace-${ws.id}`}>
+                <ws.icon className="h-4 w-4 mr-2" />
+                {ws.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
+        {/* Dashboard link */}
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between">
-            <span>Boards</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5"
-              onClick={onCreateBoard}
-              data-testid="button-create-board"
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {boards.map((board) => (
-                <SidebarMenuItem key={board.id}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === `/boards/${board.id}`}
-                  >
-                    <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
-                      <LayoutGrid
-                        className="h-4 w-4"
-                        style={{ color: board.color }}
-                      />
-                      <span>{board.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              {boards.length === 0 && (
-                <div className="px-2 py-3 text-xs text-muted-foreground">
-                  No boards yet. Create one to get started.
-                </div>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location === "/"}>
+                <Link href="/" data-testid="link-dashboard">
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>AI & Investigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {aiInvestigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                  >
-                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Boards - Collapsible */}
+        <Collapsible open={boardsOpen} onOpenChange={setBoardsOpen}>
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center justify-between pr-1">
+              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-boards-section">
+                <ChevronDown className={`h-3 w-3 transition-transform ${boardsOpen ? "" : "-rotate-90"}`} />
+                <span>Boards</span>
+              </CollapsibleTrigger>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
+                data-testid="button-create-board"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {boards.map((board) => (
+                    <SidebarMenuItem key={board.id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === `/boards/${board.id}`}
+                      >
+                        <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
+                          <LayoutGrid
+                            className="h-4 w-4"
+                            style={{ color: board.color }}
+                          />
+                          <span>{board.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                  {boards.length === 0 && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">
+                      No boards yet. Create one to get started.
+                    </div>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Legal Practice</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                  >
-                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* AI & Investigation - Collapsible */}
+        <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-ai-section">
+                <ChevronDown className={`h-3 w-3 transition-transform ${aiOpen ? "" : "-rotate-90"}`} />
+                <span>AI & Investigation</span>
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {aiInvestigationItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                      >
+                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
+        {/* Legal Practice - Collapsible */}
+        <Collapsible open={practiceOpen} onOpenChange={setPracticeOpen}>
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              <CollapsibleTrigger className="flex items-center gap-1 hover:opacity-80" data-testid="toggle-practice-section">
+                <ChevronDown className={`h-3 w-3 transition-transform ${practiceOpen ? "" : "-rotate-90"}`} />
+                <span>Legal Practice</span>
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navigationItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                      >
+                        <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
