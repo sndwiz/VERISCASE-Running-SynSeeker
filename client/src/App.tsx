@@ -29,6 +29,7 @@ import {
 } from "@/pages/placeholder";
 import EvidenceVaultPage from "@/pages/evidence-vault";
 import DetectiveBoardPage from "@/pages/detective-board";
+import AutomationsPage from "@/pages/automations";
 
 import type { Board } from "@shared/schema";
 
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/ai-chat" component={AIChatPage} />
       <Route path="/evidence" component={EvidenceVaultPage} />
       <Route path="/detective" component={DetectiveBoardPage} />
+      <Route path="/automations" component={AutomationsPage} />
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/documents" component={DocumentsPage} />

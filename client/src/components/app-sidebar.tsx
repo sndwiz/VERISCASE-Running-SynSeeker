@@ -25,6 +25,7 @@ import {
   Bot,
   Shield,
   Network,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board } from "@shared/schema";
@@ -47,6 +48,7 @@ const aiInvestigationItems = [
   { title: "AI Assistant", url: "/ai-chat", icon: Bot },
   { title: "Evidence Vault", url: "/evidence", icon: Shield },
   { title: "Detective Board", url: "/detective", icon: Network },
+  { title: "Automations", url: "/automations", icon: Zap },
 ];
 
 export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
