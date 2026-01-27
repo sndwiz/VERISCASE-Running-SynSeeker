@@ -95,6 +95,17 @@ export default function BoardPage() {
     },
   });
 
+  const updateBoardMutation = useMutation({
+    mutationFn: (updates: Partial<Board>) =>
+      apiRequest("PATCH", `/api/boards/${boardId}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId] });
+    },
+    onError: () => {
+      toast({ title: "Failed to update board", variant: "destructive" });
+    },
+  });
+
   const deleteGroupMutation = useMutation({
     mutationFn: (groupId: string) => apiRequest("DELETE", `/api/groups/${groupId}`),
     onSuccess: () => {
@@ -137,6 +148,14 @@ export default function BoardPage() {
     }
   };
 
+  const handleToggleColumn = (columnId: string, visible: boolean) => {
+    if (!board) return;
+    const updatedColumns = board.columns.map((col) =>
+      col.id === columnId ? { ...col, visible } : col
+    );
+    updateBoardMutation.mutate({ columns: updatedColumns });
+  };
+
   const isLoading = boardLoading || groupsLoading || tasksLoading;
 
   if (isLoading) {
@@ -170,6 +189,7 @@ export default function BoardPage() {
         onAddGroup={() => setCreateGroupOpen(true)}
         onEditBoard={() => {}}
         onDeleteBoard={() => {}}
+        onToggleColumn={handleToggleColumn}
       />
 
       <div className="flex-1 overflow-auto p-4">

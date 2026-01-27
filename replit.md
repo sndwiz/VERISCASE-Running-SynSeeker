@@ -161,6 +161,30 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - `GET /api/admin/users` - List all users
 - `PATCH /api/admin/users/:id/role` - Update user role (admin/member/viewer)
 
+## Authentication & Authorization
+
+### Role-Based Access Control (RBAC)
+The system uses a three-tier role system:
+- **admin**: Full access to all routes + user management
+- **member**: Full CRUD access to boards, matters, evidence, etc.
+- **viewer**: Read-only access (GET requests only) to boards, groups, tasks, clients, matters, detective board
+
+### Route Protection
+- All business routes require authentication
+- Route-level RBAC middleware enforces role permissions:
+  - `viewerReadOnly`: Allows GET for viewers, member+ for writes (boards, groups, tasks, clients, matters, detective)
+  - `requireMemberOrAbove`: Requires member or admin role (evidence vault, automations)
+  - `requireAnyRole`: Any authenticated user (AI features)
+  - `requireAdmin`: Admin only (user management)
+
+### First User Bootstrap
+The first user to register automatically becomes an admin. Subsequent users default to "member" role.
+
+### Session Management
+- Sessions stored in PostgreSQL using connect-pg-simple
+- Cookie security adapts to environment (secure in production, lax in development)
+- Logout properly destroys session
+
 ## Important Schema Notes
 - Matter creation requires `openedDate` field (not openDate)
 - MatterContact role is enum: plaintiff, defendant, witness, expert, opposing-counsel, judge, client, other
