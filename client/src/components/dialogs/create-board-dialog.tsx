@@ -1,0 +1,157 @@
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Board name is required"),
+  description: z.string().optional(),
+  color: z.string().default("#6366f1"),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+interface CreateBoardDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: FormData) => void;
+}
+
+const colorOptions = [
+  "#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
+  "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+];
+
+export function CreateBoardDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: CreateBoardDialogProps) {
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      color: "#6366f1",
+    },
+  });
+
+  const handleSubmit = (data: FormData) => {
+    onSubmit(data);
+    form.reset();
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create New Board</DialogTitle>
+          <DialogDescription>
+            Create a new board to organize your tasks and workflow.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Board Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., Active Cases"
+                      {...field}
+                      data-testid="input-board-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Brief description of this board..."
+                      {...field}
+                      data-testid="input-board-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Color</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-2 flex-wrap">
+                      {colorOptions.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-md transition-transform ${
+                            field.value === color
+                              ? "ring-2 ring-offset-2 ring-primary scale-110"
+                              : ""
+                          }`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => field.onChange(color)}
+                          data-testid={`color-option-${color}`}
+                        />
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" data-testid="button-create-board">
+                Create Board
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
