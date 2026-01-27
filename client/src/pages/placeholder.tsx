@@ -81,11 +81,3 @@ export function ApprovalsPage() {
   );
 }
 
-export function DetectiveBoardPage() {
-  return (
-    <PlaceholderPage
-      title="Detective Board"
-      description="Visual investigation board to map connections between evidence and timeline events"
-    />
-  );
-}

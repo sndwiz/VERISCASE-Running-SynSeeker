@@ -26,9 +26,9 @@ import {
   TimeTrackingPage,
   CalendarPage,
   ApprovalsPage,
-  DetectiveBoardPage,
 } from "@/pages/placeholder";
 import EvidenceVaultPage from "@/pages/evidence-vault";
+import DetectiveBoardPage from "@/pages/detective-board";
 
 import type { Board } from "@shared/schema";
 
