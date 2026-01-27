@@ -6,9 +6,11 @@ export type Priority = "low" | "medium" | "high" | "critical";
 // Status types
 export type StatusType = "not-started" | "working-on-it" | "stuck" | "done" | "pending-review";
 
-// Column types supported by the board
+// Column types supported by the board - comprehensive Monday.com-style types
 export type ColumnType =
+  // Essentials
   | "text"
+  | "long-text"
   | "status"
   | "date"
   | "person"
@@ -18,13 +20,117 @@ export type ColumnType =
   | "time"
   | "priority"
   | "number"
+  | "numbers"
+  | "label"
+  // More column types
   | "tags"
   | "checkbox"
   | "dropdown"
   | "email"
   | "phone"
   | "rating"
-  | "link";
+  | "link"
+  | "vote"
+  | "location"
+  | "world-clock"
+  | "item-id"
+  // Team Power-Ups
+  | "creation-log"
+  | "last-updated"
+  | "auto-number"
+  | "progress-tracking"
+  // Board Power-Ups
+  | "button"
+  | "dependency"
+  | "week"
+  | "formula"
+  | "country"
+  | "color-picker"
+  | "time-tracking"
+  | "hour"
+  // Combo columns
+  | "date-status"
+  | "timeline-status"
+  | "timeline-numeric"
+  // AI-Powered
+  | "ai-improve"
+  | "ai-write"
+  | "ai-extract"
+  | "ai-summarize"
+  | "ai-translate"
+  | "ai-sentiment"
+  | "ai-categorize";
+
+// Column type configuration
+export type ColumnCategory = 
+  | "essentials"
+  | "more"
+  | "team-power-up"
+  | "board-power-up"
+  | "combo"
+  | "ai-powered";
+
+export interface ColumnTypeConfig {
+  label: string;
+  icon: string;
+  category: ColumnCategory;
+  description?: string;
+}
+
+export const columnTypeConfig: Record<ColumnType, ColumnTypeConfig> = {
+  // Essentials
+  "text": { label: "Text", icon: "type", category: "essentials", description: "Add textual content" },
+  "long-text": { label: "Long Text", icon: "align-left", category: "essentials", description: "Add longer text content with formatting" },
+  "status": { label: "Status", icon: "circle-dot", category: "essentials", description: "Track progress with customizable statuses" },
+  "date": { label: "Date", icon: "calendar", category: "essentials", description: "Set and track dates" },
+  "person": { label: "People", icon: "users", category: "essentials", description: "Assign team members" },
+  "progress": { label: "Progress", icon: "trending-up", category: "essentials", description: "Track completion percentage" },
+  "timeline": { label: "Timeline", icon: "calendar-range", category: "essentials", description: "Set date ranges for tasks" },
+  "files": { label: "Files", icon: "paperclip", category: "essentials", description: "Upload and manage files" },
+  "time": { label: "Time", icon: "clock", category: "essentials", description: "Track time spent" },
+  "priority": { label: "Priority", icon: "flag", category: "essentials", description: "Set task priority levels" },
+  "number": { label: "Numbers", icon: "hash", category: "essentials", description: "Add numeric values" },
+  "numbers": { label: "Numbers", icon: "calculator", category: "essentials", description: "Numeric calculations" },
+  "label": { label: "Label", icon: "tag", category: "essentials", description: "Categorize with labels" },
+  // More
+  "tags": { label: "Tags", icon: "tags", category: "more", description: "Add multiple tags" },
+  "checkbox": { label: "Checkbox", icon: "check-square", category: "more", description: "Simple yes/no toggle" },
+  "dropdown": { label: "Dropdown", icon: "chevron-down", category: "more", description: "Select from predefined options" },
+  "email": { label: "Email", icon: "mail", category: "more", description: "Store email addresses" },
+  "phone": { label: "Phone", icon: "phone", category: "more", description: "Store phone numbers" },
+  "rating": { label: "Rating", icon: "star", category: "more", description: "Rate items with stars" },
+  "link": { label: "Link", icon: "link", category: "more", description: "Add URLs" },
+  "vote": { label: "Vote", icon: "thumbs-up", category: "more", description: "Collect team votes" },
+  "location": { label: "Location", icon: "map-pin", category: "more", description: "Store addresses and locations" },
+  "world-clock": { label: "World Clock", icon: "globe", category: "more", description: "Display time zones" },
+  "item-id": { label: "Item ID", icon: "hash", category: "more", description: "Unique identifier" },
+  // Team Power-Ups
+  "creation-log": { label: "Creation Log", icon: "user-plus", category: "team-power-up", description: "Track who created the item" },
+  "last-updated": { label: "Last Updated", icon: "refresh-cw", category: "team-power-up", description: "Track last modification" },
+  "auto-number": { label: "Auto Number", icon: "list-ordered", category: "team-power-up", description: "Automatic sequential numbering" },
+  "progress-tracking": { label: "Progress Tracking", icon: "bar-chart-2", category: "team-power-up", description: "Visual progress indicators" },
+  // Board Power-Ups
+  "button": { label: "Button", icon: "square", category: "board-power-up", description: "Trigger actions with a click" },
+  "dependency": { label: "Dependency", icon: "git-branch", category: "board-power-up", description: "Link dependent items" },
+  "week": { label: "Week", icon: "calendar-days", category: "board-power-up", description: "Week-based scheduling" },
+  "formula": { label: "Formula", icon: "function-square", category: "board-power-up", description: "Calculate values automatically" },
+  "country": { label: "Country", icon: "flag", category: "board-power-up", description: "Select countries" },
+  "color-picker": { label: "Color Picker", icon: "palette", category: "board-power-up", description: "Choose colors" },
+  "time-tracking": { label: "Time Tracking", icon: "timer", category: "board-power-up", description: "Log time with start/stop" },
+  "hour": { label: "Hour", icon: "clock-4", category: "board-power-up", description: "Time of day" },
+  // Combo columns
+  "date-status": { label: "Date + Status", icon: "calendar-check", category: "combo", description: "Combined date and status" },
+  "timeline-status": { label: "Timeline + Status", icon: "calendar-range", category: "combo", description: "Combined timeline and status" },
+  "timeline-numeric": { label: "Timeline + Numeric", icon: "calendar-range", category: "combo", description: "Combined timeline and numbers" },
+  // AI-Powered
+  "ai-improve": { label: "Improve Text", icon: "sparkles", category: "ai-powered", description: "AI-powered text improvement" },
+  "ai-write": { label: "Write with AI", icon: "wand-2", category: "ai-powered", description: "AI-generated content" },
+  "ai-extract": { label: "Extract Info", icon: "scan", category: "ai-powered", description: "AI-powered information extraction" },
+  "ai-summarize": { label: "Summarize", icon: "file-text", category: "ai-powered", description: "AI-generated summaries" },
+  "ai-translate": { label: "Translate", icon: "languages", category: "ai-powered", description: "AI-powered translation" },
+  "ai-sentiment": { label: "Detect Sentiment", icon: "smile", category: "ai-powered", description: "AI sentiment analysis" },
+  "ai-categorize": { label: "Categorize", icon: "folder-tree", category: "ai-powered", description: "AI-powered categorization" },
+};
 
 // Status configuration
 export const statusConfig: Record<StatusType, { label: string; color: string; bgColor: string }> = {
@@ -777,3 +883,6 @@ export type InsertDetectiveConnection = z.infer<typeof insertDetectiveConnection
 
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
+
+// Re-export all database tables for Drizzle
+export * from "./models/tables";

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, List, LayoutDashboard, CalendarDays, Paperclip } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, List, LayoutDashboard, CalendarDays, Paperclip, X, ChevronDown as ChevronDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,26 +17,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { FiltersPanel, type FilterGroup, type SortOption } from "./filters-panel";
+import { ColumnCenter } from "./column-center";
 import type { Board, ColumnDef, ColumnType } from "@shared/schema";
 
 export type GroupByOption = "default" | "status" | "priority" | "owner";
-
-const COLUMN_TYPES: { type: ColumnType; label: string; icon: typeof Type }[] = [
-  { type: "text", label: "Text", icon: Type },
-  { type: "status", label: "Status", icon: CheckSquare },
-  { type: "priority", label: "Priority", icon: BarChart3 },
-  { type: "date", label: "Date", icon: Calendar },
-  { type: "person", label: "Person", icon: Users },
-  { type: "progress", label: "Progress", icon: BarChart3 },
-  { type: "time", label: "Time Tracking", icon: Clock },
-  { type: "files", label: "Files", icon: Paperclip },
-];
 
 const GROUP_BY_OPTIONS: { value: GroupByOption; label: string }[] = [
   { value: "default", label: "Default (Groups)" },
@@ -60,6 +53,10 @@ interface BoardHeaderProps {
   onGroupByChange?: (value: GroupByOption) => void;
   taskCount?: number;
   onOpenAutomations?: () => void;
+  filters?: FilterGroup[];
+  onFiltersChange?: (filters: FilterGroup[]) => void;
+  sorts?: SortOption[];
+  onSortsChange?: (sorts: SortOption[]) => void;
 }
 
 export function BoardHeader({
@@ -78,27 +75,17 @@ export function BoardHeader({
   onGroupByChange,
   taskCount = 0,
   onOpenAutomations,
+  filters = [],
+  onFiltersChange,
+  sorts = [],
+  onSortsChange,
 }: BoardHeaderProps) {
-  const [addColumnOpen, setAddColumnOpen] = useState(false);
-  const [newColumnTitle, setNewColumnTitle] = useState("");
-  const [newColumnType, setNewColumnType] = useState<ColumnType>("text");
+  const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
+  const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
+  const [columnCenterOpen, setColumnCenterOpen] = useState(false);
 
   const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
   const visibleCount = board.columns.filter(c => c.visible).length;
-
-  const handleAddColumn = () => {
-    if (newColumnTitle.trim() && onAddColumn) {
-      onAddColumn({
-        title: newColumnTitle.trim(),
-        type: newColumnType,
-        width: 120,
-        visible: true,
-      });
-      setNewColumnTitle("");
-      setNewColumnType("text");
-      setAddColumnOpen(false);
-    }
-  };
 
   return (
     <div className="flex flex-col gap-4 p-4 border-b bg-card/50">
@@ -148,15 +135,128 @@ export function BoardHeader({
             </Button>
           </div>
 
-          <Button variant="outline" size="sm" className="gap-2" data-testid="button-filter">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2" 
+            onClick={() => setFiltersPanelOpen(true)}
+            data-testid="button-filter"
+          >
             <Filter className="h-4 w-4" />
             Filter
+            {filters.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                {filters.reduce((acc, g) => acc + g.conditions.length, 0)}
+              </Badge>
+            )}
           </Button>
 
-          <Button variant="outline" size="sm" className="gap-2" data-testid="button-sort">
-            <ArrowUpDown className="h-4 w-4" />
-            Sort
-          </Button>
+          <Popover open={sortPopoverOpen} onOpenChange={setSortPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2" data-testid="button-sort">
+                <ArrowUpDown className="h-4 w-4" />
+                Sort
+                {sorts.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs px-1.5">
+                    {sorts.length}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="p-3 border-b">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Sort</h4>
+                  {sorts.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground h-6"
+                      onClick={() => onSortsChange?.([])}
+                      data-testid="button-clear-sorts"
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="p-3 space-y-2 max-h-64 overflow-auto">
+                {sorts.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No sorts applied. Add a sort to order your items.
+                  </p>
+                )}
+                {sorts.map((sort, index) => (
+                  <div key={sort.id} className="flex items-center gap-2">
+                    {index > 0 && (
+                      <span className="text-xs text-muted-foreground w-10">then</span>
+                    )}
+                    <Select
+                      value={sort.columnId}
+                      onValueChange={(value) => {
+                        onSortsChange?.(
+                          sorts.map((s) => (s.id === sort.id ? { ...s, columnId: value } : s))
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="flex-1 h-8 text-xs" data-testid={`sort-column-${sort.id}`}>
+                        <SelectValue placeholder="Column" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {board.columns.map((col) => (
+                          <SelectItem key={col.id} value={col.id}>
+                            {col.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={sort.direction}
+                      onValueChange={(value: "asc" | "desc") => {
+                        onSortsChange?.(
+                          sorts.map((s) => (s.id === sort.id ? { ...s, direction: value } : s))
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="w-28 h-8 text-xs" data-testid={`sort-direction-${sort.id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Ascending</SelectItem>
+                        <SelectItem value="desc">Descending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex-shrink-0"
+                      onClick={() => onSortsChange?.(sorts.filter((s) => s.id !== sort.id))}
+                      data-testid={`button-remove-sort-${sort.id}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    const newSort: SortOption = {
+                      id: Math.random().toString(36).substring(2, 9),
+                      columnId: board.columns[0]?.id || "",
+                      direction: "asc",
+                    };
+                    onSortsChange?.([...sorts, newSort]);
+                  }}
+                  data-testid="button-add-sort"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add sort
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <Popover>
             <PopoverTrigger asChild>
@@ -241,11 +341,11 @@ export function BoardHeader({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
+                          className="invisible group-hover:visible text-destructive"
                           onClick={() => onRemoveColumn(column.id)}
                           data-testid={`button-remove-column-${column.id}`}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -258,62 +358,16 @@ export function BoardHeader({
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start"
-                    onClick={() => setAddColumnOpen(true)}
+                    onClick={() => setColumnCenterOpen(true)}
                     data-testid="button-add-column"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Column
+                    Column Center
                   </Button>
                 </div>
               )}
             </PopoverContent>
           </Popover>
-
-          <Dialog open={addColumnOpen} onOpenChange={setAddColumnOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Column</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="column-title">Column Title</Label>
-                  <Input
-                    id="column-title"
-                    value={newColumnTitle}
-                    onChange={(e) => setNewColumnTitle(e.target.value)}
-                    placeholder="Enter column title"
-                    data-testid="input-column-title"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Column Type</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {COLUMN_TYPES.map(({ type, label, icon: Icon }) => (
-                      <Button
-                        key={type}
-                        variant={newColumnType === type ? "default" : "outline"}
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => setNewColumnType(type)}
-                        data-testid={`button-column-type-${type}`}
-                      >
-                        <Icon className="h-4 w-4 mr-2" />
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={handleAddColumn}
-                  disabled={!newColumnTitle.trim()}
-                  data-testid="button-confirm-add-column"
-                >
-                  Add Column
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
 
           <Button 
             variant="outline" 
@@ -358,6 +412,27 @@ export function BoardHeader({
           </DropdownMenu>
         </div>
       </div>
+
+      <FiltersPanel
+        open={filtersPanelOpen}
+        onOpenChange={setFiltersPanelOpen}
+        columns={board.columns}
+        filters={filters}
+        onFiltersChange={(newFilters) => onFiltersChange?.(newFilters)}
+      />
+
+      <ColumnCenter
+        open={columnCenterOpen}
+        onOpenChange={setColumnCenterOpen}
+        onAddColumn={(type, title) => {
+          onAddColumn?.({
+            title,
+            type,
+            width: 120,
+            visible: true,
+          });
+        }}
+      />
     </div>
   );
 }
