@@ -27,24 +27,6 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   );
 }
 
-export function MattersPage() {
-  return (
-    <PlaceholderPage
-      title="Matters"
-      description="Track and manage your legal matters"
-    />
-  );
-}
-
-export function ClientsPage() {
-  return (
-    <PlaceholderPage
-      title="Clients"
-      description="Manage your client relationships"
-    />
-  );
-}
-
 export function DocumentsPage() {
   return (
     <PlaceholderPage

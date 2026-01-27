@@ -20,13 +20,13 @@ import BoardPage from "@/pages/board";
 import SettingsPage from "@/pages/settings";
 import AIChatPage from "@/pages/ai-chat";
 import {
-  MattersPage,
-  ClientsPage,
   DocumentsPage,
   TimeTrackingPage,
   CalendarPage,
   ApprovalsPage,
 } from "@/pages/placeholder";
+import MattersPage from "@/pages/matters";
+import ClientsPage from "@/pages/clients";
 import EvidenceVaultPage from "@/pages/evidence-vault";
 import DetectiveBoardPage from "@/pages/detective-board";
 import AutomationsPage from "@/pages/automations";
