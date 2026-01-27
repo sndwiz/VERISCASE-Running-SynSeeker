@@ -22,6 +22,9 @@ import {
   Settings,
   Plus,
   Scale,
+  Bot,
+  Shield,
+  Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board } from "@shared/schema";
@@ -38,6 +41,12 @@ const navigationItems = [
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Approvals", url: "/approvals", icon: Gavel },
+];
+
+const aiInvestigationItems = [
+  { title: "AI Assistant", url: "/ai-chat", icon: Bot },
+  { title: "Evidence Vault", url: "/evidence", icon: Shield },
+  { title: "Detective Board", url: "/detective", icon: Network },
 ];
 
 export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
@@ -96,6 +105,27 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                   No boards yet. Create one to get started.
                 </div>
               )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>AI & Investigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {aiInvestigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                  >
+                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

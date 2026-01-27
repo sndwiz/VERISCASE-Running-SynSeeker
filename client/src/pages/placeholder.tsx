@@ -80,3 +80,21 @@ export function ApprovalsPage() {
     />
   );
 }
+
+export function EvidenceVaultPage() {
+  return (
+    <PlaceholderPage
+      title="Evidence Vault"
+      description="Secure, immutable storage for case evidence with chain-of-custody tracking"
+    />
+  );
+}
+
+export function DetectiveBoardPage() {
+  return (
+    <PlaceholderPage
+      title="Detective Board"
+      description="Visual investigation board to map connections between evidence and timeline events"
+    />
+  );
+}

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 export interface Conversation {
   id: number;
   title: string;
+  model: string;
   createdAt: Date;
 }
 
@@ -17,7 +18,7 @@ export interface Message {
 export interface IChatStorage {
   getConversation(id: number): Promise<Conversation | undefined>;
   getAllConversations(): Promise<Conversation[]>;
-  createConversation(title: string): Promise<Conversation>;
+  createConversation(title: string, model?: string): Promise<Conversation>;
   deleteConversation(id: number): Promise<void>;
   getMessagesByConversation(conversationId: number): Promise<Message[]>;
   createMessage(conversationId: number, role: string, content: string): Promise<Message>;
@@ -39,11 +40,12 @@ class MemoryChatStorage implements IChatStorage {
     );
   }
 
-  async createConversation(title: string): Promise<Conversation> {
+  async createConversation(title: string, model: string = "claude-sonnet-4-5"): Promise<Conversation> {
     const id = this.conversationIdCounter++;
     const conversation: Conversation = {
       id,
       title,
+      model,
       createdAt: new Date(),
     };
     this.conversations.set(id, conversation);

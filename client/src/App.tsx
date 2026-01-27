@@ -18,6 +18,7 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import BoardPage from "@/pages/board";
 import SettingsPage from "@/pages/settings";
+import AIChatPage from "@/pages/ai-chat";
 import {
   MattersPage,
   ClientsPage,
@@ -25,6 +26,8 @@ import {
   TimeTrackingPage,
   CalendarPage,
   ApprovalsPage,
+  EvidenceVaultPage,
+  DetectiveBoardPage,
 } from "@/pages/placeholder";
 
 import type { Board } from "@shared/schema";
@@ -34,6 +37,9 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/boards/:id" component={BoardPage} />
+      <Route path="/ai-chat" component={AIChatPage} />
+      <Route path="/evidence" component={EvidenceVaultPage} />
+      <Route path="/detective" component={DetectiveBoardPage} />
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/documents" component={DocumentsPage} />
