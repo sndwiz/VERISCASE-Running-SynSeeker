@@ -156,6 +156,40 @@ export default function BoardPage() {
     updateBoardMutation.mutate({ columns: updatedColumns });
   };
 
+  const handleAddColumn = (column: Omit<import("@shared/schema").ColumnDef, "id" | "order">) => {
+    if (!board) return;
+    const newColumn = {
+      ...column,
+      id: `col-${Date.now()}`,
+      order: board.columns.length,
+    };
+    updateBoardMutation.mutate({ columns: [...board.columns, newColumn] });
+  };
+
+  const handleRemoveColumn = (columnId: string) => {
+    if (!board) return;
+    const updatedColumns = board.columns
+      .filter((col) => col.id !== columnId)
+      .map((col, idx) => ({ ...col, order: idx }));
+    updateBoardMutation.mutate({ columns: updatedColumns });
+  };
+
+  const handleReorderColumn = (columnId: string, direction: "up" | "down") => {
+    if (!board) return;
+    const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
+    const index = sortedColumns.findIndex((col) => col.id === columnId);
+    if (index === -1) return;
+    
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= sortedColumns.length) return;
+    
+    const updatedColumns = [...sortedColumns];
+    [updatedColumns[index], updatedColumns[newIndex]] = [updatedColumns[newIndex], updatedColumns[index]];
+    
+    const reorderedColumns = updatedColumns.map((col, idx) => ({ ...col, order: idx }));
+    updateBoardMutation.mutate({ columns: reorderedColumns });
+  };
+
   const isLoading = boardLoading || groupsLoading || tasksLoading;
 
   if (isLoading) {
@@ -190,6 +224,9 @@ export default function BoardPage() {
         onEditBoard={() => {}}
         onDeleteBoard={() => {}}
         onToggleColumn={handleToggleColumn}
+        onAddColumn={handleAddColumn}
+        onRemoveColumn={handleRemoveColumn}
+        onReorderColumn={handleReorderColumn}
       />
 
       <div className="flex-1 overflow-auto p-4">

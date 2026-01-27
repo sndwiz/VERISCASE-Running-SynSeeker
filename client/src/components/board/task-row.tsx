@@ -14,6 +14,7 @@ import { DateCell } from "./cells/date-cell";
 import { PersonCell } from "./cells/person-cell";
 import { ProgressCell } from "./cells/progress-cell";
 import { TextCell } from "./cells/text-cell";
+import { TimeCell } from "./cells/time-cell";
 import type { Task, ColumnDef, StatusType, Priority, Person } from "@shared/schema";
 
 interface TaskRowProps {
@@ -83,6 +84,14 @@ export function TaskRow({
           <ProgressCell
             value={task.progress}
             onChange={(value: number) => onUpdate({ progress: value })}
+            {...cellProps}
+          />
+        );
+      case "time":
+        return (
+          <TimeCell
+            value={task.timeTracked}
+            onChange={(value: number) => onUpdate({ timeTracked: value })}
             {...cellProps}
           />
         );

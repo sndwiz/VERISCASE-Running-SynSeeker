@@ -1,4 +1,5 @@
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Eye, EyeOff, Settings } from "lucide-react";
+import { useState } from "react";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -8,15 +9,30 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Board, ColumnDef } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import type { Board, ColumnDef, ColumnType } from "@shared/schema";
+
+const COLUMN_TYPES: { type: ColumnType; label: string; icon: typeof Type }[] = [
+  { type: "text", label: "Text", icon: Type },
+  { type: "status", label: "Status", icon: CheckSquare },
+  { type: "priority", label: "Priority", icon: BarChart3 },
+  { type: "date", label: "Date", icon: Calendar },
+  { type: "person", label: "Person", icon: Users },
+  { type: "progress", label: "Progress", icon: BarChart3 },
+  { type: "time", label: "Time Tracking", icon: Clock },
+];
 
 interface BoardHeaderProps {
   board: Board;
@@ -27,6 +43,9 @@ interface BoardHeaderProps {
   onEditBoard: () => void;
   onDeleteBoard: () => void;
   onToggleColumn?: (columnId: string, visible: boolean) => void;
+  onAddColumn?: (column: Omit<ColumnDef, "id" | "order">) => void;
+  onRemoveColumn?: (columnId: string) => void;
+  onReorderColumn?: (columnId: string, direction: "up" | "down") => void;
 }
 
 export function BoardHeader({
@@ -38,9 +57,30 @@ export function BoardHeader({
   onEditBoard,
   onDeleteBoard,
   onToggleColumn,
+  onAddColumn,
+  onRemoveColumn,
+  onReorderColumn,
 }: BoardHeaderProps) {
+  const [addColumnOpen, setAddColumnOpen] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [newColumnType, setNewColumnType] = useState<ColumnType>("text");
+
   const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
   const visibleCount = board.columns.filter(c => c.visible).length;
+
+  const handleAddColumn = () => {
+    if (newColumnTitle.trim() && onAddColumn) {
+      onAddColumn({
+        title: newColumnTitle.trim(),
+        type: newColumnType,
+        width: 120,
+        visible: true,
+      });
+      setNewColumnTitle("");
+      setNewColumnType("text");
+      setAddColumnOpen(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 p-4 border-b bg-card/50">
@@ -89,30 +129,129 @@ export function BoardHeader({
                 <span className="ml-1 text-xs text-muted-foreground">({visibleCount})</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 p-0">
+            <PopoverContent align="end" className="w-72 p-0">
               <div className="p-3 border-b">
-                <h4 className="font-medium text-sm">Toggle Columns</h4>
+                <h4 className="font-medium text-sm">Manage Columns</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Show or hide columns in the board view
+                  Show, hide, or remove columns
                 </p>
               </div>
               <div className="max-h-64 overflow-auto p-2">
-                {sortedColumns.map((column) => (
+                {sortedColumns.map((column, index) => (
                   <div
                     key={column.id}
-                    className="flex items-center justify-between py-2 px-2 rounded-md hover-elevate"
+                    className="flex items-center justify-between py-2 px-2 rounded-md hover-elevate group"
                   >
-                    <span className="text-sm">{column.title}</span>
-                    <Switch
-                      checked={column.visible}
-                      onCheckedChange={(checked) => onToggleColumn?.(column.id, checked)}
-                      data-testid={`toggle-column-${column.id}`}
-                    />
+                    <div className="flex items-center gap-1">
+                      {onReorderColumn && (
+                        <div className="flex flex-col opacity-0 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() => onReorderColumn(column.id, "up")}
+                            disabled={index === 0}
+                            data-testid={`button-move-up-${column.id}`}
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() => onReorderColumn(column.id, "down")}
+                            disabled={index === sortedColumns.length - 1}
+                            data-testid={`button-move-down-${column.id}`}
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      <span className="text-sm">{column.title}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={column.visible}
+                        onCheckedChange={(checked) => onToggleColumn?.(column.id, checked)}
+                        data-testid={`toggle-column-${column.id}`}
+                      />
+                      {onRemoveColumn && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
+                          onClick={() => onRemoveColumn(column.id)}
+                          data-testid={`button-remove-column-${column.id}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
+              {onAddColumn && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => setAddColumnOpen(true)}
+                    data-testid="button-add-column"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Column
+                  </Button>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
+
+          <Dialog open={addColumnOpen} onOpenChange={setAddColumnOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Column</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="column-title">Column Title</Label>
+                  <Input
+                    id="column-title"
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                    placeholder="Enter column title"
+                    data-testid="input-column-title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Column Type</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {COLUMN_TYPES.map(({ type, label, icon: Icon }) => (
+                      <Button
+                        key={type}
+                        variant={newColumnType === type ? "default" : "outline"}
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => setNewColumnType(type)}
+                        data-testid={`button-column-type-${type}`}
+                      >
+                        <Icon className="h-4 w-4 mr-2" />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleAddColumn}
+                  disabled={!newColumnTitle.trim()}
+                  data-testid="button-confirm-add-column"
+                >
+                  Add Column
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Button onClick={onAddTask} data-testid="button-add-task">
             <Plus className="h-4 w-4 mr-1" />
