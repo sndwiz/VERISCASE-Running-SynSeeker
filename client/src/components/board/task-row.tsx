@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { GripVertical, MoreHorizontal, Trash2 } from "lucide-react";
+import { GripVertical, MoreHorizontal, Trash2, ChevronRight, ChevronDown, Plus, Check, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,8 @@ interface TaskRowProps {
   onClick: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+  isSelected?: boolean;
+  onSelect?: (taskId: string, selected: boolean) => void;
 }
 
 export function TaskRow({
@@ -64,12 +67,44 @@ export function TaskRow({
   onClick,
   onUpdate,
   onDelete,
+  isSelected = false,
+  onSelect,
 }: TaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [isSelected, setIsSelected] = useState(false);
+  const [subtasksExpanded, setSubtasksExpanded] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+
+  const subtasks = task.subtasks || [];
+  const hasSubtasks = subtasks.length > 0;
+  const completedSubtasks = subtasks.filter(s => s.completed).length;
 
   const handleCellClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+  };
+
+  const handleToggleSubtask = (subtaskId: string, completed: boolean) => {
+    const updatedSubtasks = subtasks.map(s => 
+      s.id === subtaskId ? { ...s, completed } : s
+    );
+    onUpdate({ subtasks: updatedSubtasks });
+  };
+
+  const handleAddSubtask = () => {
+    if (!newSubtaskTitle.trim()) return;
+    const newSubtask = {
+      id: Math.random().toString(36).substring(2, 9),
+      title: newSubtaskTitle.trim(),
+      completed: false,
+    };
+    onUpdate({ subtasks: [...subtasks, newSubtask] });
+    setNewSubtaskTitle("");
+    setIsAddingSubtask(false);
+  };
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    const updatedSubtasks = subtasks.filter(s => s.id !== subtaskId);
+    onUpdate({ subtasks: updatedSubtasks });
   };
 
   const renderCell = (column: ColumnDef) => {
@@ -390,6 +425,7 @@ export function TaskRow({
   };
 
   return (
+    <>
     <div
       className={`flex items-center gap-0 py-1.5 px-0 rounded-md transition-colors cursor-pointer border-b border-border/50 ${
         isSelected
@@ -402,17 +438,17 @@ export function TaskRow({
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}
     >
-      <div className="w-8 flex items-center justify-center">
-        {isHovered ? (
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={(checked) => setIsSelected(!!checked)}
-            onClick={(e) => e.stopPropagation()}
-            data-testid={`checkbox-task-${task.id}`}
-          />
-        )}
+      <div className="w-12 flex items-center justify-start flex-shrink-0 gap-1 pl-1">
+        <GripVertical 
+          className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" 
+          style={{ visibility: isHovered ? "visible" : "hidden" }}
+        />
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={(checked) => onSelect?.(task.id, !!checked)}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={`checkbox-task-${task.id}`}
+        />
       </div>
 
       <div
@@ -433,38 +469,147 @@ export function TaskRow({
         </div>
       ))}
 
-      <div className="w-8 flex items-center justify-center">
-        {isHovered && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => e.stopPropagation()}
-                data-testid={`button-task-menu-${task.id}`}
-              >
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onClick}>
-                Open Details
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Task
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="w-8 flex items-center justify-center flex-shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={isHovered ? "visible" : "invisible"}
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-task-menu-${task.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onClick}>
+              Open Details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setSubtasksExpanded(true);
+                setIsAddingSubtask(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Subtask
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
+
+    {/* Subtasks Section */}
+    {(hasSubtasks || subtasksExpanded) && (
+      <div className="ml-10 border-l-2 border-muted pl-4 py-1">
+        {subtasks.map((subtask) => (
+          <div
+            key={subtask.id}
+            className="flex items-center gap-2 py-1.5 group hover-elevate rounded px-2"
+            data-testid={`subtask-${subtask.id}`}
+          >
+            <button
+              className={`flex items-center justify-center rounded-full transition-colors ${
+                subtask.completed
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-muted-foreground/30 hover:border-primary"
+              }`}
+              style={{ width: 18, height: 18 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleSubtask(subtask.id, !subtask.completed);
+              }}
+              data-testid={`checkbox-subtask-${subtask.id}`}
+            >
+              {subtask.completed && <Check className="h-3 w-3" />}
+            </button>
+            <span
+              className={`flex-1 text-sm ${
+                subtask.completed ? "text-muted-foreground line-through" : ""
+              }`}
+            >
+              {subtask.title}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="invisible group-hover:visible text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteSubtask(subtask.id);
+              }}
+              data-testid={`button-delete-subtask-${subtask.id}`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        ))}
+
+        {isAddingSubtask ? (
+          <div className="flex items-center gap-2 py-1 px-2">
+            <Circle className="h-4 w-4 text-muted-foreground" />
+            <Input
+              value={newSubtaskTitle}
+              onChange={(e) => setNewSubtaskTitle(e.target.value)}
+              placeholder="Enter subtask title..."
+              className="flex-1 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddSubtask();
+                if (e.key === "Escape") {
+                  setIsAddingSubtask(false);
+                  setNewSubtaskTitle("");
+                }
+              }}
+              data-testid="input-new-subtask"
+            />
+            <Button
+              size="sm"
+              onClick={handleAddSubtask}
+              disabled={!newSubtaskTitle.trim()}
+              data-testid="button-save-subtask"
+            >
+              Add
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsAddingSubtask(false);
+                setNewSubtaskTitle("");
+              }}
+              data-testid="button-cancel-subtask"
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-2 py-1.5 px-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAddingSubtask(true);
+            }}
+            data-testid="button-add-subtask"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add subtask</span>
+          </button>
+        )}
+      </div>
+    )}
+    </>
   );
 }

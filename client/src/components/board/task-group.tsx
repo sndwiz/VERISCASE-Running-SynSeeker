@@ -22,6 +22,8 @@ interface TaskGroupProps {
   onTaskClick: (task: Task) => void;
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   onTaskDelete: (taskId: string) => void;
+  selectedTaskIds?: Set<string>;
+  onSelectTask?: (taskId: string, selected: boolean) => void;
 }
 
 export function TaskGroup({
@@ -35,6 +37,8 @@ export function TaskGroup({
   onTaskClick,
   onTaskUpdate,
   onTaskDelete,
+  selectedTaskIds = new Set(),
+  onSelectTask,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
@@ -76,22 +80,20 @@ export function TaskGroup({
         >
           <Button
             variant="ghost"
-            size="icon"
-            className="h-6 w-6"
+            size="sm"
             onClick={onAddTask}
             data-testid={`button-add-task-${group.id}`}
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-4 w-4" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
                 data-testid={`button-group-menu-${group.id}`}
               >
-                <MoreHorizontal className="h-3 w-3" />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -111,58 +113,62 @@ export function TaskGroup({
       </div>
 
       {!group.collapsed && (
-        <div className="mt-2">
-          {/* Column Headers */}
-          <div className="flex items-center gap-0 text-xs font-medium text-muted-foreground border-b pb-2 mb-1">
-            <div className="w-8" />
-            <div className="flex-1 min-w-[200px] px-2">Task</div>
-            {visibleColumns.map((col) => (
-              <div
-                key={col.id}
-                className="px-2 text-center"
-                style={{ width: col.width, minWidth: col.width }}
-              >
-                {col.title}
-              </div>
-            ))}
-            <div className="w-8" />
-          </div>
-
-          {/* Task Rows */}
-          {tasks.map((task, index) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              columns={visibleColumns}
-              isEven={index % 2 === 0}
-              onClick={() => onTaskClick(task)}
-              onUpdate={(updates) => onTaskUpdate(task.id, updates)}
-              onDelete={() => onTaskDelete(task.id)}
-            />
-          ))}
-
-          {tasks.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No tasks in this group.{" "}
-              <button
-                className="text-primary hover:underline"
-                onClick={onAddTask}
-                data-testid={`button-add-first-task-${group.id}`}
-              >
-                Add one
-              </button>
+        <div className="mt-2 overflow-x-auto">
+          <div className="min-w-max">
+            {/* Column Headers */}
+            <div className="flex items-center gap-0 text-xs font-medium text-muted-foreground border-b pb-2 mb-1">
+              <div className="w-12 flex-shrink-0" />
+              <div className="flex-1 min-w-[200px] px-2">Task</div>
+              {visibleColumns.map((col) => (
+                <div
+                  key={col.id}
+                  className="px-2 text-center flex-shrink-0"
+                  style={{ width: col.width, minWidth: col.width }}
+                >
+                  {col.title}
+                </div>
+              ))}
+              <div className="w-8 flex-shrink-0" />
             </div>
-          )}
 
-          {/* Add Task Row */}
-          <div
-            className="flex items-center gap-2 py-2 px-2 text-sm text-muted-foreground hover-elevate cursor-pointer rounded-md"
-            onClick={onAddTask}
-            data-testid={`row-add-task-${group.id}`}
-          >
-            <div className="w-8" />
-            <Plus className="h-4 w-4" />
-            <span>Add Task</span>
+            {/* Task Rows */}
+            {tasks.map((task, index) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                columns={visibleColumns}
+                isEven={index % 2 === 0}
+                onClick={() => onTaskClick(task)}
+                onUpdate={(updates) => onTaskUpdate(task.id, updates)}
+                onDelete={() => onTaskDelete(task.id)}
+                isSelected={selectedTaskIds.has(task.id)}
+                onSelect={onSelectTask}
+              />
+            ))}
+
+            {tasks.length === 0 && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No tasks in this group.{" "}
+                <button
+                  className="text-primary hover:underline"
+                  onClick={onAddTask}
+                  data-testid={`button-add-first-task-${group.id}`}
+                >
+                  Add one
+                </button>
+              </div>
+            )}
+
+            {/* Add Task Row */}
+            <div
+              className="flex items-center gap-2 py-2 px-2 text-sm text-muted-foreground hover-elevate cursor-pointer rounded-md"
+              onClick={onAddTask}
+              data-testid={`row-add-task-${group.id}`}
+            >
+              <div className="w-12 flex-shrink-0" />
+              <Plus className="h-4 w-4" />
+              <span>Add Task</span>
+            </div>
           </div>
         </div>
       )}

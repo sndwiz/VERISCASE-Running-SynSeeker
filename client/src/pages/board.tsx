@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
+import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailDialog } from "@/components/dialogs/task-detail-dialog";
@@ -25,6 +26,7 @@ export default function BoardPage() {
   const [defaultGroupId, setDefaultGroupId] = useState<string | undefined>();
   const [groupBy, setGroupBy] = useState<GroupByOption>("default");
   const [automationsPanelOpen, setAutomationsPanelOpen] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards", boardId],
@@ -151,6 +153,67 @@ export default function BoardPage() {
     }
   };
 
+  const handleSelectTask = (taskId: string, selected: boolean) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(taskId);
+      } else {
+        next.delete(taskId);
+      }
+      return next;
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTaskIds(new Set());
+  };
+
+  const handleBulkDuplicate = () => {
+    toast({ title: `Duplicating ${selectedTaskIds.size} tasks...` });
+    handleClearSelection();
+  };
+
+  const handleBulkDelete = () => {
+    selectedTaskIds.forEach(taskId => {
+      deleteTaskMutation.mutate(taskId);
+    });
+    handleClearSelection();
+  };
+
+  const handleBulkArchive = () => {
+    selectedTaskIds.forEach(taskId => {
+      updateTaskMutation.mutate({ taskId, updates: { status: "done" as const } });
+    });
+    toast({ title: `Archived ${selectedTaskIds.size} tasks` });
+    handleClearSelection();
+  };
+
+  const handleBulkExport = () => {
+    const selectedTasks = tasks.filter(t => selectedTaskIds.has(t.id));
+    const csv = [
+      ["Title", "Status", "Priority", "Due Date"].join(","),
+      ...selectedTasks.map(t => [t.title, t.status, t.priority, t.dueDate || ""].join(","))
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tasks-export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: `Exported ${selectedTaskIds.size} tasks` });
+    handleClearSelection();
+  };
+
+  const handleBulkMoveTo = (groupId: string) => {
+    selectedTaskIds.forEach(taskId => {
+      updateTaskMutation.mutate({ taskId, updates: { groupId } });
+    });
+    toast({ title: `Moved ${selectedTaskIds.size} tasks` });
+    handleClearSelection();
+  };
+
   const handleToggleColumn = (columnId: string, visible: boolean) => {
     if (!board) return;
     const updatedColumns = board.columns.map((col) =>
@@ -270,10 +333,23 @@ export default function BoardPage() {
               onTaskClick={handleTaskClick}
               onTaskUpdate={handleTaskUpdate}
               onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+              selectedTaskIds={selectedTaskIds}
+              onSelectTask={handleSelectTask}
             />
           ))
         )}
       </div>
+
+      <BulkActionsBar
+        selectedCount={selectedTaskIds.size}
+        onClearSelection={handleClearSelection}
+        onDuplicate={handleBulkDuplicate}
+        onDelete={handleBulkDelete}
+        onArchive={handleBulkArchive}
+        onExport={handleBulkExport}
+        onMoveTo={handleBulkMoveTo}
+        groups={groups}
+      />
 
       <CreateGroupDialog
         open={createGroupOpen}

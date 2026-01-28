@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Trash2, Archive, ArrowRight, FileDown, X, Edit, FolderInput, Tag, Minus } from "lucide-react";
+import { Copy, Trash2, Archive, ArrowRight, FileDown, X, Edit, FolderInput, Tag, Minus, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -50,11 +50,10 @@ export function BulkActionsBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
           onClick={onClearSelection}
           data-testid="button-clear-selection"
         >
-          <X className="h-3 w-3" />
+          <X className="h-4 w-4" />
         </Button>
       </div>
 

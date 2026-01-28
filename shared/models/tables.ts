@@ -49,6 +49,7 @@ export const tasks = pgTable("tasks", {
   notes: text("notes").default(""),
   lastUpdatedBy: varchar("last_updated_by"),
   customFields: jsonb("custom_fields").default({}),
+  subtasks: jsonb("subtasks").default([]),
 });
 
 // ============ AI CONVERSATIONS ============

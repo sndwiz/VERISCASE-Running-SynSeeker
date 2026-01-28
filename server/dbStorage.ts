@@ -123,6 +123,7 @@ export class DbStorage implements IStorage {
         assignees: [],
         notes: "",
         customFields: {},
+        subtasks: [],
       });
     }
 
@@ -369,6 +370,7 @@ export class DbStorage implements IStorage {
       notes: r.notes || "",
       lastUpdatedBy: r.lastUpdatedBy || null,
       customFields: (r.customFields as Record<string, any>) || {},
+      subtasks: (r.subtasks as { id: string; title: string; completed: boolean }[]) || [],
     };
   }
 
@@ -413,6 +415,7 @@ export class DbStorage implements IStorage {
     if (data.files) updateData.files = data.files as any;
     if (data.tags) updateData.tags = data.tags as any;
     if (data.customFields) updateData.customFields = data.customFields as any;
+    if (data.subtasks) updateData.subtasks = data.subtasks as any;
     const [row] = await db.update(tables.tasks).set(updateData).where(eq(tables.tasks.id, id)).returning();
     if (!row) return undefined;
     return this.rowToTask(row);

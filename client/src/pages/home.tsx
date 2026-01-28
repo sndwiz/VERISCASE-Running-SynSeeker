@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dashboard } from "@/components/board/dashboard-widgets";
 import type { Board, Task } from "@shared/schema";
 
 export default function HomePage() {
@@ -225,6 +226,14 @@ export default function HomePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Task Analytics Dashboard */}
+      {recentTasks.length > 0 && (
+        <div>
+          <h2 className="text-xl font-semibold mb-4" data-testid="text-analytics-heading">Task Analytics</h2>
+          <Dashboard tasks={recentTasks} />
+        </div>
+      )}
     </div>
   );
 }

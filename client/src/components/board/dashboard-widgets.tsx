@@ -52,8 +52,8 @@ function Widget({ title, children, onRefresh, onExpand, onRemove, className = ""
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
-                <MoreHorizontal className="h-3 w-3" />
+              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

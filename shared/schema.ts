@@ -603,6 +603,11 @@ export const insertTaskSchema = z.object({
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().optional().default(""),
   customFields: z.record(z.any()).optional().default({}),
+  subtasks: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    completed: z.boolean(),
+  })).optional().default([]),
 });
 
 export const updateTaskSchema = insertTaskSchema.partial().omit({ boardId: true });
