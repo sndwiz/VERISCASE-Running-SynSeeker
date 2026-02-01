@@ -47,6 +47,14 @@ import type {
   PeopleOrg,
   InsertPeopleOrg,
   FileItemWithProfile,
+  TimeEntry,
+  InsertTimeEntry,
+  CalendarEvent,
+  InsertCalendarEvent,
+  ApprovalRequest,
+  InsertApprovalRequest,
+  ApprovalComment,
+  InsertApprovalComment,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -181,6 +189,28 @@ export interface IStorage {
   createPeopleOrg(data: InsertPeopleOrg): Promise<PeopleOrg>;
   updatePeopleOrg(id: string, data: Partial<PeopleOrg>): Promise<PeopleOrg | undefined>;
   deletePeopleOrg(id: string): Promise<boolean>;
+
+  // Time Entries
+  getTimeEntries(matterId?: string): Promise<TimeEntry[]>;
+  getTimeEntry(id: string): Promise<TimeEntry | undefined>;
+  createTimeEntry(data: InsertTimeEntry): Promise<TimeEntry>;
+  updateTimeEntry(id: string, data: Partial<TimeEntry>): Promise<TimeEntry | undefined>;
+  deleteTimeEntry(id: string): Promise<boolean>;
+
+  // Calendar Events
+  getCalendarEvents(matterId?: string): Promise<CalendarEvent[]>;
+  getCalendarEvent(id: string): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
+  deleteCalendarEvent(id: string): Promise<boolean>;
+
+  // Approval Requests
+  getApprovalRequests(matterId?: string): Promise<ApprovalRequest[]>;
+  getApprovalRequest(id: string): Promise<ApprovalRequest | undefined>;
+  createApprovalRequest(data: InsertApprovalRequest): Promise<ApprovalRequest>;
+  updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<ApprovalRequest | undefined>;
+  deleteApprovalRequest(id: string): Promise<boolean>;
+  addApprovalComment(data: InsertApprovalComment): Promise<ApprovalComment>;
 }
 
 export class MemStorage implements IStorage {
@@ -208,6 +238,9 @@ export class MemStorage implements IStorage {
   private filingTags: Map<string, FilingTag> = new Map();
   private fileTagLinks: Map<string, { fileId: string; tagId: string }> = new Map();
   private peopleOrgs: Map<string, PeopleOrg> = new Map();
+  private timeEntries: Map<string, TimeEntry> = new Map();
+  private calendarEvents: Map<string, CalendarEvent> = new Map();
+  private approvalRequests: Map<string, ApprovalRequest> = new Map();
 
   constructor() {
     this.initializeSampleData();
@@ -1273,6 +1306,166 @@ export class MemStorage implements IStorage {
 
   async deletePeopleOrg(id: string): Promise<boolean> {
     return this.peopleOrgs.delete(id);
+  }
+
+  // Time Entries
+  async getTimeEntries(matterId?: string): Promise<TimeEntry[]> {
+    const all = Array.from(this.timeEntries.values());
+    return matterId ? all.filter(e => e.matterId === matterId) : all;
+  }
+
+  async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
+    return this.timeEntries.get(id);
+  }
+
+  async createTimeEntry(data: InsertTimeEntry): Promise<TimeEntry> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const entry: TimeEntry = {
+      id,
+      matterId: data.matterId,
+      taskId: data.taskId,
+      userId: data.userId,
+      userName: data.userName,
+      date: data.date,
+      hours: data.hours,
+      description: data.description,
+      billableStatus: data.billableStatus || "billable",
+      hourlyRate: data.hourlyRate,
+      activityCode: data.activityCode,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.timeEntries.set(id, entry);
+    return entry;
+  }
+
+  async updateTimeEntry(id: string, data: Partial<TimeEntry>): Promise<TimeEntry | undefined> {
+    const entry = this.timeEntries.get(id);
+    if (!entry) return undefined;
+    const updated = { ...entry, ...data, updatedAt: new Date().toISOString() };
+    this.timeEntries.set(id, updated);
+    return updated;
+  }
+
+  async deleteTimeEntry(id: string): Promise<boolean> {
+    return this.timeEntries.delete(id);
+  }
+
+  // Calendar Events
+  async getCalendarEvents(matterId?: string): Promise<CalendarEvent[]> {
+    const all = Array.from(this.calendarEvents.values());
+    return matterId ? all.filter(e => e.matterId === matterId) : all;
+  }
+
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    return this.calendarEvents.get(id);
+  }
+
+  async createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const event: CalendarEvent = {
+      id,
+      matterId: data.matterId,
+      taskId: data.taskId,
+      title: data.title,
+      description: data.description || "",
+      eventType: data.eventType,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      allDay: data.allDay || false,
+      location: data.location,
+      attendees: data.attendees || [],
+      reminderMinutes: data.reminderMinutes,
+      color: data.color,
+      createdBy: data.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.calendarEvents.set(id, event);
+    return event;
+  }
+
+  async updateCalendarEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const event = this.calendarEvents.get(id);
+    if (!event) return undefined;
+    const updated = { ...event, ...data, updatedAt: new Date().toISOString() };
+    this.calendarEvents.set(id, updated);
+    return updated;
+  }
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+    return this.calendarEvents.delete(id);
+  }
+
+  // Approval Requests
+  async getApprovalRequests(matterId?: string): Promise<ApprovalRequest[]> {
+    const all = Array.from(this.approvalRequests.values());
+    return matterId ? all.filter(r => r.matterId === matterId) : all;
+  }
+
+  async getApprovalRequest(id: string): Promise<ApprovalRequest | undefined> {
+    return this.approvalRequests.get(id);
+  }
+
+  async createApprovalRequest(data: InsertApprovalRequest): Promise<ApprovalRequest> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const request: ApprovalRequest = {
+      id,
+      fileId: data.fileId,
+      matterId: data.matterId,
+      title: data.title,
+      description: data.description || "",
+      requestedBy: data.requestedBy,
+      requestedByName: data.requestedByName,
+      assignedTo: data.assignedTo,
+      status: "pending",
+      dueDate: data.dueDate,
+      priority: data.priority || "medium",
+      comments: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.approvalRequests.set(id, request);
+    return request;
+  }
+
+  async updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<ApprovalRequest | undefined> {
+    const request = this.approvalRequests.get(id);
+    if (!request) return undefined;
+    const updated = { ...request, ...data, updatedAt: new Date().toISOString() };
+    this.approvalRequests.set(id, updated);
+    return updated;
+  }
+
+  async deleteApprovalRequest(id: string): Promise<boolean> {
+    return this.approvalRequests.delete(id);
+  }
+
+  async addApprovalComment(data: InsertApprovalComment): Promise<ApprovalComment> {
+    const request = this.approvalRequests.get(data.approvalId);
+    if (!request) throw new Error("Approval request not found");
+    
+    const comment: ApprovalComment = {
+      id: randomUUID(),
+      userId: data.userId,
+      userName: data.userName,
+      content: data.content,
+      decision: data.decision,
+      createdAt: new Date().toISOString(),
+    };
+    
+    request.comments.push(comment);
+    if (data.decision) {
+      request.status = data.decision === "approved" ? "approved" : 
+                       data.decision === "rejected" ? "rejected" : "needs-revision";
+    }
+    request.updatedAt = new Date().toISOString();
+    this.approvalRequests.set(data.approvalId, request);
+    
+    return comment;
   }
 }
 

@@ -10,6 +10,9 @@ import { registerAutomationRoutes } from "./automations";
 import { registerAIRoutes } from "./ai";
 import { registerFilingRoutes } from "./filing";
 import { registerSeedRoutes } from "./seed";
+import { registerTimeTrackingRoutes } from "./time-tracking";
+import { registerCalendarRoutes } from "./calendar";
+import { registerApprovalRoutes } from "./approvals";
 
 export function registerAllRoutes(app: Express): void {
   registerBoardRoutes(app);
@@ -23,4 +26,7 @@ export function registerAllRoutes(app: Express): void {
   registerAIRoutes(app);
   registerFilingRoutes(app);
   registerSeedRoutes(app);
+  registerTimeTrackingRoutes(app);
+  registerCalendarRoutes(app);
+  registerApprovalRoutes(app);
 }

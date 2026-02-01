@@ -1175,6 +1175,139 @@ export const insertPeopleOrgSchema = z.object({
 
 export const updatePeopleOrgSchema = insertPeopleOrgSchema.partial();
 
+// ============ TIME TRACKING ============
+
+export type TimeEntryBillableStatus = "billable" | "non-billable" | "no-charge";
+
+export interface TimeEntry {
+  id: string;
+  matterId: string;
+  taskId?: string;
+  userId: string;
+  userName: string;
+  date: string;
+  hours: number;
+  description: string;
+  billableStatus: TimeEntryBillableStatus;
+  hourlyRate?: number;
+  activityCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const insertTimeEntrySchema = z.object({
+  matterId: z.string(),
+  taskId: z.string().optional(),
+  userId: z.string(),
+  userName: z.string(),
+  date: z.string(),
+  hours: z.number().min(0.01).max(24),
+  description: z.string().min(1),
+  billableStatus: z.enum(["billable", "non-billable", "no-charge"]).optional().default("billable"),
+  hourlyRate: z.number().optional(),
+  activityCode: z.string().optional(),
+});
+
+export const updateTimeEntrySchema = insertTimeEntrySchema.partial().omit({ matterId: true, userId: true });
+
+// ============ CALENDAR EVENTS ============
+
+export type CalendarEventType = "court-date" | "hearing" | "deadline" | "meeting" | "deposition" | "filing" | "reminder" | "other";
+
+export interface CalendarEvent {
+  id: string;
+  matterId?: string;
+  taskId?: string;
+  title: string;
+  description: string;
+  eventType: CalendarEventType;
+  startDate: string;
+  endDate?: string;
+  allDay: boolean;
+  location?: string;
+  attendees: string[];
+  reminderMinutes?: number;
+  color?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const insertCalendarEventSchema = z.object({
+  matterId: z.string().optional(),
+  taskId: z.string().optional(),
+  title: z.string().min(1),
+  description: z.string().optional().default(""),
+  eventType: z.enum(["court-date", "hearing", "deadline", "meeting", "deposition", "filing", "reminder", "other"]),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  allDay: z.boolean().optional().default(false),
+  location: z.string().optional(),
+  attendees: z.array(z.string()).optional().default([]),
+  reminderMinutes: z.number().optional(),
+  color: z.string().optional(),
+  createdBy: z.string(),
+});
+
+export const updateCalendarEventSchema = insertCalendarEventSchema.partial().omit({ createdBy: true });
+
+// ============ APPROVALS ============
+
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "needs-revision";
+
+export interface ApprovalRequest {
+  id: string;
+  fileId: string;
+  matterId: string;
+  title: string;
+  description: string;
+  requestedBy: string;
+  requestedByName: string;
+  assignedTo: string[];
+  status: ApprovalStatus;
+  dueDate?: string;
+  priority: Priority;
+  comments: ApprovalComment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalComment {
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  decision?: "approved" | "rejected" | "needs-revision";
+  createdAt: string;
+}
+
+export const insertApprovalRequestSchema = z.object({
+  fileId: z.string(),
+  matterId: z.string(),
+  title: z.string().min(1),
+  description: z.string().optional().default(""),
+  requestedBy: z.string(),
+  requestedByName: z.string(),
+  assignedTo: z.array(z.string()).min(1),
+  dueDate: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).optional().default("medium"),
+});
+
+export const updateApprovalRequestSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "needs-revision"]).optional(),
+  assignedTo: z.array(z.string()).optional(),
+  dueDate: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+});
+
+export const insertApprovalCommentSchema = z.object({
+  approvalId: z.string(),
+  userId: z.string(),
+  userName: z.string(),
+  content: z.string().min(1),
+  decision: z.enum(["approved", "rejected", "needs-revision"]).optional(),
+});
+
 // Type exports
 export type InsertBoard = z.infer<typeof insertBoardSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
@@ -1198,6 +1331,10 @@ export type InsertFileItem = z.infer<typeof insertFileItemSchema>;
 export type InsertDocProfile = z.infer<typeof insertDocProfileSchema>;
 export type InsertFilingTag = z.infer<typeof insertFilingTagSchema>;
 export type InsertPeopleOrg = z.infer<typeof insertPeopleOrgSchema>;
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type InsertApprovalRequest = z.infer<typeof insertApprovalRequestSchema>;
+export type InsertApprovalComment = z.infer<typeof insertApprovalCommentSchema>;
 
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";

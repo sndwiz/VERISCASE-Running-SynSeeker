@@ -1,0 +1,82 @@
+import type { Express } from "express";
+import { storage } from "../storage";
+import { insertApprovalRequestSchema, updateApprovalRequestSchema, insertApprovalCommentSchema } from "@shared/schema";
+import { z } from "zod";
+
+export function registerApprovalRoutes(app: Express): void {
+  app.get("/api/approvals", async (req, res) => {
+    try {
+      const { matterId } = req.query;
+      const requests = await storage.getApprovalRequests(matterId as string | undefined);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch approval requests" });
+    }
+  });
+
+  app.get("/api/approvals/:id", async (req, res) => {
+    try {
+      const request = await storage.getApprovalRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Approval request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch approval request" });
+    }
+  });
+
+  app.post("/api/approvals", async (req, res) => {
+    try {
+      const data = insertApprovalRequestSchema.parse(req.body);
+      const request = await storage.createApprovalRequest(data);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create approval request" });
+    }
+  });
+
+  app.patch("/api/approvals/:id", async (req, res) => {
+    try {
+      const data = updateApprovalRequestSchema.parse(req.body);
+      const request = await storage.updateApprovalRequest(req.params.id, data);
+      if (!request) {
+        return res.status(404).json({ error: "Approval request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update approval request" });
+    }
+  });
+
+  app.delete("/api/approvals/:id", async (req, res) => {
+    try {
+      await storage.deleteApprovalRequest(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete approval request" });
+    }
+  });
+
+  app.post("/api/approvals/:id/comments", async (req, res) => {
+    try {
+      const data = insertApprovalCommentSchema.parse({
+        ...req.body,
+        approvalId: req.params.id,
+      });
+      const comment = await storage.addApprovalComment(data);
+      res.status(201).json(comment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to add comment" });
+    }
+  });
+}

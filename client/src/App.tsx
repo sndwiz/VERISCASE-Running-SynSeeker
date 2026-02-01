@@ -24,12 +24,9 @@ import BoardPage from "@/pages/board";
 import SettingsPage from "@/pages/settings";
 import AIChatPage from "@/pages/ai-chat";
 import LandingPage from "@/pages/landing";
-import {
-  DocumentsPage,
-  TimeTrackingPage,
-  CalendarPage,
-  ApprovalsPage,
-} from "@/pages/placeholder";
+import TimeTrackingPage from "@/pages/time-tracking";
+import CalendarPage from "@/pages/calendar-page";
+import ApprovalsPage from "@/pages/approvals-page";
 import MattersPage from "@/pages/matters";
 import ClientsPage from "@/pages/clients";
 import EvidenceVaultPage from "@/pages/evidence-vault";

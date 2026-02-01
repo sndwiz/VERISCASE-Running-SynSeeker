@@ -361,6 +361,61 @@ export const peopleOrgs = pgTable("people_orgs", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ============ TIME ENTRIES ============
+export const timeEntries = pgTable("time_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  userName: varchar("user_name", { length: 255 }).notNull(),
+  date: varchar("date", { length: 50 }).notNull(),
+  hours: real("hours").notNull(),
+  description: text("description").notNull(),
+  billableStatus: varchar("billable_status", { length: 20 }).default("billable"),
+  hourlyRate: real("hourly_rate"),
+  activityCode: varchar("activity_code", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============ CALENDAR EVENTS ============
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").references(() => matters.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description").default(""),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  startDate: varchar("start_date", { length: 50 }).notNull(),
+  endDate: varchar("end_date", { length: 50 }),
+  allDay: boolean("all_day").default(false),
+  location: text("location"),
+  attendees: jsonb("attendees").default([]),
+  reminderMinutes: integer("reminder_minutes"),
+  color: varchar("color", { length: 20 }),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============ APPROVAL REQUESTS ============
+export const approvalRequests = pgTable("approval_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileId: varchar("file_id").notNull().references(() => fileItems.id, { onDelete: "cascade" }),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description").default(""),
+  requestedBy: varchar("requested_by", { length: 100 }).notNull(),
+  requestedByName: varchar("requested_by_name", { length: 255 }).notNull(),
+  assignedTo: jsonb("assigned_to").notNull().default([]),
+  status: varchar("status", { length: 50 }).default("pending"),
+  dueDate: varchar("due_date", { length: 50 }),
+  priority: varchar("priority", { length: 20 }).default("medium"),
+  comments: jsonb("comments").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type exports
 export type BoardRecord = typeof boards.$inferSelect;
 export type InsertBoardRecord = typeof boards.$inferInsert;
@@ -376,3 +431,9 @@ export type FilingTagRecord = typeof filingTags.$inferSelect;
 export type InsertFilingTagRecord = typeof filingTags.$inferInsert;
 export type PeopleOrgRecord = typeof peopleOrgs.$inferSelect;
 export type InsertPeopleOrgRecord = typeof peopleOrgs.$inferInsert;
+export type TimeEntryRecord = typeof timeEntries.$inferSelect;
+export type InsertTimeEntryRecord = typeof timeEntries.$inferInsert;
+export type CalendarEventRecord = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEventRecord = typeof calendarEvents.$inferInsert;
+export type ApprovalRequestRecord = typeof approvalRequests.$inferSelect;
+export type InsertApprovalRequestRecord = typeof approvalRequests.$inferInsert;

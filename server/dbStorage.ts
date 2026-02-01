@@ -51,6 +51,14 @@ import type {
   PeopleOrg,
   InsertPeopleOrg,
   FileItemWithProfile,
+  TimeEntry,
+  InsertTimeEntry,
+  CalendarEvent,
+  InsertCalendarEvent,
+  ApprovalRequest,
+  InsertApprovalRequest,
+  ApprovalComment,
+  InsertApprovalComment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -1721,5 +1729,372 @@ export class DbStorage implements IStorage {
   async deletePeopleOrg(id: string): Promise<boolean> {
     await db.delete(tables.peopleOrgs).where(eq(tables.peopleOrgs.id, id));
     return true;
+  }
+
+  // Time Entries
+  async getTimeEntries(matterId?: string): Promise<TimeEntry[]> {
+    await this.ensureInitialized();
+    const rows = matterId
+      ? await db.select().from(tables.timeEntries).where(eq(tables.timeEntries.matterId, matterId)).orderBy(desc(tables.timeEntries.date))
+      : await db.select().from(tables.timeEntries).orderBy(desc(tables.timeEntries.date));
+    return rows.map(row => ({
+      id: row.id,
+      matterId: row.matterId,
+      taskId: row.taskId || undefined,
+      userId: row.userId,
+      userName: row.userName,
+      date: row.date,
+      hours: row.hours,
+      description: row.description,
+      billableStatus: (row.billableStatus || "billable") as any,
+      hourlyRate: row.hourlyRate || undefined,
+      activityCode: row.activityCode || undefined,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    }));
+  }
+
+  async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
+    await this.ensureInitialized();
+    const [row] = await db.select().from(tables.timeEntries).where(eq(tables.timeEntries.id, id));
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      matterId: row.matterId,
+      taskId: row.taskId || undefined,
+      userId: row.userId,
+      userName: row.userName,
+      date: row.date,
+      hours: row.hours,
+      description: row.description,
+      billableStatus: (row.billableStatus || "billable") as any,
+      hourlyRate: row.hourlyRate || undefined,
+      activityCode: row.activityCode || undefined,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async createTimeEntry(data: InsertTimeEntry): Promise<TimeEntry> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const [row] = await db.insert(tables.timeEntries).values({
+      matterId: data.matterId,
+      taskId: data.taskId,
+      userId: data.userId,
+      userName: data.userName,
+      date: data.date,
+      hours: data.hours,
+      description: data.description,
+      billableStatus: data.billableStatus || "billable",
+      hourlyRate: data.hourlyRate,
+      activityCode: data.activityCode,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return {
+      id: row.id,
+      matterId: row.matterId,
+      taskId: row.taskId || undefined,
+      userId: row.userId,
+      userName: row.userName,
+      date: row.date,
+      hours: row.hours,
+      description: row.description,
+      billableStatus: (row.billableStatus || "billable") as any,
+      hourlyRate: row.hourlyRate || undefined,
+      activityCode: row.activityCode || undefined,
+      createdAt: toISOString(row.createdAt) || now.toISOString(),
+      updatedAt: toISOString(row.updatedAt) || now.toISOString(),
+    };
+  }
+
+  async updateTimeEntry(id: string, data: Partial<TimeEntry>): Promise<TimeEntry | undefined> {
+    const { createdAt, updatedAt, ...updateData } = data as any;
+    const updateWithTime = { ...updateData, updatedAt: new Date() };
+    const [row] = await db.update(tables.timeEntries).set(updateWithTime).where(eq(tables.timeEntries.id, id)).returning();
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      matterId: row.matterId,
+      taskId: row.taskId || undefined,
+      userId: row.userId,
+      userName: row.userName,
+      date: row.date,
+      hours: row.hours,
+      description: row.description,
+      billableStatus: (row.billableStatus || "billable") as any,
+      hourlyRate: row.hourlyRate || undefined,
+      activityCode: row.activityCode || undefined,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async deleteTimeEntry(id: string): Promise<boolean> {
+    await db.delete(tables.timeEntries).where(eq(tables.timeEntries.id, id));
+    return true;
+  }
+
+  // Calendar Events
+  async getCalendarEvents(matterId?: string): Promise<CalendarEvent[]> {
+    await this.ensureInitialized();
+    const rows = matterId
+      ? await db.select().from(tables.calendarEvents).where(eq(tables.calendarEvents.matterId, matterId)).orderBy(asc(tables.calendarEvents.startDate))
+      : await db.select().from(tables.calendarEvents).orderBy(asc(tables.calendarEvents.startDate));
+    return rows.map(row => ({
+      id: row.id,
+      matterId: row.matterId || undefined,
+      taskId: row.taskId || undefined,
+      title: row.title,
+      description: row.description || "",
+      eventType: row.eventType as any,
+      startDate: row.startDate,
+      endDate: row.endDate || undefined,
+      allDay: row.allDay || false,
+      location: row.location || undefined,
+      attendees: (row.attendees as string[]) || [],
+      reminderMinutes: row.reminderMinutes || undefined,
+      color: row.color || undefined,
+      createdBy: row.createdBy,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    }));
+  }
+
+  async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
+    await this.ensureInitialized();
+    const [row] = await db.select().from(tables.calendarEvents).where(eq(tables.calendarEvents.id, id));
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      matterId: row.matterId || undefined,
+      taskId: row.taskId || undefined,
+      title: row.title,
+      description: row.description || "",
+      eventType: row.eventType as any,
+      startDate: row.startDate,
+      endDate: row.endDate || undefined,
+      allDay: row.allDay || false,
+      location: row.location || undefined,
+      attendees: (row.attendees as string[]) || [],
+      reminderMinutes: row.reminderMinutes || undefined,
+      color: row.color || undefined,
+      createdBy: row.createdBy,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const [row] = await db.insert(tables.calendarEvents).values({
+      matterId: data.matterId,
+      taskId: data.taskId,
+      title: data.title,
+      description: data.description || "",
+      eventType: data.eventType,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      allDay: data.allDay || false,
+      location: data.location,
+      attendees: data.attendees || [],
+      reminderMinutes: data.reminderMinutes,
+      color: data.color,
+      createdBy: data.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return {
+      id: row.id,
+      matterId: row.matterId || undefined,
+      taskId: row.taskId || undefined,
+      title: row.title,
+      description: row.description || "",
+      eventType: row.eventType as any,
+      startDate: row.startDate,
+      endDate: row.endDate || undefined,
+      allDay: row.allDay || false,
+      location: row.location || undefined,
+      attendees: (row.attendees as string[]) || [],
+      reminderMinutes: row.reminderMinutes || undefined,
+      color: row.color || undefined,
+      createdBy: row.createdBy,
+      createdAt: toISOString(row.createdAt) || now.toISOString(),
+      updatedAt: toISOString(row.updatedAt) || now.toISOString(),
+    };
+  }
+
+  async updateCalendarEvent(id: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const { createdAt, updatedAt, ...updateData } = data as any;
+    const updateWithTime = { ...updateData, updatedAt: new Date() };
+    const [row] = await db.update(tables.calendarEvents).set(updateWithTime).where(eq(tables.calendarEvents.id, id)).returning();
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      matterId: row.matterId || undefined,
+      taskId: row.taskId || undefined,
+      title: row.title,
+      description: row.description || "",
+      eventType: row.eventType as any,
+      startDate: row.startDate,
+      endDate: row.endDate || undefined,
+      allDay: row.allDay || false,
+      location: row.location || undefined,
+      attendees: (row.attendees as string[]) || [],
+      reminderMinutes: row.reminderMinutes || undefined,
+      color: row.color || undefined,
+      createdBy: row.createdBy,
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+    await db.delete(tables.calendarEvents).where(eq(tables.calendarEvents.id, id));
+    return true;
+  }
+
+  // Approval Requests
+  async getApprovalRequests(matterId?: string): Promise<ApprovalRequest[]> {
+    await this.ensureInitialized();
+    const rows = matterId
+      ? await db.select().from(tables.approvalRequests).where(eq(tables.approvalRequests.matterId, matterId)).orderBy(desc(tables.approvalRequests.createdAt))
+      : await db.select().from(tables.approvalRequests).orderBy(desc(tables.approvalRequests.createdAt));
+    return rows.map(row => ({
+      id: row.id,
+      fileId: row.fileId,
+      matterId: row.matterId,
+      title: row.title,
+      description: row.description || "",
+      requestedBy: row.requestedBy,
+      requestedByName: row.requestedByName,
+      assignedTo: (row.assignedTo as string[]) || [],
+      status: (row.status || "pending") as any,
+      dueDate: row.dueDate || undefined,
+      priority: (row.priority || "medium") as any,
+      comments: (row.comments as ApprovalComment[]) || [],
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    }));
+  }
+
+  async getApprovalRequest(id: string): Promise<ApprovalRequest | undefined> {
+    await this.ensureInitialized();
+    const [row] = await db.select().from(tables.approvalRequests).where(eq(tables.approvalRequests.id, id));
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      fileId: row.fileId,
+      matterId: row.matterId,
+      title: row.title,
+      description: row.description || "",
+      requestedBy: row.requestedBy,
+      requestedByName: row.requestedByName,
+      assignedTo: (row.assignedTo as string[]) || [],
+      status: (row.status || "pending") as any,
+      dueDate: row.dueDate || undefined,
+      priority: (row.priority || "medium") as any,
+      comments: (row.comments as ApprovalComment[]) || [],
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async createApprovalRequest(data: InsertApprovalRequest): Promise<ApprovalRequest> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const [row] = await db.insert(tables.approvalRequests).values({
+      fileId: data.fileId,
+      matterId: data.matterId,
+      title: data.title,
+      description: data.description || "",
+      requestedBy: data.requestedBy,
+      requestedByName: data.requestedByName,
+      assignedTo: data.assignedTo,
+      status: "pending",
+      dueDate: data.dueDate,
+      priority: data.priority || "medium",
+      comments: [],
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return {
+      id: row.id,
+      fileId: row.fileId,
+      matterId: row.matterId,
+      title: row.title,
+      description: row.description || "",
+      requestedBy: row.requestedBy,
+      requestedByName: row.requestedByName,
+      assignedTo: (row.assignedTo as string[]) || [],
+      status: (row.status || "pending") as any,
+      dueDate: row.dueDate || undefined,
+      priority: (row.priority || "medium") as any,
+      comments: (row.comments as ApprovalComment[]) || [],
+      createdAt: toISOString(row.createdAt) || now.toISOString(),
+      updatedAt: toISOString(row.updatedAt) || now.toISOString(),
+    };
+  }
+
+  async updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<ApprovalRequest | undefined> {
+    const { createdAt, updatedAt, ...updateData } = data as any;
+    const updateWithTime = { ...updateData, updatedAt: new Date() };
+    const [row] = await db.update(tables.approvalRequests).set(updateWithTime).where(eq(tables.approvalRequests.id, id)).returning();
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      fileId: row.fileId,
+      matterId: row.matterId,
+      title: row.title,
+      description: row.description || "",
+      requestedBy: row.requestedBy,
+      requestedByName: row.requestedByName,
+      assignedTo: (row.assignedTo as string[]) || [],
+      status: (row.status || "pending") as any,
+      dueDate: row.dueDate || undefined,
+      priority: (row.priority || "medium") as any,
+      comments: (row.comments as ApprovalComment[]) || [],
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async deleteApprovalRequest(id: string): Promise<boolean> {
+    await db.delete(tables.approvalRequests).where(eq(tables.approvalRequests.id, id));
+    return true;
+  }
+
+  async addApprovalComment(data: InsertApprovalComment): Promise<ApprovalComment> {
+    await this.ensureInitialized();
+    const request = await this.getApprovalRequest(data.approvalId);
+    if (!request) throw new Error("Approval request not found");
+    
+    const comment: ApprovalComment = {
+      id: randomUUID(),
+      userId: data.userId,
+      userName: data.userName,
+      content: data.content,
+      decision: data.decision,
+      createdAt: new Date().toISOString(),
+    };
+    
+    const updatedComments = [...request.comments, comment];
+    let newStatus = request.status;
+    if (data.decision) {
+      newStatus = data.decision === "approved" ? "approved" : 
+                  data.decision === "rejected" ? "rejected" : "needs-revision";
+    }
+    
+    await db.update(tables.approvalRequests)
+      .set({ 
+        comments: updatedComments,
+        status: newStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(tables.approvalRequests.id, data.approvalId));
+    
+    return comment;
   }
 }
