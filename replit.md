@@ -11,6 +11,7 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - **Group By**: Organize tasks by Default/Status/Priority/Owner
 - **Task Management**: Create, update, delete tasks with full CRUD operations
 - **AI Assistant**: Multi-model AI chat with Anthropic integration (OpenAI/DeepSeek planned)
+- **Filing Cabinet**: Two-layer document classification with controlled vocabulary (8 categories, 50+ document types), metadata tracking (parties, dates, privilege, Bates ranges), and searchable document library
 - **Evidence Vault**: Immutable file storage with SHA-256 chain-of-custody tracking
 - **Detective Board**: Visual investigation board with draggable nodes and connections
 - **Automations**: Event-driven automation rules with triggers and actions, plus template library with pre-built recipes organized by category
@@ -129,6 +130,23 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - `GET /api/matters/:matterId/timeline` - List timeline events
 - `POST /api/matters/:matterId/timeline` - Add timeline event
 
+### Filing Cabinet
+- `GET /api/matters/:matterId/files` - List files for a matter
+- `POST /api/matters/:matterId/files` - Upload file to matter
+- `PATCH /api/files/:id` - Update file metadata
+- `DELETE /api/files/:id` - Delete file
+- `GET /api/files/:fileId/profile` - Get document profile
+- `POST /api/files/:fileId/profile` - Create document profile
+- `PATCH /api/files/:fileId/profile` - Update document profile (validates docType against category)
+- `DELETE /api/files/:fileId/profile` - Delete document profile
+- `GET /api/filing/tags` - List filing tags
+- `POST /api/filing/tags` - Create filing tag
+- `DELETE /api/filing/tags/:id` - Delete filing tag
+- `GET /api/matters/:matterId/people-orgs` - List people/orgs for matter
+- `POST /api/matters/:matterId/people-orgs` - Create person/org
+- `PATCH /api/people-orgs/:id` - Update person/org
+- `DELETE /api/people-orgs/:id` - Delete person/org
+
 ### Evidence Vault
 - `GET /api/matters/:matterId/evidence` - List evidence files
 - `POST /api/matters/:matterId/evidence` - Add evidence (immutable)
@@ -201,6 +219,10 @@ The first user to register automatically becomes an admin. Subsequent users defa
 - MatterContact role is enum: plaintiff, defendant, witness, expert, opposing-counsel, judge, client, other
 - Evidence files are immutable - only metadata can be updated
 - Chain of custody entries are append-only
+- Filing Cabinet uses two-layer classification: docCategory (8 types) + docType (validated against docTypesByCategory controlled vocabulary)
+- DocProfile docType must match valid types for its docCategory (enforced via Zod superRefine validation)
+- Document categories: pleading, motion, discovery, order-ruling, correspondence, evidence-records, internal-work-product, admin-operations
+- Confidentiality levels: public, confidential, aeo (attorneys' eyes only), privileged, work-product
 
 ## Running the Project
 ```bash
