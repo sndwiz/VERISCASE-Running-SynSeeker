@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-export type AIProvider = "anthropic" | "openai" | "deepseek" | "private";
+export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private";
 
 export interface AIModel {
   id: string;
@@ -80,40 +82,58 @@ export const AVAILABLE_MODELS: AIModel[] = [
     available: true,
   },
   {
+    id: "gpt-5.2",
+    name: "GPT-5.2",
+    provider: "openai",
+    supportsVision: true,
+    maxTokens: 16384,
+    contextWindow: 128000,
+    available: true,
+  },
+  {
     id: "gpt-4o",
-    name: "GPT-4o (Coming Soon)",
+    name: "GPT-4o",
     provider: "openai",
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: false,
+    available: true,
   },
   {
-    id: "gpt-4-turbo",
-    name: "GPT-4 Turbo (Coming Soon)",
+    id: "gpt-4o-mini",
+    name: "GPT-4o Mini",
     provider: "openai",
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: false,
+    available: true,
   },
   {
-    id: "deepseek-vl",
-    name: "DeepSeek VL (Coming Soon)",
-    provider: "deepseek",
+    id: "gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
+    provider: "gemini",
     supportsVision: true,
-    maxTokens: 4096,
-    contextWindow: 32000,
-    available: false,
+    maxTokens: 8192,
+    contextWindow: 1000000,
+    available: true,
   },
   {
-    id: "deepseek-chat",
-    name: "DeepSeek Chat (Coming Soon)",
-    provider: "deepseek",
-    supportsVision: false,
-    maxTokens: 4096,
-    contextWindow: 32000,
-    available: false,
+    id: "gemini-2.5-pro",
+    name: "Gemini 2.5 Pro",
+    provider: "gemini",
+    supportsVision: true,
+    maxTokens: 8192,
+    contextWindow: 1000000,
+    available: true,
+  },
+  {
+    id: "gemini-3-flash-preview",
+    name: "Gemini 3 Flash",
+    provider: "gemini",
+    supportsVision: true,
+    maxTokens: 8192,
+    contextWindow: 1000000,
+    available: true,
   },
 ];
 
@@ -121,6 +141,29 @@ const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
 });
+
+function getOpenAIClient(): OpenAI {
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    throw new Error("OpenAI API key not configured. Please set up OpenAI integration.");
+  }
+  return new OpenAI({
+    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  });
+}
+
+function getGeminiClient(): GoogleGenAI {
+  if (!process.env.AI_INTEGRATIONS_GEMINI_API_KEY) {
+    throw new Error("Gemini API key not configured. Please set up Gemini integration.");
+  }
+  return new GoogleGenAI({
+    apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    httpOptions: {
+      apiVersion: "",
+      baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
+    },
+  });
+}
 
 export async function* streamAnthropicResponse(
   messages: ChatMessage[],
@@ -158,6 +201,101 @@ export async function* streamAnthropicResponse(
     }
   }
   yield { done: true };
+}
+
+export async function* streamOpenAIResponse(
+  messages: ChatMessage[],
+  config: AIConfig
+): AsyncGenerator<StreamChunk> {
+  const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => {
+    if (typeof m.content === "string") {
+      return { role: m.role, content: m.content } as OpenAI.ChatCompletionMessageParam;
+    }
+    const parts: OpenAI.ChatCompletionContentPart[] = m.content.map((c) => {
+      if (c.type === "text") {
+        return { type: "text" as const, text: c.text || "" };
+      }
+      return {
+        type: "image_url" as const,
+        image_url: {
+          url: `data:${c.source?.media_type || "image/png"};base64,${c.source?.data || ""}`,
+        },
+      };
+    });
+    return { role: m.role as "user", content: parts } as OpenAI.ChatCompletionMessageParam;
+  });
+
+  const openai = getOpenAIClient();
+  const stream = await openai.chat.completions.create({
+    model: config.model,
+    max_tokens: config.maxTokens || 2048,
+    messages: apiMessages,
+    stream: true,
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) {
+      yield { content };
+    }
+  }
+  yield { done: true };
+}
+
+export async function* streamGeminiResponse(
+  messages: ChatMessage[],
+  config: AIConfig
+): AsyncGenerator<StreamChunk> {
+  const chatMessages = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: typeof m.content === "string" 
+      ? [{ text: m.content }]
+      : m.content.map((c) => {
+          if (c.type === "text") {
+            return { text: c.text || "" };
+          }
+          return {
+            inlineData: {
+              mimeType: c.source?.media_type || "image/png",
+              data: c.source?.data || "",
+            },
+          };
+        }),
+  }));
+
+  const gemini = getGeminiClient();
+  const stream = await gemini.models.generateContentStream({
+    model: config.model,
+    contents: chatMessages,
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.text || "";
+    if (content) {
+      yield { content };
+    }
+  }
+  yield { done: true };
+}
+
+export async function* streamResponse(
+  messages: ChatMessage[],
+  config: AIConfig
+): AsyncGenerator<StreamChunk> {
+  switch (config.provider) {
+    case "anthropic":
+      yield* streamAnthropicResponse(messages, config);
+      break;
+    case "openai":
+      yield* streamOpenAIResponse(messages, config);
+      break;
+    case "gemini":
+      yield* streamGeminiResponse(messages, config);
+      break;
+    default:
+      yield { error: `Provider ${config.provider} not supported` };
+      yield { done: true };
+  }
 }
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
