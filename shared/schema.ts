@@ -283,7 +283,7 @@ export interface AIConfig {
 // ============ EVIDENCE VAULT ============
 
 export type EvidenceType = "document" | "photo" | "video" | "audio" | "email" | "other";
-export type ConfidentialityLevel = "public" | "confidential" | "privileged" | "work-product";
+export type ConfidentialityLevel = "public" | "confidential" | "aeo" | "privileged" | "work-product";
 export type OCRStatus = "pending" | "processing" | "completed" | "failed";
 
 // Evidence Vault File (immutable original content)
@@ -866,6 +866,253 @@ export const updateDetectiveConnectionSchema = z.object({
   notes: z.string().optional(),
 });
 
+// ============ FILING STRUCTURE ============
+
+// Document Categories (Layer A - broad bucket)
+export type DocCategory =
+  | "pleading"
+  | "motion"
+  | "discovery"
+  | "order-ruling"
+  | "correspondence"
+  | "evidence-records"
+  | "internal-work-product"
+  | "admin-operations";
+
+// Document Types by Category
+export const docTypesByCategory: Record<DocCategory, string[]> = {
+  "pleading": [
+    "Complaint/Petition",
+    "Answer",
+    "Counterclaim/Crossclaim/Third-Party Complaint",
+    "Reply to Counterclaim",
+    "Amended Complaint",
+    "Amended Answer",
+  ],
+  "motion": [
+    "Motion",
+    "Memorandum/Brief",
+    "Declaration/Affidavit",
+    "Exhibit (Motion)",
+    "Proposed Order",
+    "Notice of Hearing",
+    "Oral Argument Notice",
+    "Opposition",
+    "Reply",
+  ],
+  "discovery": [
+    "Interrogatories",
+    "Requests for Production",
+    "Requests for Admission",
+    "Responses/Objections",
+    "Supplemental Responses",
+    "Deposition Notice",
+    "Subpoena (to nonparty)",
+    "Deposition Transcript",
+    "Discovery Dispute Letter",
+    "Joint Statement",
+  ],
+  "order-ruling": [
+    "Order",
+    "Minute Entry/Docket Entry",
+    "Judgment",
+    "Findings/Conclusions",
+    "Transcript",
+  ],
+  "correspondence": [
+    "Attorney Correspondence (Substantive)",
+    "Administrative Correspondence",
+    "Demand Letter",
+    "Settlement Communication",
+  ],
+  "evidence-records": [
+    "Produced Documents (incoming)",
+    "Productions (outgoing)",
+    "Photos/Videos/Audio",
+    "Forensic Exports",
+    "Business Records",
+    "Medical Records",
+    "Financial Records",
+  ],
+  "internal-work-product": [
+    "Research Memo",
+    "Draft (internal)",
+    "Notes",
+    "Outline",
+    "Deposition Prep",
+    "Chronology/Timeline",
+    "Damages Model/Calculations",
+  ],
+  "admin-operations": [
+    "Engagement Letter",
+    "Conflict Check",
+    "ID/KYC",
+    "Billing/Invoices",
+    "Trust Account/IOLTA",
+    "Medical Authorizations/HIPAA",
+    "Settlement Documents",
+    "Release",
+    "Settlement Agreement",
+  ],
+};
+
+// Doc Category labels
+export const docCategoryLabels: Record<DocCategory, { label: string; icon: string; color: string }> = {
+  "pleading": { label: "Pleadings", icon: "file-text", color: "#3b82f6" },
+  "motion": { label: "Motions & Supporting Papers", icon: "gavel", color: "#8b5cf6" },
+  "discovery": { label: "Discovery", icon: "search", color: "#f59e0b" },
+  "order-ruling": { label: "Court Orders & Rulings", icon: "landmark", color: "#10b981" },
+  "correspondence": { label: "Correspondence", icon: "mail", color: "#6366f1" },
+  "evidence-records": { label: "Evidence & Records", icon: "folder-archive", color: "#ef4444" },
+  "internal-work-product": { label: "Internal Work Product", icon: "lock", color: "#64748b" },
+  "admin-operations": { label: "Admin/Operations", icon: "briefcase", color: "#0891b2" },
+};
+
+// Document roles
+export type DocRole = "primary" | "supporting" | "exhibit" | "draft" | "final";
+
+// Document parties
+export type DocParty = "plaintiff" | "defendant" | "nonparty" | "court" | "client" | "third-party";
+
+// Document version status
+export type DocVersionStatus = "draft" | "final" | "filed" | "served" | "received";
+
+// Privilege basis
+export type PrivilegeBasis = "attorney-client" | "work-product" | "joint-defense" | "common-interest" | "none";
+
+// Entity types for PeopleOrg
+export type EntityType = "person" | "organization";
+
+// Entity roles
+export type EntityRole = "client" | "opposing-counsel" | "court" | "witness" | "expert" | "judge" | "party" | "other";
+
+// FileItem interface
+export interface FileItem {
+  id: string;
+  matterId: string;
+  serverPath: string;
+  fileName: string;
+  extension?: string;
+  sizeBytes: number;
+  hashSha256?: string;
+  isEmail: boolean;
+  isAttachment: boolean;
+  parentFileId?: string;
+  confidentiality: ConfidentialityLevel;
+  createdUtc?: string;
+  modifiedUtc?: string;
+  ingestedUtc: string;
+}
+
+// DocProfile interface
+export interface DocProfile {
+  id: string;
+  fileId: string;
+  docCategory: DocCategory;
+  docType: string;
+  docRole: DocRole;
+  captionTitle?: string;
+  party?: DocParty;
+  author?: string;
+  recipient?: string;
+  serviceDate?: string;
+  filingDate?: string;
+  hearingDate?: string;
+  docketNumber?: string;
+  version: DocVersionStatus;
+  status: DocVersionStatus;
+  privilegeBasis?: PrivilegeBasis;
+  productionId?: string;
+  batesRange?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// FilingTag interface
+export interface FilingTag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
+// PeopleOrg interface
+export interface PeopleOrg {
+  id: string;
+  matterId?: string;
+  name: string;
+  entityType: EntityType;
+  role?: EntityRole;
+  email?: string;
+  phone?: string;
+  company?: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// FileItem with profile (joined)
+export interface FileItemWithProfile extends FileItem {
+  profile?: DocProfile;
+  tags?: FilingTag[];
+}
+
+// Insert schemas
+export const insertFileItemSchema = z.object({
+  matterId: z.string(),
+  serverPath: z.string(),
+  fileName: z.string(),
+  extension: z.string().optional(),
+  sizeBytes: z.number().optional().default(0),
+  hashSha256: z.string().optional(),
+  isEmail: z.boolean().optional().default(false),
+  isAttachment: z.boolean().optional().default(false),
+  parentFileId: z.string().optional(),
+  confidentiality: z.enum(["public", "confidential", "aeo", "privileged", "work-product"]).optional().default("confidential"),
+});
+
+export const updateFileItemSchema = insertFileItemSchema.partial().omit({ matterId: true });
+
+export const insertDocProfileSchema = z.object({
+  fileId: z.string(),
+  docCategory: z.enum(["pleading", "motion", "discovery", "order-ruling", "correspondence", "evidence-records", "internal-work-product", "admin-operations"]),
+  docType: z.string(),
+  docRole: z.enum(["primary", "supporting", "exhibit", "draft", "final"]).optional().default("primary"),
+  captionTitle: z.string().optional(),
+  party: z.enum(["plaintiff", "defendant", "nonparty", "court", "client", "third-party"]).optional(),
+  author: z.string().optional(),
+  recipient: z.string().optional(),
+  serviceDate: z.string().optional(),
+  filingDate: z.string().optional(),
+  hearingDate: z.string().optional(),
+  docketNumber: z.string().optional(),
+  version: z.enum(["draft", "final", "filed", "served", "received"]).optional().default("final"),
+  status: z.enum(["draft", "final", "filed", "served", "received"]).optional().default("draft"),
+  privilegeBasis: z.enum(["attorney-client", "work-product", "joint-defense", "common-interest", "none"]).optional(),
+  productionId: z.string().optional(),
+  batesRange: z.string().optional(),
+});
+
+export const updateDocProfileSchema = insertDocProfileSchema.partial().omit({ fileId: true });
+
+export const insertFilingTagSchema = z.object({
+  name: z.string().min(1),
+  color: z.string().optional().default("#6366f1"),
+});
+
+export const insertPeopleOrgSchema = z.object({
+  matterId: z.string().optional(),
+  name: z.string().min(1),
+  entityType: z.enum(["person", "organization"]),
+  role: z.enum(["client", "opposing-counsel", "court", "witness", "expert", "judge", "party", "other"]).optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+  notes: z.string().optional().default(""),
+});
+
+export const updatePeopleOrgSchema = insertPeopleOrgSchema.partial();
+
 // Type exports
 export type InsertBoard = z.infer<typeof insertBoardSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
@@ -885,6 +1132,10 @@ export type InsertResearchResult = z.infer<typeof insertResearchResultSchema>;
 export type InsertAutomationRule = z.infer<typeof insertAutomationRuleSchema>;
 export type InsertDetectiveNode = z.infer<typeof insertDetectiveNodeSchema>;
 export type InsertDetectiveConnection = z.infer<typeof insertDetectiveConnectionSchema>;
+export type InsertFileItem = z.infer<typeof insertFileItemSchema>;
+export type InsertDocProfile = z.infer<typeof insertDocProfileSchema>;
+export type InsertFilingTag = z.infer<typeof insertFilingTagSchema>;
+export type InsertPeopleOrg = z.infer<typeof insertPeopleOrgSchema>;
 
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";

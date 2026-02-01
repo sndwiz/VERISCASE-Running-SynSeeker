@@ -289,6 +289,78 @@ export const detectiveConnections = pgTable("detective_connections", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ============ FILE ITEMS (Physical files on server) ============
+export const fileItems = pgTable("file_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  serverPath: text("server_path").notNull(),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  extension: varchar("extension", { length: 20 }),
+  sizeBytes: integer("size_bytes").default(0),
+  hashSha256: varchar("hash_sha256", { length: 128 }),
+  isEmail: boolean("is_email").default(false),
+  isAttachment: boolean("is_attachment").default(false),
+  parentFileId: varchar("parent_file_id"),
+  confidentiality: varchar("confidentiality", { length: 50 }).default("confidential"),
+  createdUtc: timestamp("created_utc"),
+  modifiedUtc: timestamp("modified_utc"),
+  ingestedUtc: timestamp("ingested_utc").defaultNow(),
+});
+
+// ============ DOC PROFILES (Legal meaning of files) ============
+export const docProfiles = pgTable("doc_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileId: varchar("file_id").notNull().references(() => fileItems.id, { onDelete: "cascade" }),
+  docCategory: varchar("doc_category", { length: 50 }).notNull(),
+  docType: varchar("doc_type", { length: 100 }).notNull(),
+  docRole: varchar("doc_role", { length: 50 }).default("primary"),
+  captionTitle: varchar("caption_title", { length: 500 }),
+  party: varchar("party", { length: 50 }),
+  author: varchar("author", { length: 255 }),
+  recipient: varchar("recipient", { length: 255 }),
+  serviceDate: varchar("service_date", { length: 50 }),
+  filingDate: varchar("filing_date", { length: 50 }),
+  hearingDate: varchar("hearing_date", { length: 50 }),
+  docketNumber: varchar("docket_number", { length: 100 }),
+  version: varchar("version", { length: 50 }).default("final"),
+  status: varchar("status", { length: 50 }).default("draft"),
+  privilegeBasis: varchar("privilege_basis", { length: 100 }),
+  productionId: varchar("production_id", { length: 100 }),
+  batesRange: varchar("bates_range", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ============ FILING TAGS ============
+export const filingTags = pgTable("filing_tags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  color: varchar("color", { length: 20 }).default("#6366f1"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ============ FILE TAG JOIN TABLE ============
+export const fileTagLinks = pgTable("file_tag_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileId: varchar("file_id").notNull().references(() => fileItems.id, { onDelete: "cascade" }),
+  tagId: varchar("tag_id").notNull().references(() => filingTags.id, { onDelete: "cascade" }),
+});
+
+// ============ PEOPLE/ORGS (for clean search) ============
+export const peopleOrgs = pgTable("people_orgs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").references(() => matters.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  role: varchar("role", { length: 100 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  company: varchar("company", { length: 255 }),
+  notes: text("notes").default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type exports
 export type BoardRecord = typeof boards.$inferSelect;
 export type InsertBoardRecord = typeof boards.$inferInsert;
@@ -296,3 +368,11 @@ export type GroupRecord = typeof groups.$inferSelect;
 export type InsertGroupRecord = typeof groups.$inferInsert;
 export type TaskRecord = typeof tasks.$inferSelect;
 export type InsertTaskRecord = typeof tasks.$inferInsert;
+export type FileItemRecord = typeof fileItems.$inferSelect;
+export type InsertFileItemRecord = typeof fileItems.$inferInsert;
+export type DocProfileRecord = typeof docProfiles.$inferSelect;
+export type InsertDocProfileRecord = typeof docProfiles.$inferInsert;
+export type FilingTagRecord = typeof filingTags.$inferSelect;
+export type InsertFilingTagRecord = typeof filingTags.$inferInsert;
+export type PeopleOrgRecord = typeof peopleOrgs.$inferSelect;
+export type InsertPeopleOrgRecord = typeof peopleOrgs.$inferInsert;

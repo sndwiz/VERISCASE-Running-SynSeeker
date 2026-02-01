@@ -1,0 +1,210 @@
+Filing Structure 
+
+
+1) Use a two-layer design
+
+Layer A (What the item is) = Document Type taxonomy
+Layer B (What the item is doing in the case) = Case/Workflow metadata
+
+That prevents the classic mess where “Motion” is used to mean 5 different things.
+
+2) Core taxonomy: “Document Type” (controlled list)
+
+This is the “motion / admin correspondence / pleading / discovery / etc.” list. Keep it stable.
+
+A. Pleadings
+	•	Complaint / Petition
+	•	Answer
+	•	Counterclaim / Crossclaim / Third-Party Complaint
+	•	Reply to Counterclaim
+	•	Amended versions (tracked via versioning, not separate types)
+
+B. Motions & Supporting Papers
+	•	Motion (generic container)
+	•	Memorandum / Brief (supporting)
+	•	Declaration / Affidavit
+	•	Exhibit (motion)
+	•	Proposed Order
+	•	Notice of Hearing / Oral Argument Notice
+
+Practical rule: “Motion” is the request; “Memo/Brief” is the argument; “Proposed Order” is the relief format.
+
+C. Court Orders & Rulings
+	•	Order
+	•	Minute Entry / Docket Entry
+	•	Judgment
+	•	Findings / Conclusions
+	•	Transcript
+
+D. Discovery
+	•	Interrogatories
+	•	Requests for Production
+	•	Requests for Admission
+	•	Responses/Objections
+	•	Supplemental Responses
+	•	Deposition Notice
+	•	Subpoena (to nonparty)
+	•	Deposition Transcript
+	•	Discovery Dispute Letter / Joint Statement
+
+E. Correspondence
+
+Split this into two controlled subtypes because it matters:
+	•	Attorney Correspondence (Substantive) (strategy, positions, negotiations)
+	•	Administrative Correspondence (scheduling, logistics, service, copies)
+
+F. Client/Admin/Intake (Non-case-court documents)
+	•	Engagement Letter
+	•	Conflict Check
+	•	ID / KYC (if used)
+	•	Billing / Invoices
+	•	Trust Account / IOLTA (if used)
+	•	Medical Authorizations / HIPAA (if PI)
+	•	Settlement Documents (Release, Settlement Agreement)
+
+G. Evidence / Records
+	•	Produced Documents (incoming)
+	•	Productions (outgoing)
+	•	Photos / Videos / Audio
+	•	Forensic Exports (e.g., Cellebrite)
+	•	Business Records (banking, payroll, etc.)
+
+H. Internal Work Product
+	•	Research Memo
+	•	Draft (internal)
+	•	Notes
+	•	Outline
+	•	Deposition Prep
+	•	Chronology / Timeline
+	•	Damages Model / Calculations
+
+⸻
+
+3) Database tables you actually need (minimal but powerful)
+
+Table 1 — Matter
+	•	matter_id (PK)
+	•	client_name
+	•	matter_name
+	•	jurisdiction
+	•	court
+	•	case_number
+	•	lead_attorney
+	•	open_date, close_date
+
+Table 2 — FileItem (one row per file on the server)
+	•	file_id (PK)
+	•	matter_id (FK)
+	•	server_path (full UNC / relative path)
+	•	file_name
+	•	extension
+	•	size_bytes
+	•	hash_sha256 (dedupe + authenticity)
+	•	created_utc, modified_utc (filesystem)
+	•	ingested_utc
+	•	is_email (bool)
+	•	is_attachment (bool)
+	•	parent_file_id (for attachments / bundles)
+	•	confidentiality (Public / Confidential / AEO / Privileged / Work Product)
+
+Table 3 — DocProfile (the legal meaning; can change without moving files)
+	•	file_id (PK/FK)
+	•	doc_category (Pleading / Motion / Discovery / Correspondence / Evidence / Internal / Admin)
+	•	doc_type (controlled list from Section 2)
+	•	doc_role (Supporting / Primary / Exhibit / Draft / Final)
+	•	caption_title (e.g., “Defendant’s Motion to Dismiss”)
+	•	party (Plaintiff / Defendant / Nonparty / Court / Client / Third Party)
+	•	author (person/org)
+	•	recipient (for letters/emails)
+	•	service_date
+	•	filing_date
+	•	hearing_date
+	•	docket_number (if applicable)
+	•	version (Draft 1 / Draft 2 / Final / Filed)
+	•	status (Draft / Final / Filed / Served / Received)
+
+Table 4 — Tags (optional but useful)
+	•	tag_id, tag_name
+	•	join table FileTag(file_id, tag_id)
+
+Table 5 — PeopleOrg (optional, but makes search clean)
+	•	entity_id, name, type (person/org), role (client/opposing counsel/court etc.)
+
+⸻
+
+4) The classification fields that matter most (what you asked: “motion, admin correspond, pleading…”)
+
+Use two fields, not one:
+	1.	doc_category (broad bucket)
+
+	•	Pleading
+	•	Motion
+	•	Discovery
+	•	Order/Ruling
+	•	Correspondence
+	•	Evidence/Records
+	•	Internal Work Product
+	•	Admin/Operations
+
+	2.	doc_type (specific controlled subtype)
+Examples:
+
+	•	Motion → Motion / Memo / Declaration / Exhibit / Proposed Order / Notice of Hearing
+	•	Correspondence → Substantive / Administrative / Demand Letter / Settlement Communication
+	•	Pleading → Complaint / Answer / Counterclaim / Amended Complaint
+
+This lets you answer:
+	•	“Show me all motions” (category)
+	•	“Show me proposed orders filed with motions” (type)
+	•	“Show me admin emails only” (type)
+
+⸻
+
+5) Suggested folder structure that matches the database (optional but recommended)
+
+You can keep folders simple and let the database do the heavy lifting:
+
+Matter/
+	•	00_Admin
+	•	01_Pleadings
+	•	02_Motions
+	•	03_Orders
+	•	04_Discovery
+	•	05_Correspondence
+	•	06_Evidence_Records
+	•	07_WorkProduct
+	•	99_Archive
+
+The DB ensures even if someone dumps a file in the wrong folder, it’s still searchable and classifiable.
+
+⸻
+
+6) A concrete example row (how this looks in practice)
+
+A filed motion packet might be:
+	•	File A: “Motion to Compel.pdf”
+	•	doc_category: Motion
+	•	doc_type: Motion
+	•	doc_role: Primary
+	•	status: Filed
+	•	docket_number: 34
+	•	File B: “Memo ISO Motion to Compel.pdf”
+	•	doc_category: Motion
+	•	doc_type: Memorandum/Brief
+	•	doc_role: Supporting
+	•	status: Filed
+	•	docket_number: 34-1
+	•	File C: “Exhibits A–F.pdf”
+	•	doc_category: Motion
+	•	doc_type: Exhibit
+	•	doc_role: Supporting
+	•	status: Filed
+	•	docket_number: 34-2
+
+⸻
+
+7) If you want this to be really lawyer-proof
+
+Add these two extras:
+	•	privilege_basis (Attorney-Client / Work Product / Joint Defense / etc.)
+	•	production_id + bates_range (for discovery productions)
