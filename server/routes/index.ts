@@ -8,6 +8,7 @@ import { registerEvidenceRoutes } from "./evidence";
 import { registerDetectiveRoutes } from "./detective";
 import { registerAutomationRoutes } from "./automations";
 import { registerAIRoutes } from "./ai";
+import { registerFilingRoutes } from "./filing";
 
 export function registerAllRoutes(app: Express): void {
   registerBoardRoutes(app);
@@ -19,4 +20,5 @@ export function registerAllRoutes(app: Express): void {
   registerDetectiveRoutes(app);
   registerAutomationRoutes(app);
   registerAIRoutes(app);
+  registerFilingRoutes(app);
 }

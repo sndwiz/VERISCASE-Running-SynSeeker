@@ -38,6 +38,15 @@ import type {
   InsertDetectiveNode,
   DetectiveConnection,
   InsertDetectiveConnection,
+  FileItem,
+  InsertFileItem,
+  DocProfile,
+  InsertDocProfile,
+  FilingTag,
+  InsertFilingTag,
+  PeopleOrg,
+  InsertPeopleOrg,
+  FileItemWithProfile,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -149,6 +158,29 @@ export interface IStorage {
   createDetectiveConnection(data: InsertDetectiveConnection): Promise<DetectiveConnection>;
   updateDetectiveConnection(id: string, data: Partial<DetectiveConnection>): Promise<DetectiveConnection | undefined>;
   deleteDetectiveConnection(id: string): Promise<boolean>;
+
+  // Filing Structure
+  getFileItems(matterId: string): Promise<FileItem[]>;
+  getFileItem(id: string): Promise<FileItem | undefined>;
+  createFileItem(data: InsertFileItem): Promise<FileItem>;
+  updateFileItem(id: string, data: Partial<FileItem>): Promise<FileItem | undefined>;
+  deleteFileItem(id: string): Promise<boolean>;
+  getDocProfile(fileId: string): Promise<DocProfile | undefined>;
+  createDocProfile(data: InsertDocProfile): Promise<DocProfile>;
+  updateDocProfile(fileId: string, data: Partial<DocProfile>): Promise<DocProfile | undefined>;
+  deleteDocProfile(fileId: string): Promise<boolean>;
+  getFileItemsWithProfiles(matterId: string): Promise<FileItemWithProfile[]>;
+  getFileItemWithProfile(id: string): Promise<FileItemWithProfile | undefined>;
+  getFilingTags(): Promise<FilingTag[]>;
+  createFilingTag(data: InsertFilingTag): Promise<FilingTag>;
+  deleteFilingTag(id: string): Promise<boolean>;
+  getFileItemTags(fileId: string): Promise<FilingTag[]>;
+  addTagToFileItem(fileId: string, tagId: string): Promise<void>;
+  removeTagFromFileItem(fileId: string, tagId: string): Promise<void>;
+  getPeopleOrgs(matterId?: string): Promise<PeopleOrg[]>;
+  createPeopleOrg(data: InsertPeopleOrg): Promise<PeopleOrg>;
+  updatePeopleOrg(id: string, data: Partial<PeopleOrg>): Promise<PeopleOrg | undefined>;
+  deletePeopleOrg(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -171,6 +203,11 @@ export class MemStorage implements IStorage {
   private automationRuns: Map<string, AutomationRun> = new Map();
   private detectiveNodes: Map<string, DetectiveNode> = new Map();
   private detectiveConnections: Map<string, DetectiveConnection> = new Map();
+  private fileItems: Map<string, FileItem> = new Map();
+  private docProfiles: Map<string, DocProfile> = new Map();
+  private filingTags: Map<string, FilingTag> = new Map();
+  private fileTagLinks: Map<string, { fileId: string; tagId: string }> = new Map();
+  private peopleOrgs: Map<string, PeopleOrg> = new Map();
 
   constructor() {
     this.initializeSampleData();
@@ -1055,6 +1092,187 @@ export class MemStorage implements IStorage {
 
   async deleteDetectiveConnection(id: string): Promise<boolean> {
     return this.detectiveConnections.delete(id);
+  }
+
+  // Filing Structure - MemStorage stubs (DbStorage is used in production)
+  async getFileItems(matterId: string): Promise<FileItem[]> {
+    return Array.from(this.fileItems.values()).filter(f => f.matterId === matterId);
+  }
+
+  async getFileItem(id: string): Promise<FileItem | undefined> {
+    return this.fileItems.get(id);
+  }
+
+  async createFileItem(data: InsertFileItem): Promise<FileItem> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const file: FileItem = {
+      id,
+      matterId: data.matterId,
+      serverPath: data.serverPath,
+      fileName: data.fileName,
+      extension: data.extension,
+      sizeBytes: data.sizeBytes || 0,
+      hashSha256: data.hashSha256,
+      isEmail: data.isEmail || false,
+      isAttachment: data.isAttachment || false,
+      parentFileId: data.parentFileId,
+      confidentiality: data.confidentiality || "confidential",
+      ingestedUtc: now,
+    };
+    this.fileItems.set(id, file);
+    return file;
+  }
+
+  async updateFileItem(id: string, data: Partial<FileItem>): Promise<FileItem | undefined> {
+    const file = this.fileItems.get(id);
+    if (!file) return undefined;
+    const updated = { ...file, ...data };
+    this.fileItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteFileItem(id: string): Promise<boolean> {
+    return this.fileItems.delete(id);
+  }
+
+  async getDocProfile(fileId: string): Promise<DocProfile | undefined> {
+    return Array.from(this.docProfiles.values()).find(p => p.fileId === fileId);
+  }
+
+  async createDocProfile(data: InsertDocProfile): Promise<DocProfile> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const profile: DocProfile = {
+      id,
+      fileId: data.fileId,
+      docCategory: data.docCategory,
+      docType: data.docType,
+      docRole: data.docRole || "primary",
+      captionTitle: data.captionTitle,
+      party: data.party,
+      author: data.author,
+      recipient: data.recipient,
+      serviceDate: data.serviceDate,
+      filingDate: data.filingDate,
+      hearingDate: data.hearingDate,
+      docketNumber: data.docketNumber,
+      version: data.version || "final",
+      status: data.status || "draft",
+      privilegeBasis: data.privilegeBasis,
+      productionId: data.productionId,
+      batesRange: data.batesRange,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.docProfiles.set(id, profile);
+    return profile;
+  }
+
+  async updateDocProfile(fileId: string, data: Partial<DocProfile>): Promise<DocProfile | undefined> {
+    const profile = Array.from(this.docProfiles.values()).find(p => p.fileId === fileId);
+    if (!profile) return undefined;
+    const updated = { ...profile, ...data, updatedAt: new Date().toISOString() };
+    this.docProfiles.set(profile.id, updated);
+    return updated;
+  }
+
+  async deleteDocProfile(fileId: string): Promise<boolean> {
+    const profile = Array.from(this.docProfiles.values()).find(p => p.fileId === fileId);
+    if (!profile) return false;
+    return this.docProfiles.delete(profile.id);
+  }
+
+  async getFileItemsWithProfiles(matterId: string): Promise<FileItemWithProfile[]> {
+    const files = await this.getFileItems(matterId);
+    const result: FileItemWithProfile[] = [];
+    for (const file of files) {
+      const profile = await this.getDocProfile(file.id);
+      const tags = await this.getFileItemTags(file.id);
+      result.push({ ...file, profile, tags });
+    }
+    return result;
+  }
+
+  async getFileItemWithProfile(id: string): Promise<FileItemWithProfile | undefined> {
+    const file = await this.getFileItem(id);
+    if (!file) return undefined;
+    const profile = await this.getDocProfile(file.id);
+    const tags = await this.getFileItemTags(file.id);
+    return { ...file, profile, tags };
+  }
+
+  async getFilingTags(): Promise<FilingTag[]> {
+    return Array.from(this.filingTags.values());
+  }
+
+  async createFilingTag(data: InsertFilingTag): Promise<FilingTag> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const tag: FilingTag = {
+      id,
+      name: data.name,
+      color: data.color || "#6366f1",
+      createdAt: now,
+    };
+    this.filingTags.set(id, tag);
+    return tag;
+  }
+
+  async deleteFilingTag(id: string): Promise<boolean> {
+    return this.filingTags.delete(id);
+  }
+
+  async getFileItemTags(fileId: string): Promise<FilingTag[]> {
+    const links = Array.from(this.fileTagLinks.values()).filter(l => l.fileId === fileId);
+    return links.map(l => this.filingTags.get(l.tagId)).filter((t): t is FilingTag => !!t);
+  }
+
+  async addTagToFileItem(fileId: string, tagId: string): Promise<void> {
+    const key = `${fileId}-${tagId}`;
+    this.fileTagLinks.set(key, { fileId, tagId });
+  }
+
+  async removeTagFromFileItem(fileId: string, tagId: string): Promise<void> {
+    const key = `${fileId}-${tagId}`;
+    this.fileTagLinks.delete(key);
+  }
+
+  async getPeopleOrgs(matterId?: string): Promise<PeopleOrg[]> {
+    const all = Array.from(this.peopleOrgs.values());
+    return matterId ? all.filter(p => p.matterId === matterId) : all;
+  }
+
+  async createPeopleOrg(data: InsertPeopleOrg): Promise<PeopleOrg> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const entity: PeopleOrg = {
+      id,
+      matterId: data.matterId,
+      name: data.name,
+      entityType: data.entityType,
+      role: data.role,
+      email: data.email,
+      phone: data.phone,
+      company: data.company,
+      notes: data.notes || "",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.peopleOrgs.set(id, entity);
+    return entity;
+  }
+
+  async updatePeopleOrg(id: string, data: Partial<PeopleOrg>): Promise<PeopleOrg | undefined> {
+    const entity = this.peopleOrgs.get(id);
+    if (!entity) return undefined;
+    const updated = { ...entity, ...data, updatedAt: new Date().toISOString() };
+    this.peopleOrgs.set(id, updated);
+    return updated;
+  }
+
+  async deletePeopleOrg(id: string): Promise<boolean> {
+    return this.peopleOrgs.delete(id);
   }
 }
 
