@@ -42,6 +42,15 @@ import type {
   DetectiveConnection,
   InsertDetectiveConnection,
   Person,
+  FileItem,
+  InsertFileItem,
+  DocProfile,
+  InsertDocProfile,
+  FilingTag,
+  InsertFilingTag,
+  PeopleOrg,
+  InsertPeopleOrg,
+  FileItemWithProfile,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -1407,6 +1416,310 @@ export class DbStorage implements IStorage {
 
   async deleteDetectiveConnection(id: string): Promise<boolean> {
     await db.delete(tables.detectiveConnections).where(eq(tables.detectiveConnections.id, id));
+    return true;
+  }
+
+  // ============ FILE ITEMS ============
+
+  async getFileItems(matterId: string): Promise<FileItem[]> {
+    const rows = await db.select().from(tables.fileItems).where(eq(tables.fileItems.matterId, matterId));
+    return rows.map(r => this.rowToFileItem(r));
+  }
+
+  async getFileItem(id: string): Promise<FileItem | undefined> {
+    const [row] = await db.select().from(tables.fileItems).where(eq(tables.fileItems.id, id));
+    if (!row) return undefined;
+    return this.rowToFileItem(row);
+  }
+
+  private rowToFileItem(r: any): FileItem {
+    return {
+      id: r.id,
+      matterId: r.matterId,
+      serverPath: r.serverPath,
+      fileName: r.fileName,
+      extension: r.extension || undefined,
+      sizeBytes: r.sizeBytes || 0,
+      hashSha256: r.hashSha256 || undefined,
+      isEmail: r.isEmail || false,
+      isAttachment: r.isAttachment || false,
+      parentFileId: r.parentFileId || undefined,
+      confidentiality: r.confidentiality || "confidential",
+      createdUtc: toISOString(r.createdUtc) || undefined,
+      modifiedUtc: toISOString(r.modifiedUtc) || undefined,
+      ingestedUtc: toISOString(r.ingestedUtc) || new Date().toISOString(),
+    };
+  }
+
+  async createFileItem(data: InsertFileItem): Promise<FileItem> {
+    const id = randomUUID();
+    const now = new Date();
+    const [row] = await db.insert(tables.fileItems).values({
+      id,
+      matterId: data.matterId,
+      serverPath: data.serverPath,
+      fileName: data.fileName,
+      extension: data.extension,
+      sizeBytes: data.sizeBytes || 0,
+      hashSha256: data.hashSha256,
+      isEmail: data.isEmail || false,
+      isAttachment: data.isAttachment || false,
+      parentFileId: data.parentFileId,
+      confidentiality: data.confidentiality || "confidential",
+      ingestedUtc: now,
+    }).returning();
+    return this.rowToFileItem(row);
+  }
+
+  async updateFileItem(id: string, data: Partial<FileItem>): Promise<FileItem | undefined> {
+    const { ingestedUtc, createdUtc, modifiedUtc, ...updateData } = data as any;
+    const [row] = await db.update(tables.fileItems).set(updateData).where(eq(tables.fileItems.id, id)).returning();
+    if (!row) return undefined;
+    return this.rowToFileItem(row);
+  }
+
+  async deleteFileItem(id: string): Promise<boolean> {
+    await db.delete(tables.fileItems).where(eq(tables.fileItems.id, id));
+    return true;
+  }
+
+  // ============ DOC PROFILES ============
+
+  async getDocProfile(fileId: string): Promise<DocProfile | undefined> {
+    const [row] = await db.select().from(tables.docProfiles).where(eq(tables.docProfiles.fileId, fileId));
+    if (!row) return undefined;
+    return this.rowToDocProfile(row);
+  }
+
+  private rowToDocProfile(r: any): DocProfile {
+    return {
+      id: r.id,
+      fileId: r.fileId,
+      docCategory: r.docCategory,
+      docType: r.docType,
+      docRole: r.docRole || "primary",
+      captionTitle: r.captionTitle || undefined,
+      party: r.party || undefined,
+      author: r.author || undefined,
+      recipient: r.recipient || undefined,
+      serviceDate: r.serviceDate || undefined,
+      filingDate: r.filingDate || undefined,
+      hearingDate: r.hearingDate || undefined,
+      docketNumber: r.docketNumber || undefined,
+      version: r.version || "final",
+      status: r.status || "draft",
+      privilegeBasis: r.privilegeBasis || undefined,
+      productionId: r.productionId || undefined,
+      batesRange: r.batesRange || undefined,
+      createdAt: toISOString(r.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(r.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async createDocProfile(data: InsertDocProfile): Promise<DocProfile> {
+    const id = randomUUID();
+    const now = new Date();
+    const [row] = await db.insert(tables.docProfiles).values({
+      id,
+      fileId: data.fileId,
+      docCategory: data.docCategory,
+      docType: data.docType,
+      docRole: data.docRole || "primary",
+      captionTitle: data.captionTitle,
+      party: data.party,
+      author: data.author,
+      recipient: data.recipient,
+      serviceDate: data.serviceDate,
+      filingDate: data.filingDate,
+      hearingDate: data.hearingDate,
+      docketNumber: data.docketNumber,
+      version: data.version || "final",
+      status: data.status || "draft",
+      privilegeBasis: data.privilegeBasis,
+      productionId: data.productionId,
+      batesRange: data.batesRange,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return this.rowToDocProfile(row);
+  }
+
+  async updateDocProfile(fileId: string, data: Partial<DocProfile>): Promise<DocProfile | undefined> {
+    const { createdAt, updatedAt, ...updateData } = data as any;
+    const updateWithTime = { ...updateData, updatedAt: new Date() };
+    const [row] = await db.update(tables.docProfiles).set(updateWithTime).where(eq(tables.docProfiles.fileId, fileId)).returning();
+    if (!row) return undefined;
+    return this.rowToDocProfile(row);
+  }
+
+  async deleteDocProfile(fileId: string): Promise<boolean> {
+    await db.delete(tables.docProfiles).where(eq(tables.docProfiles.fileId, fileId));
+    return true;
+  }
+
+  // ============ FILE ITEMS WITH PROFILES ============
+
+  async getFileItemsWithProfiles(matterId: string): Promise<FileItemWithProfile[]> {
+    const fileItems = await this.getFileItems(matterId);
+    const result: FileItemWithProfile[] = [];
+    for (const file of fileItems) {
+      const profile = await this.getDocProfile(file.id);
+      const tags = await this.getFileItemTags(file.id);
+      result.push({ ...file, profile, tags });
+    }
+    return result;
+  }
+
+  async getFileItemWithProfile(id: string): Promise<FileItemWithProfile | undefined> {
+    const file = await this.getFileItem(id);
+    if (!file) return undefined;
+    const profile = await this.getDocProfile(file.id);
+    const tags = await this.getFileItemTags(file.id);
+    return { ...file, profile, tags };
+  }
+
+  // ============ FILING TAGS ============
+
+  async getFilingTags(): Promise<FilingTag[]> {
+    const rows = await db.select().from(tables.filingTags);
+    return rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      color: r.color || "#6366f1",
+      createdAt: toISOString(r.createdAt) || new Date().toISOString(),
+    }));
+  }
+
+  async createFilingTag(data: InsertFilingTag): Promise<FilingTag> {
+    const id = randomUUID();
+    const now = new Date();
+    const [row] = await db.insert(tables.filingTags).values({
+      id,
+      name: data.name,
+      color: data.color || "#6366f1",
+      createdAt: now,
+    }).returning();
+    return {
+      id: row.id,
+      name: row.name,
+      color: row.color || "#6366f1",
+      createdAt: toISOString(row.createdAt) || now.toISOString(),
+    };
+  }
+
+  async deleteFilingTag(id: string): Promise<boolean> {
+    await db.delete(tables.filingTags).where(eq(tables.filingTags.id, id));
+    return true;
+  }
+
+  // ============ FILE TAG LINKS ============
+
+  async getFileItemTags(fileId: string): Promise<FilingTag[]> {
+    const links = await db.select().from(tables.fileTagLinks).where(eq(tables.fileTagLinks.fileId, fileId));
+    const tags: FilingTag[] = [];
+    for (const link of links) {
+      const [tag] = await db.select().from(tables.filingTags).where(eq(tables.filingTags.id, link.tagId));
+      if (tag) {
+        tags.push({
+          id: tag.id,
+          name: tag.name,
+          color: tag.color || "#6366f1",
+          createdAt: toISOString(tag.createdAt) || new Date().toISOString(),
+        });
+      }
+    }
+    return tags;
+  }
+
+  async addTagToFileItem(fileId: string, tagId: string): Promise<void> {
+    const existing = await db.select().from(tables.fileTagLinks).where(
+      and(eq(tables.fileTagLinks.fileId, fileId), eq(tables.fileTagLinks.tagId, tagId))
+    );
+    if (existing.length === 0) {
+      await db.insert(tables.fileTagLinks).values({ id: randomUUID(), fileId, tagId });
+    }
+  }
+
+  async removeTagFromFileItem(fileId: string, tagId: string): Promise<void> {
+    await db.delete(tables.fileTagLinks).where(
+      and(eq(tables.fileTagLinks.fileId, fileId), eq(tables.fileTagLinks.tagId, tagId))
+    );
+  }
+
+  // ============ PEOPLE/ORGS ============
+
+  async getPeopleOrgs(matterId?: string): Promise<PeopleOrg[]> {
+    const rows = matterId 
+      ? await db.select().from(tables.peopleOrgs).where(eq(tables.peopleOrgs.matterId, matterId))
+      : await db.select().from(tables.peopleOrgs);
+    return rows.map(r => ({
+      id: r.id,
+      matterId: r.matterId || undefined,
+      name: r.name,
+      entityType: r.entityType as any,
+      role: r.role as any || undefined,
+      email: r.email || undefined,
+      phone: r.phone || undefined,
+      company: r.company || undefined,
+      notes: r.notes || "",
+      createdAt: toISOString(r.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(r.updatedAt) || new Date().toISOString(),
+    }));
+  }
+
+  async createPeopleOrg(data: InsertPeopleOrg): Promise<PeopleOrg> {
+    const id = randomUUID();
+    const now = new Date();
+    const [row] = await db.insert(tables.peopleOrgs).values({
+      id,
+      matterId: data.matterId,
+      name: data.name,
+      entityType: data.entityType,
+      role: data.role,
+      email: data.email,
+      phone: data.phone,
+      company: data.company,
+      notes: data.notes || "",
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return {
+      id: row.id,
+      matterId: row.matterId || undefined,
+      name: row.name,
+      entityType: row.entityType as any,
+      role: row.role as any || undefined,
+      email: row.email || undefined,
+      phone: row.phone || undefined,
+      company: row.company || undefined,
+      notes: row.notes || "",
+      createdAt: toISOString(row.createdAt) || now.toISOString(),
+      updatedAt: toISOString(row.updatedAt) || now.toISOString(),
+    };
+  }
+
+  async updatePeopleOrg(id: string, data: Partial<PeopleOrg>): Promise<PeopleOrg | undefined> {
+    const { createdAt, updatedAt, ...updateData } = data as any;
+    const updateWithTime = { ...updateData, updatedAt: new Date() };
+    const [row] = await db.update(tables.peopleOrgs).set(updateWithTime).where(eq(tables.peopleOrgs.id, id)).returning();
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      matterId: row.matterId || undefined,
+      name: row.name,
+      entityType: row.entityType as any,
+      role: row.role as any || undefined,
+      email: row.email || undefined,
+      phone: row.phone || undefined,
+      company: row.company || undefined,
+      notes: row.notes || "",
+      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
+      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+    };
+  }
+
+  async deletePeopleOrg(id: string): Promise<boolean> {
+    await db.delete(tables.peopleOrgs).where(eq(tables.peopleOrgs.id, id));
     return true;
   }
 }
