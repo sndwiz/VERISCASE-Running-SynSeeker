@@ -35,6 +35,7 @@ import ClientsPage from "@/pages/clients";
 import EvidenceVaultPage from "@/pages/evidence-vault";
 import DetectiveBoardPage from "@/pages/detective-board";
 import AutomationsPage from "@/pages/automations";
+import FilingCabinetPage from "@/pages/filing-cabinet";
 
 import type { Board } from "@shared/schema";
 
@@ -49,7 +50,7 @@ function Router() {
       <Route path="/automations" component={AutomationsPage} />
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
-      <Route path="/documents" component={DocumentsPage} />
+      <Route path="/documents" component={FilingCabinetPage} />
       <Route path="/time-tracking" component={TimeTrackingPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/approvals" component={ApprovalsPage} />

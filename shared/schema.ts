@@ -879,6 +879,9 @@ export type DocCategory =
   | "internal-work-product"
   | "admin-operations";
 
+// Document Type - all possible types across categories
+export type DocType = string;
+
 // Document Types by Category
 export const docTypesByCategory: Record<DocCategory, string[]> = {
   "pleading": [
@@ -970,15 +973,37 @@ export const docCategoryLabels: Record<DocCategory, { label: string; icon: strin
 
 // Document roles
 export type DocRole = "primary" | "supporting" | "exhibit" | "draft" | "final";
+export const DOC_ROLES: DocRole[] = ["primary", "supporting", "exhibit", "draft", "final"];
 
 // Document parties
 export type DocParty = "plaintiff" | "defendant" | "nonparty" | "court" | "client" | "third-party";
+export const DOC_PARTIES: DocParty[] = ["plaintiff", "defendant", "nonparty", "court", "client", "third-party"];
 
 // Document version status
 export type DocVersionStatus = "draft" | "final" | "filed" | "served" | "received";
 
 // Privilege basis
 export type PrivilegeBasis = "attorney-client" | "work-product" | "joint-defense" | "common-interest" | "none";
+
+// Constant arrays for UI components
+export const DOC_CATEGORIES: DocCategory[] = [
+  "pleading",
+  "motion",
+  "discovery",
+  "order-ruling",
+  "correspondence",
+  "evidence-records",
+  "internal-work-product",
+  "admin-operations"
+];
+
+export const CONFIDENTIALITY_LEVELS: ConfidentialityLevel[] = [
+  "public",
+  "confidential",
+  "aeo",
+  "privileged",
+  "work-product"
+];
 
 // Entity types for PeopleOrg
 export type EntityType = "person" | "organization";
@@ -1076,7 +1101,7 @@ export const updateFileItemSchema = insertFileItemSchema.partial().omit({ matter
 export const insertDocProfileSchema = z.object({
   fileId: z.string(),
   docCategory: z.enum(["pleading", "motion", "discovery", "order-ruling", "correspondence", "evidence-records", "internal-work-product", "admin-operations"]),
-  docType: z.string(),
+  docType: z.string().min(1),
   docRole: z.enum(["primary", "supporting", "exhibit", "draft", "final"]).optional().default("primary"),
   captionTitle: z.string().optional(),
   party: z.enum(["plaintiff", "defendant", "nonparty", "court", "client", "third-party"]).optional(),
@@ -1091,9 +1116,46 @@ export const insertDocProfileSchema = z.object({
   privilegeBasis: z.enum(["attorney-client", "work-product", "joint-defense", "common-interest", "none"]).optional(),
   productionId: z.string().optional(),
   batesRange: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const validTypes = docTypesByCategory[data.docCategory];
+  if (!validTypes.includes(data.docType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid docType "${data.docType}" for category "${data.docCategory}"`,
+      path: ["docType"],
+    });
+  }
 });
 
-export const updateDocProfileSchema = insertDocProfileSchema.partial().omit({ fileId: true });
+export const updateDocProfileSchema = z.object({
+  docCategory: z.enum(["pleading", "motion", "discovery", "order-ruling", "correspondence", "evidence-records", "internal-work-product", "admin-operations"]).optional(),
+  docType: z.string().min(1).optional(),
+  docRole: z.enum(["primary", "supporting", "exhibit", "draft", "final"]).optional(),
+  captionTitle: z.string().optional(),
+  party: z.enum(["plaintiff", "defendant", "nonparty", "court", "client", "third-party"]).optional(),
+  author: z.string().optional(),
+  recipient: z.string().optional(),
+  serviceDate: z.string().optional(),
+  filingDate: z.string().optional(),
+  hearingDate: z.string().optional(),
+  docketNumber: z.string().optional(),
+  version: z.enum(["draft", "final", "filed", "served", "received"]).optional(),
+  status: z.enum(["draft", "final", "filed", "served", "received"]).optional(),
+  privilegeBasis: z.enum(["attorney-client", "work-product", "joint-defense", "common-interest", "none"]).optional(),
+  productionId: z.string().optional(),
+  batesRange: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.docCategory && data.docType) {
+    const validTypes = docTypesByCategory[data.docCategory];
+    if (!validTypes.includes(data.docType)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid docType "${data.docType}" for category "${data.docCategory}"`,
+        path: ["docType"],
+      });
+    }
+  }
+});
 
 export const insertFilingTagSchema = z.object({
   name: z.string().min(1),

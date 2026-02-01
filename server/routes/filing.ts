@@ -2,9 +2,12 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import {
   insertFileItemSchema,
+  updateFileItemSchema,
   insertDocProfileSchema,
+  updateDocProfileSchema,
   insertFilingTagSchema,
   insertPeopleOrgSchema,
+  updatePeopleOrgSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -48,12 +51,16 @@ export function registerFilingRoutes(app: Express): void {
 
   app.patch("/api/files/:id", async (req, res) => {
     try {
-      const file = await storage.updateFileItem(req.params.id, req.body);
+      const data = updateFileItemSchema.parse(req.body);
+      const file = await storage.updateFileItem(req.params.id, data);
       if (!file) {
         return res.status(404).json({ error: "File not found" });
       }
       res.json(file);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update file" });
     }
   });
@@ -97,12 +104,30 @@ export function registerFilingRoutes(app: Express): void {
 
   app.patch("/api/files/:fileId/profile", async (req, res) => {
     try {
-      const profile = await storage.updateDocProfile(req.params.fileId, req.body);
+      const data = updateDocProfileSchema.parse(req.body);
+      
+      if (data.docType && !data.docCategory) {
+        const existingProfile = await storage.getDocProfile(req.params.fileId);
+        if (existingProfile) {
+          const { docTypesByCategory } = await import("@shared/schema");
+          const validTypes = docTypesByCategory[existingProfile.docCategory];
+          if (!validTypes.includes(data.docType)) {
+            return res.status(400).json({ 
+              error: `Invalid docType "${data.docType}" for existing category "${existingProfile.docCategory}"` 
+            });
+          }
+        }
+      }
+      
+      const profile = await storage.updateDocProfile(req.params.fileId, data);
       if (!profile) {
         return res.status(404).json({ error: "Profile not found" });
       }
       res.json(profile);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
@@ -208,12 +233,16 @@ export function registerFilingRoutes(app: Express): void {
 
   app.patch("/api/people-orgs/:id", async (req, res) => {
     try {
-      const entity = await storage.updatePeopleOrg(req.params.id, req.body);
+      const data = updatePeopleOrgSchema.parse(req.body);
+      const entity = await storage.updatePeopleOrg(req.params.id, data);
       if (!entity) {
         return res.status(404).json({ error: "Person/org not found" });
       }
       res.json(entity);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update person/org" });
     }
   });
