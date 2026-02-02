@@ -4,6 +4,8 @@ export interface Conversation {
   id: number;
   title: string;
   model: string;
+  matterId?: string;
+  systemPrompt?: string;
   createdAt: Date;
 }
 
@@ -18,7 +20,9 @@ export interface Message {
 export interface IChatStorage {
   getConversation(id: number): Promise<Conversation | undefined>;
   getAllConversations(): Promise<Conversation[]>;
-  createConversation(title: string, model?: string): Promise<Conversation>;
+  getConversationsByMatter(matterId: string): Promise<Conversation[]>;
+  createConversation(title: string, model?: string, matterId?: string, systemPrompt?: string): Promise<Conversation>;
+  updateConversation(id: number, updates: Partial<Pick<Conversation, 'title' | 'matterId' | 'systemPrompt'>>): Promise<Conversation | undefined>;
   deleteConversation(id: number): Promise<void>;
   getMessagesByConversation(conversationId: number): Promise<Message[]>;
   createMessage(conversationId: number, role: string, content: string): Promise<Message>;
@@ -40,16 +44,41 @@ class MemoryChatStorage implements IChatStorage {
     );
   }
 
-  async createConversation(title: string, model: string = "claude-sonnet-4-5"): Promise<Conversation> {
+  async getConversationsByMatter(matterId: string): Promise<Conversation[]> {
+    return Array.from(this.conversations.values())
+      .filter((c) => c.matterId === matterId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async createConversation(
+    title: string, 
+    model: string = "claude-sonnet-4-5",
+    matterId?: string,
+    systemPrompt?: string
+  ): Promise<Conversation> {
     const id = this.conversationIdCounter++;
     const conversation: Conversation = {
       id,
       title,
       model,
+      matterId,
+      systemPrompt,
       createdAt: new Date(),
     };
     this.conversations.set(id, conversation);
     return conversation;
+  }
+
+  async updateConversation(
+    id: number,
+    updates: Partial<Pick<Conversation, 'title' | 'matterId' | 'systemPrompt'>>
+  ): Promise<Conversation | undefined> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) return undefined;
+    
+    const updated = { ...conversation, ...updates };
+    this.conversations.set(id, updated);
+    return updated;
   }
 
   async deleteConversation(id: number): Promise<void> {

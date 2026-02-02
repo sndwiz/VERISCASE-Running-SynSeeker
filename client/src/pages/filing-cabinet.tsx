@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   FileText, 
   FolderOpen,
@@ -36,7 +42,11 @@ import {
   FileQuestion,
   FileCheck,
   Briefcase,
-  FolderLock
+  FolderLock,
+  Upload,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -111,6 +121,14 @@ function formatDate(dateStr: string | undefined): string {
   });
 }
 
+interface BatchUploadResult {
+  total: number;
+  successCount: number;
+  failedCount: number;
+  files: any[];
+  errors: { index: number; error: string }[];
+}
+
 export default function FilingCabinetPage() {
   const { toast } = useToast();
   const [selectedMatterId, setSelectedMatterId] = useState<string>("");
@@ -119,6 +137,10 @@ export default function FilingCabinetPage() {
   const [selectedFile, setSelectedFile] = useState<FileItemWithProfile | null>(null);
   const [showAddFileDialog, setShowAddFileDialog] = useState(false);
   const [showClassifyDialog, setShowClassifyDialog] = useState(false);
+  const [showBatchUploadDialog, setShowBatchUploadDialog] = useState(false);
+  const [batchUploadText, setBatchUploadText] = useState("");
+  const [batchUploadResult, setBatchUploadResult] = useState<BatchUploadResult | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const [addFileForm, setAddFileForm] = useState({
     serverPath: "",
@@ -171,6 +193,87 @@ export default function FilingCabinetPage() {
       toast({ title: "Failed to add file", variant: "destructive" });
     },
   });
+
+  const batchUploadMutation = useMutation({
+    mutationFn: async (files: { fileName: string; extension: string; serverPath?: string; confidentiality: ConfidentialityLevel }[]) => {
+      const res = await apiRequest("POST", `/api/matters/${selectedMatterId}/files/batch`, { files });
+      return res.json();
+    },
+    onSuccess: (result: BatchUploadResult) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatterId, "files"] });
+      setBatchUploadResult(result);
+      if (result.failedCount === 0) {
+        toast({ title: `Successfully uploaded ${result.successCount} files` });
+      } else {
+        toast({ 
+          title: `Uploaded ${result.successCount} of ${result.total} files`,
+          description: `${result.failedCount} files failed`,
+          variant: "destructive"
+        });
+      }
+    },
+    onError: () => {
+      toast({ title: "Failed to batch upload files", variant: "destructive" });
+    },
+  });
+
+  const handleBatchUpload = useCallback(() => {
+    if (!selectedMatterId) {
+      toast({ title: "Please select a matter first", variant: "destructive" });
+      return;
+    }
+    
+    const lines = batchUploadText.split("\n").filter(line => line.trim());
+    const files = lines.map(line => {
+      const parts = line.split(/[,\t]/).map(p => p.trim());
+      const fileName = parts[0] || "";
+      const extension = fileName.split(".").pop() || "";
+      return {
+        fileName,
+        extension,
+        serverPath: parts[1] || `/matters/${selectedMatterId}/files/`,
+        confidentiality: "confidential" as ConfidentialityLevel,
+      };
+    }).filter(f => f.fileName);
+    
+    if (files.length === 0) {
+      toast({ title: "No valid files to upload", variant: "destructive" });
+      return;
+    }
+    
+    if (files.length > 100) {
+      toast({ 
+        title: "Too many files", 
+        description: "Maximum 100 files per batch. Please split into multiple uploads.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    batchUploadMutation.mutate(files);
+  }, [batchUploadText, selectedMatterId, toast]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length === 0) return;
+    
+    const fileEntries = droppedFiles.map(f => f.name).join("\n");
+    setBatchUploadText(prev => prev ? prev + "\n" + fileEntries : fileEntries);
+    setShowBatchUploadDialog(true);
+  }, []);
 
   const createProfileMutation = useMutation({
     mutationFn: (data: { fileId: string; profile: typeof classifyForm }) =>
@@ -282,10 +385,30 @@ export default function FilingCabinetPage() {
             </SelectContent>
           </Select>
           {selectedMatterId && (
-            <Button onClick={() => setShowAddFileDialog(true)} data-testid="button-add-file">
-              <Plus className="h-4 w-4 mr-2" />
-              Add File
-            </Button>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowBatchUploadDialog(true)} 
+                    data-testid="button-batch-upload"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Batch Upload
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Upload multiple files at once</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowAddFileDialog(true)} data-testid="button-add-file">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add File
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add a single file</TooltipContent>
+              </Tooltip>
+            </>
           )}
         </div>
       </div>
@@ -684,6 +807,126 @@ export default function FilingCabinetPage() {
             >
               Save Classification
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBatchUploadDialog} onOpenChange={(open) => {
+        setShowBatchUploadDialog(open);
+        if (!open) {
+          setBatchUploadResult(null);
+          setBatchUploadText("");
+        }
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Batch Upload Files
+            </DialogTitle>
+            <DialogDescription>
+              Upload multiple files at once. Enter one file per line, or drag and drop files onto this dialog.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div
+            className={`space-y-4 ${isDragging ? "opacity-50" : ""}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+              }`}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Drag and drop files here, or enter file names below
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>File List (one per line)</Label>
+              <Textarea
+                value={batchUploadText}
+                onChange={(e) => setBatchUploadText(e.target.value)}
+                placeholder={`Enter file names, one per line:\nDocument1.pdf\nMotion.docx\nExhibit-A.pdf`}
+                className="min-h-[150px] font-mono text-sm"
+                data-testid="textarea-batch-files"
+              />
+              <p className="text-xs text-muted-foreground">
+                Format: filename[,server_path] - Optional path separated by comma or tab
+              </p>
+            </div>
+
+            {batchUploadText && (() => {
+              const fileCount = batchUploadText.split("\n").filter(l => l.trim()).length;
+              const isOverLimit = fileCount > 100;
+              return (
+                <div className={`text-sm ${isOverLimit ? "text-red-600" : "text-muted-foreground"}`}>
+                  {fileCount} files ready to upload
+                  {isOverLimit && " (exceeds 100 file limit)"}
+                </div>
+              );
+            })()}
+
+            {batchUploadResult && (
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>{batchUploadResult.successCount} uploaded</span>
+                    </div>
+                    {batchUploadResult.failedCount > 0 && (
+                      <div className="flex items-center gap-2 text-red-600">
+                        <XCircle className="h-4 w-4" />
+                        <span>{batchUploadResult.failedCount} failed</span>
+                      </div>
+                    )}
+                  </div>
+                  {batchUploadResult.errors.length > 0 && (
+                    <div className="text-sm text-red-600">
+                      <p className="font-medium mb-1">Errors:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        {batchUploadResult.errors.slice(0, 5).map((err, idx) => (
+                          <li key={idx}>Line {err.index + 1}: {err.error}</li>
+                        ))}
+                        {batchUploadResult.errors.length > 5 && (
+                          <li>...and {batchUploadResult.errors.length - 5} more errors</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchUploadDialog(false)}>
+              {batchUploadResult ? "Close" : "Cancel"}
+            </Button>
+            {!batchUploadResult && (
+              <Button 
+                onClick={handleBatchUpload}
+                disabled={!batchUploadText.trim() || batchUploadMutation.isPending}
+                data-testid="button-submit-batch-upload"
+              >
+                {batchUploadMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Files
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

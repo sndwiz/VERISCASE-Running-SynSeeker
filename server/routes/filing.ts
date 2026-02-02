@@ -49,6 +49,54 @@ export function registerFilingRoutes(app: Express): void {
     }
   });
 
+  // Batch upload files
+  app.post("/api/matters/:matterId/files/batch", async (req, res) => {
+    try {
+      const { files } = req.body;
+      
+      if (!Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ error: "files array is required" });
+      }
+
+      if (files.length > 100) {
+        return res.status(400).json({ error: "Maximum 100 files per batch" });
+      }
+
+      const results: { success: any[]; failed: { index: number; error: string }[] } = {
+        success: [],
+        failed: [],
+      };
+
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const data = insertFileItemSchema.parse({
+            ...files[i],
+            matterId: req.params.matterId,
+          });
+          const file = await storage.createFileItem(data);
+          results.success.push(file);
+        } catch (error) {
+          results.failed.push({
+            index: i,
+            error: error instanceof z.ZodError 
+              ? error.errors.map(e => e.message).join(", ")
+              : "Failed to create file",
+          });
+        }
+      }
+
+      res.status(201).json({
+        total: files.length,
+        successCount: results.success.length,
+        failedCount: results.failed.length,
+        files: results.success,
+        errors: results.failed,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to batch upload files" });
+    }
+  });
+
   app.patch("/api/files/:id", async (req, res) => {
     try {
       const data = updateFileItemSchema.parse(req.body);

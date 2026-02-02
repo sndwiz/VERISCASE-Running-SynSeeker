@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,10 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bot, Send, Plus, Trash2, MessageSquare, Loader2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Bot, Send, Plus, Trash2, MessageSquare, Loader2, Briefcase, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Matter } from "@shared/schema";
 
 interface AIModel {
   id: string;
@@ -36,6 +43,8 @@ interface Conversation {
   id: number;
   title: string;
   model: string;
+  matterId?: string;
+  systemPrompt?: string;
   createdAt: string;
   messages?: Message[];
 }
@@ -46,12 +55,17 @@ export default function AIChatPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
+  const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: modelsData } = useQuery<{ models: AIModel[] }>({
     queryKey: ["/api/ai/models"],
+  });
+
+  const { data: matters = [] } = useQuery<Matter[]>({
+    queryKey: ["/api/matters"],
   });
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
@@ -67,10 +81,11 @@ export default function AIChatPage() {
     if (currentConversation?.model) {
       setSelectedModel(currentConversation.model);
     }
-  }, [currentConversation?.model]);
+    setSelectedMatterId(currentConversation?.matterId || null);
+  }, [currentConversation?.model, currentConversation?.matterId]);
 
   const createConversationMutation = useMutation({
-    mutationFn: async (data: { title: string; model: string }) => {
+    mutationFn: async (data: { title: string; model: string; matterId?: string }) => {
       const res = await apiRequest("POST", "/api/conversations", data);
       return res.json();
     },
@@ -96,6 +111,35 @@ export default function AIChatPage() {
     },
   });
 
+  const updateConversationMutation = useMutation({
+    mutationFn: async (data: { id: number; matterId?: string | null }) => {
+      const res = await apiRequest("PATCH", `/api/conversations/${data.id}`, {
+        matterId: data.matterId || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      if (selectedConversationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversationId] });
+      }
+      toast({ title: "Conversation updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update conversation", variant: "destructive" });
+    },
+  });
+
+  const handleMatterChange = (matterId: string | null) => {
+    setSelectedMatterId(matterId);
+    if (selectedConversationId && currentConversation) {
+      updateConversationMutation.mutate({ 
+        id: selectedConversationId, 
+        matterId: matterId 
+      });
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -105,9 +149,11 @@ export default function AIChatPage() {
   }, [currentConversation?.messages, streamingContent]);
 
   const handleNewChat = () => {
+    const matter = selectedMatterId ? matters.find(m => m.id === selectedMatterId) : null;
     createConversationMutation.mutate({
-      title: "New Chat",
+      title: matter ? `Chat: ${matter.title}` : "New Chat",
       model: selectedModel,
+      matterId: selectedMatterId || undefined,
     });
   };
 
@@ -196,25 +242,66 @@ export default function AIChatPage() {
           </Button>
         </div>
 
-        <div className="p-4 border-b">
-          <label className="text-xs text-muted-foreground mb-2 block" data-testid="label-ai-model">AI Model</label>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger data-testid="select-model">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              {models.filter(m => m.available).map((model) => (
-                <SelectItem key={model.id} value={model.id} data-testid={`select-item-model-${model.id}`}>
-                  {model.name}
+        <div className="p-4 border-b space-y-3">
+          <div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="text-xs text-muted-foreground mb-2 block cursor-help" data-testid="label-link-matter">
+                  <Link className="h-3 w-3 inline mr-1" />
+                  Link to Matter
+                </label>
+              </TooltipTrigger>
+              <TooltipContent>
+                Link this conversation to a case/matter to give the AI context about the case
+              </TooltipContent>
+            </Tooltip>
+            <Select 
+              value={selectedMatterId || "__none__"} 
+              onValueChange={(v) => handleMatterChange(v === "__none__" ? null : v)}
+            >
+              <SelectTrigger data-testid="select-matter">
+                <SelectValue placeholder="Select matter (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" data-testid="select-item-no-matter">
+                  No matter linked
                 </SelectItem>
-              ))}
-              {models.filter(m => !m.available).length > 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1 pt-1" data-testid="text-more-providers">
-                  More providers coming soon
-                </div>
-              )}
-            </SelectContent>
-          </Select>
+                {matters.map((matter) => (
+                  <SelectItem key={matter.id} value={matter.id} data-testid={`select-item-matter-${matter.id}`}>
+                    {matter.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="text-xs text-muted-foreground mb-2 block cursor-help" data-testid="label-ai-model">AI Model</label>
+              </TooltipTrigger>
+              <TooltipContent>
+                Select the AI model to use for this conversation
+              </TooltipContent>
+            </Tooltip>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger data-testid="select-model">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.filter(m => m.available).map((model) => (
+                  <SelectItem key={model.id} value={model.id} data-testid={`select-item-model-${model.id}`}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+                {models.filter(m => !m.available).length > 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1 pt-1" data-testid="text-more-providers">
+                    More providers coming soon
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
