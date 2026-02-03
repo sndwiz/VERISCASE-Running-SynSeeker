@@ -151,7 +151,7 @@ export default function AIChatPage() {
   const handleNewChat = () => {
     const matter = selectedMatterId ? matters.find(m => m.id === selectedMatterId) : null;
     createConversationMutation.mutate({
-      title: matter ? `Chat: ${matter.title}` : "New Chat",
+      title: matter ? `Chat: ${matter.name}` : "New Chat",
       model: selectedModel,
       matterId: selectedMatterId || undefined,
     });
@@ -268,7 +268,7 @@ export default function AIChatPage() {
                 </SelectItem>
                 {matters.map((matter) => (
                   <SelectItem key={matter.id} value={matter.id} data-testid={`select-item-matter-${matter.id}`}>
-                    {matter.title}
+                    {matter.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -353,11 +353,14 @@ export default function AIChatPage() {
                 </div>
               ) : displayMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center" data-testid="section-empty-conversation">
-                  <Bot className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h2 className="text-xl font-semibold mb-2" data-testid="text-assistant-header">VERICASE AI Assistant</h2>
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mb-4 shadow-lg">
+                    <Bot className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">ClaudBot</h2>
+                  <p className="text-lg text-muted-foreground mb-1">Your AI Legal Assistant</p>
                   <p className="text-muted-foreground max-w-md" data-testid="text-assistant-description">
-                    Ask me anything about your legal cases, documents, or evidence.
-                    I can help with research, analysis, and document review.
+                    Ready to help with legal research, case analysis, document drafting, and more.
+                    Just ask away!
                   </p>
                 </div>
               ) : (
@@ -372,8 +375,8 @@ export default function AIChatPage() {
                       data-testid={`message-${msg.id}`}
                     >
                       {msg.role === "assistant" && (
-                        <div className="shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Bot className="h-4 w-4" />
+                        <div className="shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center shadow-sm">
+                          <Bot className="h-4 w-4 text-white" />
                         </div>
                       )}
                       <Card
@@ -423,13 +426,14 @@ export default function AIChatPage() {
           <div className="flex flex-col items-center justify-center h-full p-8">
             <Card className="max-w-md w-full text-center">
               <CardContent className="pt-8 pb-8">
-                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                  <Bot className="h-8 w-8 text-primary" />
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Bot className="h-10 w-10 text-white" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-3" data-testid="text-ai-welcome-title">AI Assistant</h2>
+                <h2 className="text-2xl font-bold mb-1" data-testid="text-ai-welcome-title">ClaudBot</h2>
+                <p className="text-lg text-muted-foreground mb-3">Your AI Legal Assistant</p>
                 <p className="text-muted-foreground mb-6" data-testid="text-ai-welcome-description">
-                  Start a new conversation to chat with Claude or GPT. Ask questions, 
-                  analyze documents, or get help with your legal work.
+                  I'm here to help with legal research, case analysis, document drafting,
+                  and answering your legal questions. Let's get started!
                 </p>
                 <Button onClick={handleNewChat} size="lg" className="gap-2" data-testid="button-start-chat">
                   <Plus className="h-4 w-4" />

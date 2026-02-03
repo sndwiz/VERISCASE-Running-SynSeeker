@@ -33,6 +33,7 @@ import EvidenceVaultPage from "@/pages/evidence-vault";
 import DetectiveBoardPage from "@/pages/detective-board";
 import AutomationsPage from "@/pages/automations";
 import FilingCabinetPage from "@/pages/filing-cabinet";
+import DailyBriefingPage from "@/pages/daily-briefing";
 
 import type { Board } from "@shared/schema";
 
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/time-tracking" component={TimeTrackingPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/approvals" component={ApprovalsPage} />
+      <Route path="/briefing" component={DailyBriefingPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
@@ -127,15 +129,17 @@ function AppLayout() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
               <Link href="/ai-chat">
-                <Button variant="default" size="sm" className="gap-2" data-testid="button-ai-assistant">
+                <Button variant="default" size="sm" className="gap-2" data-testid="button-claudbot">
                   <Bot className="h-4 w-4" />
-                  AI Assistant
+                  ClaudBot
                 </Button>
               </Link>
-              <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
-                <Calendar className="h-4 w-4" />
-                Daily Briefing
-              </Button>
+              <Link href="/briefing">
+                <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
+                  <Calendar className="h-4 w-4" />
+                  Daily Briefing
+                </Button>
+              </Link>
               <ThemeToggle />
               <UserMenu />
             </div>

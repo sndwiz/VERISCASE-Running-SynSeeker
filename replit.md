@@ -1,251 +1,43 @@
 # VERICASE - Legal Practice OS
 
 ## Overview
-VERICASE is a comprehensive legal practice management system with a Monday.com-style board architecture. Built with React, TypeScript, Express, PostgreSQL, and Drizzle ORM. Features AI-powered document analysis, evidence management, detective board for investigations, multi-user authentication via Replit Auth, and full legal practice management.
-
-## Features
-- **Board System**: Multiple customizable boards for different practice areas
-- **Task Groups**: Organize tasks within collapsible groups
-- **Multiple Column Types**: Status, priority, date, person, progress, time tracking, files, email, phone, dropdown, tags, number, long-text, link, approval columns (15+ types)
-- **Approval Column**: Legal verification workflow with 5 states (Pending, Vetting, Approved, Confirmed, Rejected) featuring attorney initialing system, context preview panel, full audit trail with timestamps, and auto-confirmation after required initials
-- **Dynamic Column Management**: Add, remove, toggle visibility, reorder, duplicate, rename, change type, and add descriptions to columns
-- **Column Center**: Monday.com-style column picker with colorful individual icons, search, and category filters (Essentials, More, Team Power-Ups, Board Power-Ups, AI-Powered)
-- **Group Summary Rows**: Aggregated statistics at bottom of task groups showing status distribution bars, progress averages, rating averages, and numeric sums
-- **Custom Status Labels**: Editable status labels with custom colors at board level, color picker with preset palette
-- **Item Detail Modal**: Side-panel task view showing all fields vertically with inline editing for title/description
-- **Column Sorting**: Sort tasks by any column with ascending/descending direction indicators
-- **Enhanced Column Context Menu**: Right-click menu with sort, filter, hide, duplicate, rename, change type, delete, and description management
-- **Group By**: Organize tasks by Default/Status/Priority/Owner
-- **Task Management**: Create, update, delete tasks with full CRUD operations
-- **AI Assistant**: Multi-model AI chat with Anthropic Claude, OpenAI GPT, and Google Gemini models. Features legal-focused system prompts, matter context injection for case-aware responses, and conversation linking to specific matters
-- **Filing Cabinet**: Two-layer document classification with controlled vocabulary (8 categories, 50+ document types), metadata tracking (parties, dates, privilege, Bates ranges), searchable document library, and batch upload support
-- **Evidence Vault**: Immutable file storage with SHA-256 chain-of-custody tracking
-- **Detective Board**: Visual investigation board with draggable nodes and connections
-- **Automations**: Event-driven automation rules with 85+ pre-built templates organized by category:
-  - AI-Powered: Fill columns, detect sentiment, write content, extract info, translate, categorize, summarize
-  - Legal Compliance: Approval workflows, deadline warnings, compliance checks, document processing
-  - Integrations: Slack notifications, Gmail triggers, SMS alerts
-  - Status & Progress, Date & Time, Cross-Board, Notifications, Column Updates
-- **AI Automation Builder**: Natural language automation creation - describe what you want to automate in plain language and AI builds it. Includes pattern-based suggestions that learn from repetitive tasks and proactively recommend automations
-- **Workflow Recorder**: Screen recording feature that watches user actions on boards, detects repetitive patterns, and automatically suggests or creates automations. Start/stop controls, action capture for status/priority/assignment changes, pattern detection engine, and one-click automation creation from detected patterns
-- **Matter Management**: Full matter/client lifecycle with contacts, threads, timeline
-- **Theme Support**: Dark and light mode with teal accents, smooth transitions
-- **Collapsible Sidebar**: Hierarchical navigation with workspace selector, collapsible sections
-- **Responsive Design**: Works on desktop and mobile devices
-- **Authentication**: Multi-user support via Replit Auth (Google, GitHub, Apple, email login)
-- **Role-Based Access Control**: Admin, member, viewer roles with route-level permissions
-- **Team Management**: Admin can manage user roles via Settings > Team tab
-
-## Tech Stack
-
-### Frontend
-- React 18 with TypeScript
-- Wouter for routing
-- TanStack React Query for state management
-- shadcn/ui + Radix UI components
-- Tailwind CSS for styling
-- React Hook Form with Zod validation
-
-### Backend
-- Node.js with Express
-- TypeScript
-- PostgreSQL database with Drizzle ORM
-- In-memory storage (MemStorage) for non-auth data
-- Replit Auth for authentication
-- RESTful JSON API
-- Modular route architecture
-
-## Project Structure
-```
-├── client/                 # Frontend React application
-│   ├── src/
-│   │   ├── components/     # UI components
-│   │   │   ├── board/      # Board-related components
-│   │   │   ├── dialogs/    # Dialog modals
-│   │   │   └── ui/         # shadcn/ui components
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── lib/            # Utilities and helpers
-│   │   └── pages/          # Route pages
-│   │       ├── ai-chat.tsx          # AI Assistant page
-│   │       ├── evidence-vault.tsx   # Evidence management
-│   │       ├── detective-board.tsx  # Investigation board
-│   │       ├── automations.tsx      # Automation rules
-│   │       ├── matters.tsx          # Matter management
-│   │       └── clients.tsx          # Client management
-├── server/                 # Backend Express server
-│   ├── routes/            # Modular route files
-│   │   ├── index.ts       # Route aggregator
-│   │   ├── boards.ts      # Board CRUD
-│   │   ├── groups.ts      # Group CRUD
-│   │   ├── tasks.ts       # Task CRUD
-│   │   ├── clients.ts     # Client CRUD
-│   │   ├── matters.ts     # Matters, contacts, threads, timeline, research
-│   │   ├── evidence.ts    # Evidence vault, OCR jobs
-│   │   ├── detective.ts   # Detective board nodes/connections
-│   │   ├── automations.ts # Automation rules
-│   │   └── ai.ts          # AI conversations and chat
-│   ├── ai/
-│   │   └── providers.ts   # AI provider configuration
-│   ├── routes.ts          # Main route entry point
-│   ├── storage.ts         # Data storage layer
-│   ├── db.ts              # Database connection (Drizzle/PostgreSQL)
-│   └── replit_integrations/
-│       └── auth/          # Replit Auth integration
-│           ├── replitAuth.ts  # OIDC auth setup
-│           ├── storage.ts     # User storage operations
-│           └── routes.ts      # Auth API routes
-├── shared/                 # Shared types and schemas
-│   ├── schema.ts          # TypeScript interfaces and Zod schemas
-│   └── models/
-│       └── auth.ts        # User and session Drizzle tables
-└── replit.md              # Project documentation
-```
-
-## API Routes
-
-### Boards
-- `GET /api/boards` - List all boards
-- `GET /api/boards/:id` - Get single board
-- `POST /api/boards` - Create new board
-- `PATCH /api/boards/:id` - Update board
-- `DELETE /api/boards/:id` - Delete board
-
-### Groups
-- `GET /api/boards/:boardId/groups` - List groups for a board
-- `POST /api/boards/:boardId/groups` - Create new group
-- `PATCH /api/groups/:id` - Update group
-- `DELETE /api/groups/:id` - Delete group
-
-### Tasks
-- `GET /api/boards/:boardId/tasks` - List tasks for a board
-- `GET /api/tasks/recent` - Get recent tasks
-- `POST /api/boards/:boardId/tasks` - Create new task
-- `PATCH /api/tasks/:id` - Update task
-- `DELETE /api/tasks/:id` - Delete task
-
-### Clients
-- `GET /api/clients` - List all clients
-- `GET /api/clients/:id` - Get single client
-- `POST /api/clients` - Create client
-- `PATCH /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
-
-### Matters
-- `GET /api/matters` - List all matters (optional ?clientId filter)
-- `GET /api/matters/:id` - Get single matter
-- `POST /api/matters` - Create matter (requires openedDate field)
-- `PATCH /api/matters/:id` - Update matter
-- `DELETE /api/matters/:id` - Delete matter
-- `GET /api/matters/:matterId/contacts` - List matter contacts
-- `POST /api/matters/:matterId/contacts` - Add contact (role is enum)
-- `GET /api/matters/:matterId/threads` - List threads
-- `POST /api/matters/:matterId/threads` - Create thread
-- `GET /api/matters/:matterId/timeline` - List timeline events
-- `POST /api/matters/:matterId/timeline` - Add timeline event
-
-### Filing Cabinet
-- `GET /api/matters/:matterId/files` - List files for a matter
-- `POST /api/matters/:matterId/files` - Upload file to matter
-- `PATCH /api/files/:id` - Update file metadata
-- `DELETE /api/files/:id` - Delete file
-- `GET /api/files/:fileId/profile` - Get document profile
-- `POST /api/files/:fileId/profile` - Create document profile
-- `PATCH /api/files/:fileId/profile` - Update document profile (validates docType against category)
-- `DELETE /api/files/:fileId/profile` - Delete document profile
-- `GET /api/filing/tags` - List filing tags
-- `POST /api/filing/tags` - Create filing tag
-- `DELETE /api/filing/tags/:id` - Delete filing tag
-- `GET /api/matters/:matterId/people-orgs` - List people/orgs for matter
-- `POST /api/matters/:matterId/people-orgs` - Create person/org
-- `PATCH /api/people-orgs/:id` - Update person/org
-- `DELETE /api/people-orgs/:id` - Delete person/org
-
-### Evidence Vault
-- `GET /api/matters/:matterId/evidence` - List evidence files
-- `POST /api/matters/:matterId/evidence` - Add evidence (immutable)
-- `POST /api/evidence/:id/custody` - Add chain of custody entry
-
-### Detective Board
-- `GET /api/matters/:matterId/detective/nodes` - List nodes
-- `POST /api/matters/:matterId/detective/nodes` - Create node
-- `PATCH /api/detective/nodes/:id` - Update node position
-- `DELETE /api/detective/nodes/:id` - Delete node
-- `GET /api/matters/:matterId/detective/connections` - List connections
-- `POST /api/matters/:matterId/detective/connections` - Create connection
-
-### Automations
-- `GET /api/boards/:boardId/automations` - List automation rules
-- `POST /api/boards/:boardId/automations` - Create rule
-- `PATCH /api/automations/:id` - Update rule (toggle active)
-- `DELETE /api/automations/:id` - Delete rule
-- `POST /api/automations/trigger` - Trigger automation event (for testing/integration)
-- `GET /api/automations/log` - Get automation execution log
-
-### AI
-- `GET /api/ai/conversations` - List conversations
-- `POST /api/ai/conversations` - Create conversation
-- `GET /api/ai/conversations/:id` - Get conversation with messages
-- `POST /api/ai/conversations/:id/messages` - Add message
-- `POST /api/ai/chat` - Send message to AI (streaming)
-- `GET /api/ai/models` - List available AI models
-
-### Authentication
-- `GET /api/login` - Initiate Replit Auth login flow
-- `GET /api/callback` - OAuth callback handler
-- `GET /api/logout` - Logout and clear session
-- `GET /api/auth/user` - Get current authenticated user (protected)
-
-### Admin (Requires admin role)
-- `GET /api/admin/users` - List all users
-- `PATCH /api/admin/users/:id/role` - Update user role (admin/member/viewer)
-
-## Authentication & Authorization
-
-### Role-Based Access Control (RBAC)
-The system uses a three-tier role system:
-- **admin**: Full access to all routes + user management
-- **member**: Full CRUD access to boards, matters, evidence, etc.
-- **viewer**: Read-only access (GET requests only) to boards, groups, tasks, clients, matters, detective board
-
-### Route Protection
-- All business routes require authentication
-- Route-level RBAC middleware enforces role permissions:
-  - `viewerReadOnly`: Allows GET for viewers, member+ for writes (boards, groups, tasks, clients, matters, detective)
-  - `requireMemberOrAbove`: Requires member or admin role (evidence vault, automations)
-  - `requireAnyRole`: Any authenticated user (AI features)
-  - `requireAdmin`: Admin only (user management)
-
-### First User Bootstrap
-The first user to register automatically becomes an admin. Subsequent users default to "member" role.
-
-### Session Management
-- Sessions stored in PostgreSQL using connect-pg-simple
-- Cookie security adapts to environment (secure in production, lax in development)
-- Logout properly destroys session
-
-### Team Members
-- All authenticated users are automatically team members
-- Team members are available for task assignment in the person picker
-- Admins can manage user roles via Settings > Team tab
-- Role determines access level (admin full access, member CRUD, viewer read-only)
-
-## Important Schema Notes
-- Matter creation requires `openedDate` field (not openDate)
-- MatterContact role is enum: plaintiff, defendant, witness, expert, opposing-counsel, judge, client, other
-- Evidence files are immutable - only metadata can be updated
-- Chain of custody entries are append-only
-- Filing Cabinet uses two-layer classification: docCategory (8 types) + docType (validated against docTypesByCategory controlled vocabulary)
-- DocProfile docType must match valid types for its docCategory (enforced via Zod superRefine validation)
-- Document categories: pleading, motion, discovery, order-ruling, correspondence, evidence-records, internal-work-product, admin-operations
-- Confidentiality levels: public, confidential, aeo (attorneys' eyes only), privileged, work-product
-
-## Running the Project
-```bash
-npm run dev
-```
-Opens on http://localhost:5000
+VERICASE is a comprehensive legal practice management system designed to streamline legal workflows with a Monday.com-style board interface. It offers AI-powered document analysis, secure evidence management, investigative tools, multi-user authentication, and extensive legal practice management features. The system aims to provide a robust, AI-enhanced platform for legal professionals, improving efficiency and case management capabilities.
 
 ## User Preferences
 - Dark/light theme toggle in header
 - Professional legal-focused design
 - Clean, modern interface
+
+## System Architecture
+VERICASE is built with a modern web stack, featuring React 18 with TypeScript for the frontend, and Node.js with Express for the backend. PostgreSQL with Drizzle ORM handles data persistence.
+
+**UI/UX Decisions:**
+The system adopts a Monday.com-style board architecture, offering highly customizable boards with over 15 column types, dynamic column management, and group summary rows for aggregated statistics. An "Approval Column" supports legal verification workflows with audit trails. The interface includes a collapsible sidebar for navigation, theme support (dark/light mode with teal accents), and is designed to be responsive across devices. Shadcn/ui and Radix UI components, styled with Tailwind CSS, ensure a consistent and modern aesthetic.
+
+**Technical Implementations:**
+- **Board System:** Customizable boards with task groups and various column types (status, priority, date, person, progress, files, email, approval, etc.). Columns can be added, removed, reordered, and their types changed dynamically.
+- **AI Integration (ClaudBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
+- **Daily Briefing:** A personalized dashboard providing users with task summaries, deadlines, and active matter updates.
+- **Filing Cabinet:** A two-layer document classification system with controlled vocabulary, metadata tracking, and Bates numbering.
+- **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
+- **Detective Board:** A visual investigation board with draggable nodes and connections.
+- **Automations:** Event-driven automation engine with 85+ pre-built templates, including AI-powered actions, legal compliance workflows, and integrations. An AI Automation Builder allows natural language automation creation, and a Workflow Recorder suggests automations based on user actions.
+- **Matter Management:** Comprehensive lifecycle management for matters and clients, including contacts, threads, and timelines.
+
+**System Design Choices:**
+- **Authentication:** Multi-user authentication is handled via Replit Auth, supporting various providers (Google, GitHub, Apple, email).
+- **Role-Based Access Control (RBAC):** A three-tier role system (admin, member, viewer) is implemented, granting route-level permissions. The first registered user becomes an admin, with subsequent users defaulting to "member."
+- **Data Storage:** PostgreSQL with Drizzle ORM for relational data, and an in-memory store (MemStorage) for non-authentication related temporary data. Sessions are managed using connect-pg-simple in PostgreSQL.
+- **API Design:** A RESTful JSON API with a modular route architecture using Express.
+
+## External Dependencies
+- **Replit Auth:** For multi-user authentication (Google, GitHub, Apple, email login).
+- **PostgreSQL:** Primary database for persistent data storage.
+- **Drizzle ORM:** Object-relational mapper for interacting with PostgreSQL.
+- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models integrated into the "ClaudBot" assistant.
+- **Wouter:** For frontend routing in React.
+- **TanStack React Query:** For server state management in the frontend.
+- **shadcn/ui + Radix UI:** UI component libraries for the frontend.
+- **Tailwind CSS:** For styling the frontend.
+- **React Hook Form with Zod:** For form management and validation.
+- **connect-pg-simple:** For PostgreSQL-based session storage.

@@ -13,6 +13,7 @@ import { registerSeedRoutes } from "./seed";
 import { registerTimeTrackingRoutes } from "./time-tracking";
 import { registerCalendarRoutes } from "./calendar";
 import { registerApprovalRoutes } from "./approvals";
+import { registerBriefingRoutes } from "./briefing";
 
 export function registerAllRoutes(app: Express): void {
   registerBoardRoutes(app);
@@ -29,4 +30,5 @@ export function registerAllRoutes(app: Express): void {
   registerTimeTrackingRoutes(app);
   registerCalendarRoutes(app);
   registerApprovalRoutes(app);
+  registerBriefingRoutes(app);
 }
