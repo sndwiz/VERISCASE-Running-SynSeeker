@@ -357,13 +357,13 @@ export default function DailyBriefingPage() {
             <div className="space-y-1">
               <h3 className="font-semibold">Need help with your tasks?</h3>
               <p className="text-sm text-muted-foreground">
-                Ask ClaudBot for assistance with research, drafting, or case analysis.
+                Ask ClawdBot for assistance with research, drafting, or case analysis.
               </p>
             </div>
             <Link href="/ai-chat">
-              <Button className="gap-2" data-testid="button-ask-claudbot">
+              <Button className="gap-2" data-testid="button-ask-clawdbot">
                 <Bot className="h-4 w-4" />
-                Ask ClaudBot
+                Ask ClawdBot
               </Button>
             </Link>
           </CardContent>

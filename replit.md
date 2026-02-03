@@ -16,7 +16,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 
 **Technical Implementations:**
 - **Board System:** Customizable boards with task groups and various column types (status, priority, date, person, progress, files, email, approval, etc.). Columns can be added, removed, reordered, and their types changed dynamically.
-- **AI Integration (ClaudBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
+- **AI Integration (ClawdBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
 - **Daily Briefing:** A personalized dashboard providing users with task summaries, deadlines, and active matter updates.
 - **Filing Cabinet:** A two-layer document classification system with controlled vocabulary, metadata tracking, and Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
@@ -34,7 +34,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Replit Auth:** For multi-user authentication (Google, GitHub, Apple, email login).
 - **PostgreSQL:** Primary database for persistent data storage.
 - **Drizzle ORM:** Object-relational mapper for interacting with PostgreSQL.
-- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models integrated into the "ClaudBot" assistant.
+- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models integrated into the "ClawdBot" assistant.
 - **Wouter:** For frontend routing in React.
 - **TanStack React Query:** For server state management in the frontend.
 - **shadcn/ui + Radix UI:** UI component libraries for the frontend.
