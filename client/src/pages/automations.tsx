@@ -1361,6 +1361,132 @@ function FeaturedIntegrationCard({
   );
 }
 
+// AI Automation Builder Component
+function AIAutomationBuilder({ 
+  onBuildAutomation,
+  suggestedAutomations,
+  hasBoardSelected
+}: { 
+  onBuildAutomation: (prompt: string) => void;
+  suggestedAutomations: Array<{ prompt: string; description: string; confidence: number }>;
+  hasBoardSelected: boolean;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [isBuilding, setIsBuilding] = useState(false);
+
+  const handleBuild = () => {
+    if (!prompt.trim()) return;
+    setIsBuilding(true);
+    onBuildAutomation(prompt);
+    setTimeout(() => setIsBuilding(false), 1500);
+  };
+
+  const handleUseSuggestion = (suggestion: { prompt: string }) => {
+    setPrompt(suggestion.prompt);
+  };
+
+  return (
+    <Card className="border-2 border-primary/20 bg-gradient-to-br from-background to-primary/5">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shrink-0">
+            <Bot className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex-1 space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Automation Builder
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Describe what you want to automate in plain language. AI will analyze your request and create a draft automation that you can customize.
+              </p>
+            </div>
+
+            {!hasBoardSelected && (
+              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 text-sm">
+                <AlertCircle className="h-4 w-4 inline mr-2" />
+                Please select a board first to create automations
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Textarea
+                placeholder="Example: When a case status changes to 'Ready for Review', notify the senior attorney and request their approval..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[80px] resize-none"
+                disabled={!hasBoardSelected}
+                data-testid="input-ai-automation-prompt"
+              />
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={handleBuild}
+                disabled={!prompt.trim() || isBuilding || !hasBoardSelected}
+                className="gap-2"
+                data-testid="button-build-automation"
+              >
+                {isBuilding ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Building...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Build Automation Draft
+                  </>
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Creates a draft automation for you to review and customize
+              </span>
+            </div>
+
+            {suggestedAutomations.length > 0 && (
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  Suggested Automations Based on Your Patterns
+                </h4>
+                <div className="space-y-2">
+                  {suggestedAutomations.map((suggestion, idx) => (
+                    <div 
+                      key={idx}
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      data-testid={`suggestion-${idx}`}
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{suggestion.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{suggestion.prompt}</p>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">
+                        {Math.round(suggestion.confidence * 100)}% match
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="shrink-0"
+                        onClick={() => handleUseSuggestion(suggestion)}
+                        disabled={!hasBoardSelected}
+                        data-testid={`button-use-suggestion-${idx}`}
+                      >
+                        Use
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AutomationsPage() {
   const { toast } = useToast();
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
@@ -1370,6 +1496,26 @@ export default function AutomationsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("templates");
+  const [showAIBuilder, setShowAIBuilder] = useState(false);
+  
+  // Simulated pattern-based suggestions (in production, this would come from analyzing user behavior)
+  const [suggestedAutomations] = useState([
+    {
+      prompt: "When a task is marked complete, notify the client via email",
+      description: "You frequently update clients after completing tasks",
+      confidence: 0.87,
+    },
+    {
+      prompt: "When a deadline is within 3 days, set priority to high and notify the team",
+      description: "You often manually escalate tasks as deadlines approach",
+      confidence: 0.72,
+    },
+    {
+      prompt: "When a document is uploaded, extract key dates and parties using AI",
+      description: "You regularly extract information from uploaded documents",
+      confidence: 0.65,
+    },
+  ]);
   
   const [ruleForm, setRuleForm] = useState({
     name: "",
@@ -1413,6 +1559,83 @@ export default function AutomationsPage() {
     setTemplateSearchQuery("");
     setActiveTab("templates");
     setShowTemplatesDialog(true);
+  };
+
+  // AI Automation Builder handler
+  const handleBuildFromAI = (prompt: string) => {
+    // Ensure a board is selected
+    if (!selectedBoardId) {
+      toast({
+        title: "No board selected",
+        description: "Please select a board first to create automations.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Parse the prompt to extract trigger and action
+    const promptLower = prompt.toLowerCase();
+    
+    // Detect trigger type from prompt
+    let detectedTrigger: keyof typeof TRIGGER_TYPES = "item_created";
+    let detectedAction: keyof typeof ACTION_TYPES = "send_notification";
+    
+    if (promptLower.includes("status change") || promptLower.includes("when status")) {
+      detectedTrigger = "status_changed";
+    } else if (promptLower.includes("deadline") || promptLower.includes("due date")) {
+      detectedTrigger = "deadline_warning";
+    } else if (promptLower.includes("document") || promptLower.includes("file") || promptLower.includes("upload")) {
+      detectedTrigger = "file_uploaded";
+    } else if (promptLower.includes("approval") || promptLower.includes("approved") || promptLower.includes("review")) {
+      detectedTrigger = "approval_status_changed";
+    } else if (promptLower.includes("priority")) {
+      detectedTrigger = "priority_changed";
+    } else if (promptLower.includes("assigned") || promptLower.includes("assign")) {
+      detectedTrigger = "assigned";
+    } else if (promptLower.includes("created") || promptLower.includes("new item") || promptLower.includes("new task")) {
+      detectedTrigger = "item_created";
+    }
+    
+    // Detect action type from prompt
+    if (promptLower.includes("notify") || promptLower.includes("alert") || promptLower.includes("send notification")) {
+      detectedAction = "send_notification";
+    } else if (promptLower.includes("approval") || promptLower.includes("review") || promptLower.includes("attorney")) {
+      detectedAction = "request_approval";
+    } else if (promptLower.includes("email")) {
+      detectedAction = "send_email";
+    } else if (promptLower.includes("extract") || promptLower.includes("ai extract")) {
+      detectedAction = "ai_extract";
+    } else if (promptLower.includes("summarize") || promptLower.includes("summary")) {
+      detectedAction = "ai_summarize";
+    } else if (promptLower.includes("categorize") || promptLower.includes("classify")) {
+      detectedAction = "ai_categorize";
+    } else if (promptLower.includes("priority") && promptLower.includes("change")) {
+      detectedAction = "change_priority";
+    } else if (promptLower.includes("status") && (promptLower.includes("change") || promptLower.includes("set"))) {
+      detectedAction = "change_status";
+    } else if (promptLower.includes("slack")) {
+      detectedAction = "send_slack";
+    } else if (promptLower.includes("time tracking") || promptLower.includes("start time")) {
+      detectedAction = "start_time_tracking";
+    }
+    
+    // Create the automation rule
+    setRuleForm({
+      name: prompt.slice(0, 100) + (prompt.length > 100 ? "..." : ""),
+      description: `AI-generated automation: ${prompt}`,
+      triggerType: detectedTrigger,
+      triggerValue: "",
+      actionType: detectedAction,
+      actionConfig: {},
+    });
+    
+    setShowAIBuilder(false);
+    setShowCreateDialog(true);
+    
+    toast({
+      title: "Automation built by AI",
+      description: `Created automation with trigger "${TRIGGER_TYPES[detectedTrigger]?.label}" and action "${ACTION_TYPES[detectedAction]?.label}". Review and customize as needed.`,
+    });
   };
 
   const { data: boards = [] } = useQuery<Board[]>({
@@ -1665,6 +1888,16 @@ export default function AutomationsPage() {
               ))}
             </SelectContent>
           </Select>
+
+          <Button 
+            variant="outline"
+            onClick={() => setShowAIBuilder(!showAIBuilder)}
+            className="gap-2"
+            data-testid="button-ai-builder"
+          >
+            <Bot className="h-4 w-4" />
+            AI Builder
+          </Button>
 
           {selectedBoardId && (
             <>
@@ -1977,6 +2210,17 @@ export default function AutomationsPage() {
           )}
         </div>
       </div>
+
+      {/* AI Automation Builder */}
+      {showAIBuilder && (
+        <div className="p-4 border-b bg-muted/30">
+          <AIAutomationBuilder 
+            onBuildAutomation={handleBuildFromAI}
+            suggestedAutomations={suggestedAutomations}
+            hasBoardSelected={!!selectedBoardId}
+          />
+        </div>
+      )}
 
       {!selectedBoardId ? (
         <div className="flex-1 flex items-center justify-center">

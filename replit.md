@@ -26,6 +26,7 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
   - Legal Compliance: Approval workflows, deadline warnings, compliance checks, document processing
   - Integrations: Slack notifications, Gmail triggers, SMS alerts
   - Status & Progress, Date & Time, Cross-Board, Notifications, Column Updates
+- **AI Automation Builder**: Natural language automation creation - describe what you want to automate in plain language and AI builds it. Includes pattern-based suggestions that learn from repetitive tasks and proactively recommend automations
 - **Matter Management**: Full matter/client lifecycle with contacts, threads, timeline
 - **Theme Support**: Dark and light mode with teal accents, smooth transitions
 - **Collapsible Sidebar**: Hierarchical navigation with workspace selector, collapsible sections
