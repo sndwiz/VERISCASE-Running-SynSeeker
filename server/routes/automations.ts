@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertAutomationRuleSchema, updateAutomationRuleSchema } from "@shared/schema";
 import { z } from "zod";
+import { triggerAutomation, getAutomationLog, type AutomationEvent } from "../automation-engine";
 
 export function registerAutomationRoutes(app: Express): void {
   app.get("/api/boards/:boardId/automations", async (req, res) => {
@@ -66,6 +67,40 @@ export function registerAutomationRoutes(app: Express): void {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete automation rule" });
+    }
+  });
+
+  app.post("/api/automations/trigger", async (req, res) => {
+    try {
+      const eventSchema = z.object({
+        type: z.string(),
+        boardId: z.string(),
+        taskId: z.string().optional(),
+        previousValue: z.any().optional(),
+        newValue: z.any().optional(),
+        field: z.string().optional(),
+        metadata: z.record(z.any()).optional(),
+      });
+
+      const event = eventSchema.parse(req.body) as AutomationEvent;
+      const results = await triggerAutomation(event);
+      res.json({ results, triggered: results.length });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("[Automation] Trigger error:", error);
+      res.status(500).json({ error: "Failed to trigger automation" });
+    }
+  });
+
+  app.get("/api/automations/log", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const log = getAutomationLog(limit);
+      res.json(log);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch automation log" });
     }
   });
 }

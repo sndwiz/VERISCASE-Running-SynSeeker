@@ -177,6 +177,8 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - `POST /api/boards/:boardId/automations` - Create rule
 - `PATCH /api/automations/:id` - Update rule (toggle active)
 - `DELETE /api/automations/:id` - Delete rule
+- `POST /api/automations/trigger` - Trigger automation event (for testing/integration)
+- `GET /api/automations/log` - Get automation execution log
 
 ### AI
 - `GET /api/ai/conversations` - List conversations
