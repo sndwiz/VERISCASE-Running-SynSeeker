@@ -6,6 +6,7 @@ import { BoardHeader, type GroupByOption } from "@/components/board/board-header
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
+import { WorkflowRecorder, useWorkflowRecorder } from "@/components/board/workflow-recorder";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
@@ -20,6 +21,7 @@ export default function BoardPage() {
   const boardId = params?.id;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { recordAction } = useWorkflowRecorder();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
@@ -151,6 +153,39 @@ export default function BoardPage() {
   };
 
   const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => {
+    const task = tasks.find(t => t.id === taskId);
+    
+    if (updates.status !== undefined && task) {
+      recordAction({
+        type: "status_change",
+        taskId,
+        taskTitle: task.title,
+        field: "status",
+        previousValue: task.status,
+        newValue: updates.status,
+      });
+    }
+    if (updates.priority !== undefined && task) {
+      recordAction({
+        type: "priority_change",
+        taskId,
+        taskTitle: task.title,
+        field: "priority",
+        previousValue: task.priority,
+        newValue: updates.priority,
+      });
+    }
+    if (updates.assignees !== undefined && task) {
+      recordAction({
+        type: "assignment",
+        taskId,
+        taskTitle: task.title,
+        field: "assignees",
+        previousValue: task.assignees,
+        newValue: updates.assignees,
+      });
+    }
+    
     updateTaskMutation.mutate({ taskId, updates });
     if (selectedTask?.id === taskId) {
       setSelectedTask({ ...selectedTask, ...updates });
@@ -512,6 +547,8 @@ export default function BoardPage() {
           onClose={() => setAutomationsPanelOpen(false)}
         />
       )}
+
+      {boardId && <WorkflowRecorder boardId={boardId} />}
     </div>
   );
 }
