@@ -35,6 +35,7 @@ import DetectiveBoardPage from "@/pages/detective-board";
 import AutomationsPage from "@/pages/automations";
 import FilingCabinetPage from "@/pages/filing-cabinet";
 import DailyBriefingPage from "@/pages/daily-briefing";
+import DocumentMakerPage from "@/pages/document-maker";
 
 import type { Board } from "@shared/schema";
 
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/documents" component={FilingCabinetPage} />
+      <Route path="/document-maker" component={DocumentMakerPage} />
       <Route path="/time-tracking" component={TimeTrackingPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/approvals" component={ApprovalsPage} />

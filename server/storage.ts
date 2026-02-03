@@ -55,6 +55,18 @@ import type {
   InsertApprovalRequest,
   ApprovalComment,
   InsertApprovalComment,
+  DocumentTemplate,
+  InsertDocumentTemplate,
+  GeneratedDocument,
+  InsertGeneratedDocument,
+  DocumentApproval,
+  InsertDocumentApproval,
+  UpdateDocumentApproval,
+  DocumentApprovalAudit,
+  ClientForm,
+  InsertClientForm,
+  ClientFormSubmission,
+  InsertClientFormSubmission,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -211,6 +223,39 @@ export interface IStorage {
   updateApprovalRequest(id: string, data: Partial<ApprovalRequest>): Promise<ApprovalRequest | undefined>;
   deleteApprovalRequest(id: string): Promise<boolean>;
   addApprovalComment(data: InsertApprovalComment): Promise<ApprovalComment>;
+
+  // Document Templates
+  getDocumentTemplates(category?: string): Promise<DocumentTemplate[]>;
+  getDocumentTemplate(id: string): Promise<DocumentTemplate | undefined>;
+  createDocumentTemplate(data: InsertDocumentTemplate): Promise<DocumentTemplate>;
+  updateDocumentTemplate(id: string, data: Partial<DocumentTemplate>): Promise<DocumentTemplate | undefined>;
+  deleteDocumentTemplate(id: string): Promise<boolean>;
+
+  // Generated Documents
+  getGeneratedDocuments(matterId?: string): Promise<GeneratedDocument[]>;
+  getGeneratedDocument(id: string): Promise<GeneratedDocument | undefined>;
+  createGeneratedDocument(data: InsertGeneratedDocument): Promise<GeneratedDocument>;
+  updateGeneratedDocument(id: string, data: Partial<GeneratedDocument>): Promise<GeneratedDocument | undefined>;
+  deleteGeneratedDocument(id: string): Promise<boolean>;
+
+  // Document Approvals
+  getDocumentApprovals(documentId?: string): Promise<DocumentApproval[]>;
+  getDocumentApproval(id: string): Promise<DocumentApproval | undefined>;
+  createDocumentApproval(data: InsertDocumentApproval): Promise<DocumentApproval>;
+  updateDocumentApproval(id: string, data: UpdateDocumentApproval): Promise<DocumentApproval | undefined>;
+  addDocumentApprovalAudit(data: Partial<DocumentApprovalAudit>): Promise<DocumentApprovalAudit>;
+  getDocumentApprovalAudit(documentId: string): Promise<DocumentApprovalAudit[]>;
+
+  // Client Forms
+  getClientForms(): Promise<ClientForm[]>;
+  getClientForm(id: string): Promise<ClientForm | undefined>;
+  createClientForm(data: InsertClientForm): Promise<ClientForm>;
+  updateClientForm(id: string, data: Partial<ClientForm>): Promise<ClientForm | undefined>;
+  deleteClientForm(id: string): Promise<boolean>;
+  getClientFormSubmissions(formId?: string): Promise<ClientFormSubmission[]>;
+  getClientFormSubmission(id: string): Promise<ClientFormSubmission | undefined>;
+  createClientFormSubmission(data: InsertClientFormSubmission): Promise<ClientFormSubmission>;
+  updateClientFormSubmission(id: string, data: Partial<ClientFormSubmission>): Promise<ClientFormSubmission | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -241,9 +286,16 @@ export class MemStorage implements IStorage {
   private timeEntries: Map<string, TimeEntry> = new Map();
   private calendarEvents: Map<string, CalendarEvent> = new Map();
   private approvalRequests: Map<string, ApprovalRequest> = new Map();
+  private documentTemplates: Map<string, DocumentTemplate> = new Map();
+  private generatedDocuments: Map<string, GeneratedDocument> = new Map();
+  private documentApprovals: Map<string, DocumentApproval> = new Map();
+  private documentApprovalAudits: Map<string, DocumentApprovalAudit> = new Map();
+  private clientForms: Map<string, ClientForm> = new Map();
+  private clientFormSubmissions: Map<string, ClientFormSubmission> = new Map();
 
   constructor() {
     this.initializeSampleData();
+    this.initializeUtahTemplates();
   }
 
   private initializeSampleData() {
@@ -1460,12 +1512,838 @@ export class MemStorage implements IStorage {
     request.comments.push(comment);
     if (data.decision) {
       request.status = data.decision === "approved" ? "approved" : 
-                       data.decision === "rejected" ? "rejected" : "needs-revision";
+                       data.decision === "rejected" ? "rejected" : "vetting";
     }
     request.updatedAt = new Date().toISOString();
     this.approvalRequests.set(data.approvalId, request);
     
     return comment;
+  }
+
+  // ============ DOCUMENT TEMPLATES ============
+  
+  private initializeUtahTemplates() {
+    const utahFormatDefaults = {
+      paperSize: "8.5x11" as const,
+      margins: { top: 1, right: 1, bottom: 1, left: 1 },
+      fontSize: 12,
+      fontFamily: "Times New Roman",
+      lineSpacing: "double" as const,
+      requiresCaption: true,
+      requiresCertificateOfService: true,
+      requiresSignatureBlock: true,
+      requiresBilingualNotice: true,
+    };
+
+    // Motion for Continuance
+    const motionContinuance: DocumentTemplate = {
+      id: "tpl-motion-continuance",
+      name: "Motion for Continuance",
+      description: "Request to postpone a scheduled hearing, trial, or deadline in Utah courts",
+      category: "motions",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+MOTION FOR CONTINUANCE
+
+{{movingParty}}, by and through counsel, hereby moves this Court for an order continuing the {{eventType}} currently scheduled for {{currentDate}}.
+
+STATEMENT OF FACTS
+
+{{factStatement}}
+
+GROUNDS FOR CONTINUANCE
+
+{{groundsForContinuance}}
+
+PROPOSED NEW DATE
+
+{{movingParty}} respectfully requests that the {{eventType}} be rescheduled to {{proposedDate}}, or such other date as the Court deems appropriate.
+
+GOOD CAUSE
+
+Good cause exists for this continuance because: {{goodCauseStatement}}
+
+WHEREFORE, {{movingParty}} respectfully requests that this Court grant this Motion and continue the {{eventType}} to {{proposedDate}}.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+{{firmPhone}}
+{{firmEmail}}
+Attorney for {{representedParty}}
+
+CERTIFICATE OF SERVICE
+
+I hereby certify that on {{serviceDate}}, I served a true and correct copy of the foregoing MOTION FOR CONTINUANCE upon the following by {{serviceMethod}}:
+
+{{opposingCounselInfo}}
+
+_____________________________
+{{attorneyName}}`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true, placeholder: "Third District Court" },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        { id: "movingParty", name: "movingParty", label: "Moving Party", type: "select", required: true, options: ["Plaintiff", "Defendant"] },
+        { id: "eventType", name: "eventType", label: "Event Type", type: "select", required: true, options: ["hearing", "trial", "deposition", "mediation", "status conference"] },
+        { id: "currentDate", name: "currentDate", label: "Current Scheduled Date", type: "date", required: true },
+        { id: "proposedDate", name: "proposedDate", label: "Proposed New Date", type: "date", required: true },
+      ],
+      optionalFields: [
+        { id: "factStatement", name: "factStatement", label: "Statement of Facts", type: "textarea", required: false, helpText: "Brief factual background" },
+        { id: "groundsForContinuance", name: "groundsForContinuance", label: "Grounds for Continuance", type: "textarea", required: false },
+        { id: "goodCauseStatement", name: "goodCauseStatement", label: "Good Cause Statement", type: "textarea", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 7", "URCP Rule 6", "URCP Rule 40"],
+      formatRequirements: { ...utahFormatDefaults, pageLimit: 25, wordLimit: 7750 },
+      bilingualNoticeRequired: true,
+      aiPromptInstructions: "Generate a professional motion for continuance following Utah Rules of Civil Procedure. Include proper caption, good cause statement, and certificate of service. Be concise and cite applicable rules.",
+      tags: ["motion", "continuance", "scheduling", "civil"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(motionContinuance.id, motionContinuance);
+
+    // Motion to Dismiss
+    const motionDismiss: DocumentTemplate = {
+      id: "tpl-motion-dismiss",
+      name: "Motion to Dismiss",
+      description: "Motion to dismiss under Utah Rules of Civil Procedure Rule 12(b)",
+      category: "motions",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+MOTION TO DISMISS
+
+{{movingParty}}, by and through counsel, hereby moves this Court pursuant to Utah Rule of Civil Procedure 12(b)({{dismissalBasis}}) for an order dismissing {{dismissTarget}}.
+
+MEMORANDUM IN SUPPORT
+
+I. INTRODUCTION
+
+{{introduction}}
+
+II. STATEMENT OF FACTS
+
+{{factStatement}}
+
+III. ARGUMENT
+
+{{legalArgument}}
+
+IV. CONCLUSION
+
+For the reasons set forth above, {{movingParty}} respectfully requests that this Court grant this Motion and dismiss {{dismissTarget}}.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+{{firmPhone}}
+{{firmEmail}}
+Attorney for {{representedParty}}`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        { id: "movingParty", name: "movingParty", label: "Moving Party", type: "select", required: true, options: ["Plaintiff", "Defendant"] },
+        { id: "dismissalBasis", name: "dismissalBasis", label: "Basis for Dismissal (12(b))", type: "select", required: true, options: ["1 - Lack of subject matter jurisdiction", "2 - Lack of personal jurisdiction", "3 - Improper venue", "4 - Insufficient process", "5 - Insufficient service of process", "6 - Failure to state a claim", "7 - Failure to join a party"] },
+        { id: "dismissTarget", name: "dismissTarget", label: "What to Dismiss", type: "text", required: true, placeholder: "Plaintiff's Complaint" },
+      ],
+      optionalFields: [
+        { id: "introduction", name: "introduction", label: "Introduction", type: "textarea", required: false },
+        { id: "factStatement", name: "factStatement", label: "Statement of Facts", type: "textarea", required: false },
+        { id: "legalArgument", name: "legalArgument", label: "Legal Argument", type: "textarea", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 12(b)", "URCP Rule 7", "URCP Rule 10"],
+      formatRequirements: { ...utahFormatDefaults, pageLimit: 25, wordLimit: 7750 },
+      bilingualNoticeRequired: true,
+      aiPromptInstructions: "Generate a professional motion to dismiss following Utah Rules of Civil Procedure Rule 12(b). Include clear legal arguments, cite relevant case law, and follow proper Utah court formatting.",
+      tags: ["motion", "dismiss", "12(b)", "civil"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(motionDismiss.id, motionDismiss);
+
+    // Motion for Summary Judgment
+    const motionSummaryJudgment: DocumentTemplate = {
+      id: "tpl-motion-summary-judgment",
+      name: "Motion for Summary Judgment",
+      description: "Motion for summary judgment under Utah Rules of Civil Procedure Rule 56",
+      category: "motions",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+MOTION FOR SUMMARY JUDGMENT
+
+{{movingParty}}, by and through counsel, hereby moves this Court pursuant to Utah Rule of Civil Procedure 56 for summary judgment on {{claimsAtIssue}}.
+
+MEMORANDUM IN SUPPORT
+
+I. INTRODUCTION
+
+{{introduction}}
+
+II. UNDISPUTED MATERIAL FACTS
+
+{{undisputedFacts}}
+
+III. LEGAL STANDARD
+
+Summary judgment is appropriate when "the pleadings, depositions, answers to interrogatories, and admissions on file, together with the affidavits, if any, show that there is no genuine issue as to any material fact and that the moving party is entitled to judgment as a matter of law." Utah R. Civ. P. 56(c).
+
+IV. ARGUMENT
+
+{{legalArgument}}
+
+V. CONCLUSION
+
+For the reasons set forth above, {{movingParty}} respectfully requests that this Court grant summary judgment in favor of {{movingParty}} on {{claimsAtIssue}}.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+Attorney for {{representedParty}}`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        { id: "movingParty", name: "movingParty", label: "Moving Party", type: "select", required: true, options: ["Plaintiff", "Defendant"] },
+        { id: "claimsAtIssue", name: "claimsAtIssue", label: "Claims at Issue", type: "text", required: true, placeholder: "all claims" },
+      ],
+      optionalFields: [
+        { id: "introduction", name: "introduction", label: "Introduction", type: "textarea", required: false },
+        { id: "undisputedFacts", name: "undisputedFacts", label: "Undisputed Material Facts", type: "textarea", required: false, helpText: "List each undisputed fact with supporting evidence" },
+        { id: "legalArgument", name: "legalArgument", label: "Legal Argument", type: "textarea", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 56", "URCP Rule 7", "URCP Rule 10"],
+      formatRequirements: { ...utahFormatDefaults, pageLimit: 25, wordLimit: 7750 },
+      bilingualNoticeRequired: true,
+      aiPromptInstructions: "Generate a professional motion for summary judgment following Utah Rules of Civil Procedure Rule 56. Include clear undisputed facts, cite supporting evidence, and provide compelling legal arguments.",
+      tags: ["motion", "summary judgment", "Rule 56", "civil"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(motionSummaryJudgment.id, motionSummaryJudgment);
+
+    // Answer to Complaint
+    const answerComplaint: DocumentTemplate = {
+      id: "tpl-answer-complaint",
+      name: "Answer to Complaint",
+      description: "Defendant's answer to plaintiff's complaint under Utah Rules of Civil Procedure",
+      category: "pleadings",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+ANSWER TO COMPLAINT
+
+Defendant {{defendantName}}, by and through counsel, hereby answers Plaintiff's Complaint as follows:
+
+GENERAL DENIAL
+
+Defendant denies each and every allegation in Plaintiff's Complaint except as specifically admitted herein.
+
+SPECIFIC RESPONSES TO ALLEGATIONS
+
+{{specificResponses}}
+
+AFFIRMATIVE DEFENSES
+
+{{affirmativeDefenses}}
+
+PRAYER FOR RELIEF
+
+WHEREFORE, Defendant respectfully requests that this Court:
+1. Dismiss Plaintiff's Complaint with prejudice;
+2. Award Defendant costs and attorney's fees as allowed by law; and
+3. Grant such other relief as the Court deems just and proper.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+Attorney for Defendant`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+      ],
+      optionalFields: [
+        { id: "specificResponses", name: "specificResponses", label: "Specific Responses", type: "textarea", required: false, helpText: "Respond to each numbered paragraph" },
+        { id: "affirmativeDefenses", name: "affirmativeDefenses", label: "Affirmative Defenses", type: "textarea", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 8", "URCP Rule 12", "URCP Rule 10"],
+      formatRequirements: utahFormatDefaults,
+      bilingualNoticeRequired: false,
+      aiPromptInstructions: "Generate a professional answer to complaint following Utah Rules of Civil Procedure. Include specific responses to allegations and relevant affirmative defenses.",
+      tags: ["pleading", "answer", "defense", "civil"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(answerComplaint.id, answerComplaint);
+
+    // Civil Complaint
+    const civilComplaint: DocumentTemplate = {
+      id: "tpl-civil-complaint",
+      name: "Civil Complaint",
+      description: "Initial complaint for civil action in Utah courts",
+      category: "pleadings",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. _______________
+Judge _______________
+
+COMPLAINT
+
+Plaintiff {{plaintiffName}}, by and through counsel, hereby complains against Defendant {{defendantName}} as follows:
+
+PARTIES
+
+1. Plaintiff {{plaintiffName}} is {{plaintiffDescription}}.
+
+2. Defendant {{defendantName}} is {{defendantDescription}}.
+
+JURISDICTION AND VENUE
+
+3. This Court has jurisdiction over this matter pursuant to {{jurisdictionBasis}}.
+
+4. Venue is proper in {{courtCounty}} County because {{venueBasis}}.
+
+FACTUAL ALLEGATIONS
+
+{{factualAllegations}}
+
+CAUSES OF ACTION
+
+{{causesOfAction}}
+
+PRAYER FOR RELIEF
+
+WHEREFORE, Plaintiff respectfully requests that this Court:
+1. Enter judgment in favor of Plaintiff and against Defendant;
+2. Award Plaintiff compensatory damages in the amount of {{damagesAmount}};
+3. Award Plaintiff costs and attorney's fees;
+4. Grant such other relief as the Court deems just and proper.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+Attorney for Plaintiff`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "plaintiffDescription", name: "plaintiffDescription", label: "Plaintiff Description", type: "text", required: true, placeholder: "a resident of Salt Lake County, Utah" },
+        { id: "defendantDescription", name: "defendantDescription", label: "Defendant Description", type: "text", required: true },
+        { id: "jurisdictionBasis", name: "jurisdictionBasis", label: "Jurisdiction Basis", type: "text", required: true, placeholder: "Utah Code Ann. § 78A-5-102" },
+        { id: "venueBasis", name: "venueBasis", label: "Venue Basis", type: "text", required: true, placeholder: "Defendant resides in this County" },
+      ],
+      optionalFields: [
+        { id: "factualAllegations", name: "factualAllegations", label: "Factual Allegations", type: "textarea", required: false },
+        { id: "causesOfAction", name: "causesOfAction", label: "Causes of Action", type: "textarea", required: false },
+        { id: "damagesAmount", name: "damagesAmount", label: "Damages Amount", type: "text", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 3", "URCP Rule 8", "URCP Rule 10"],
+      formatRequirements: utahFormatDefaults,
+      bilingualNoticeRequired: false,
+      aiPromptInstructions: "Generate a professional civil complaint following Utah Rules of Civil Procedure. Include clear factual allegations, proper causes of action, and prayer for relief.",
+      tags: ["pleading", "complaint", "civil", "initial filing"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(civilComplaint.id, civilComplaint);
+
+    // Subpoena
+    const subpoena: DocumentTemplate = {
+      id: "tpl-subpoena",
+      name: "Subpoena",
+      description: "Subpoena for witness testimony or document production",
+      category: "discovery",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+SUBPOENA
+
+TO: {{subpoenaRecipient}}
+    {{recipientAddress}}
+
+YOU ARE COMMANDED:
+
+{{subpoenaType}}
+
+{{specificInstructions}}
+
+Your failure to comply with this subpoena may result in contempt of court proceedings.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+BY THE COURT:
+
+_____________________________
+Clerk of Court
+
+ISSUED BY:
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+Attorney for {{representedParty}}`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        { id: "subpoenaRecipient", name: "subpoenaRecipient", label: "Subpoena Recipient", type: "text", required: true },
+        { id: "recipientAddress", name: "recipientAddress", label: "Recipient Address", type: "textarea", required: true },
+        { id: "subpoenaType", name: "subpoenaType", label: "Type of Subpoena", type: "select", required: true, options: ["To appear and testify at hearing/trial", "To appear and testify at deposition", "To produce documents or things", "To appear, testify, and produce documents"] },
+      ],
+      optionalFields: [
+        { id: "specificInstructions", name: "specificInstructions", label: "Specific Instructions", type: "textarea", required: false, helpText: "Details about when, where, and what" },
+      ],
+      utahRuleReferences: ["URCP Rule 45", "URCP Rule 30", "URCP Rule 34"],
+      formatRequirements: utahFormatDefaults,
+      bilingualNoticeRequired: false,
+      aiPromptInstructions: "Generate a professional subpoena following Utah Rules of Civil Procedure Rule 45. Be clear about requirements and include proper warnings.",
+      tags: ["discovery", "subpoena", "witness", "documents"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(subpoena.id, subpoena);
+
+    // Stipulation
+    const stipulation: DocumentTemplate = {
+      id: "tpl-stipulation",
+      name: "Stipulation",
+      description: "Agreement between parties on procedural or substantive matters",
+      category: "court-filings",
+      jurisdiction: "utah-district-court",
+      templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+STIPULATION
+
+The parties, by and through their respective counsel, hereby stipulate and agree as follows:
+
+{{stipulationTerms}}
+
+WHEREFORE, the parties respectfully request that this Court enter an order consistent with this Stipulation.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+FOR PLAINTIFF:                          FOR DEFENDANT:
+
+_____________________________          _____________________________
+{{plaintiffAttorney}}                  {{defendantAttorney}}
+Utah Bar No. {{plaintiffBarNumber}}    Utah Bar No. {{defendantBarNumber}}
+Attorney for Plaintiff                  Attorney for Defendant`,
+      requiredFields: [
+        { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+        { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington", "Cache", "Box Elder", "Summit", "Tooele", "Iron"] },
+        { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+        { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+        { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        { id: "stipulationTerms", name: "stipulationTerms", label: "Stipulation Terms", type: "textarea", required: true },
+      ],
+      optionalFields: [
+        { id: "plaintiffAttorney", name: "plaintiffAttorney", label: "Plaintiff's Attorney", type: "text", required: false },
+        { id: "defendantAttorney", name: "defendantAttorney", label: "Defendant's Attorney", type: "text", required: false },
+      ],
+      utahRuleReferences: ["URCP Rule 7"],
+      formatRequirements: utahFormatDefaults,
+      bilingualNoticeRequired: false,
+      aiPromptInstructions: "Generate a professional stipulation following Utah court requirements. Clearly state the agreed terms.",
+      tags: ["stipulation", "agreement", "court filing"],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documentTemplates.set(stipulation.id, stipulation);
+  }
+
+  async getDocumentTemplates(category?: string): Promise<DocumentTemplate[]> {
+    const templates = Array.from(this.documentTemplates.values());
+    if (category) {
+      return templates.filter(t => t.category === category && t.isActive);
+    }
+    return templates.filter(t => t.isActive);
+  }
+
+  async getDocumentTemplate(id: string): Promise<DocumentTemplate | undefined> {
+    return this.documentTemplates.get(id);
+  }
+
+  async createDocumentTemplate(data: InsertDocumentTemplate): Promise<DocumentTemplate> {
+    const now = new Date().toISOString();
+    const template: DocumentTemplate = {
+      id: randomUUID(),
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      jurisdiction: data.jurisdiction,
+      templateContent: data.templateContent,
+      requiredFields: data.requiredFields || [],
+      optionalFields: data.optionalFields || [],
+      utahRuleReferences: data.utahRuleReferences || [],
+      formatRequirements: data.formatRequirements || {
+        paperSize: "8.5x11",
+        margins: { top: 1, right: 1, bottom: 1, left: 1 },
+        fontSize: 12,
+        fontFamily: "Times New Roman",
+        lineSpacing: "double",
+        requiresCaption: true,
+        requiresCertificateOfService: true,
+        requiresSignatureBlock: true,
+        requiresBilingualNotice: true,
+      },
+      bilingualNoticeRequired: data.bilingualNoticeRequired ?? true,
+      sampleDocument: data.sampleDocument,
+      aiPromptInstructions: data.aiPromptInstructions || "",
+      tags: data.tags || [],
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.documentTemplates.set(template.id, template);
+    return template;
+  }
+
+  async updateDocumentTemplate(id: string, data: Partial<DocumentTemplate>): Promise<DocumentTemplate | undefined> {
+    const template = this.documentTemplates.get(id);
+    if (!template) return undefined;
+    const updated = { ...template, ...data, updatedAt: new Date().toISOString() };
+    this.documentTemplates.set(id, updated);
+    return updated;
+  }
+
+  async deleteDocumentTemplate(id: string): Promise<boolean> {
+    return this.documentTemplates.delete(id);
+  }
+
+  // ============ GENERATED DOCUMENTS ============
+
+  async getGeneratedDocuments(matterId?: string): Promise<GeneratedDocument[]> {
+    const docs = Array.from(this.generatedDocuments.values());
+    if (matterId) {
+      return docs.filter(d => d.matterId === matterId);
+    }
+    return docs;
+  }
+
+  async getGeneratedDocument(id: string): Promise<GeneratedDocument | undefined> {
+    return this.generatedDocuments.get(id);
+  }
+
+  async createGeneratedDocument(data: InsertGeneratedDocument): Promise<GeneratedDocument> {
+    const now = new Date().toISOString();
+    const doc: GeneratedDocument = {
+      id: randomUUID(),
+      templateId: data.templateId,
+      matterId: data.matterId,
+      title: data.title,
+      documentType: data.documentType,
+      jurisdiction: data.jurisdiction,
+      status: "draft",
+      content: data.content,
+      fieldValues: data.fieldValues || {},
+      aiGenerationPrompt: data.aiGenerationPrompt,
+      aiGenerationResponse: data.aiGenerationResponse,
+      formatCompliance: data.formatCompliance || { isCompliant: false, checks: [], utahRulesChecked: [] },
+      version: 1,
+      createdBy: data.createdBy,
+      createdByName: data.createdByName,
+      createdAt: now,
+      updatedAt: now,
+      metadata: {},
+    };
+    this.generatedDocuments.set(doc.id, doc);
+    return doc;
+  }
+
+  async updateGeneratedDocument(id: string, data: Partial<GeneratedDocument>): Promise<GeneratedDocument | undefined> {
+    const doc = this.generatedDocuments.get(id);
+    if (!doc) return undefined;
+    const updated = { ...doc, ...data, updatedAt: new Date().toISOString() };
+    this.generatedDocuments.set(id, updated);
+    return updated;
+  }
+
+  async deleteGeneratedDocument(id: string): Promise<boolean> {
+    return this.generatedDocuments.delete(id);
+  }
+
+  // ============ DOCUMENT APPROVALS ============
+
+  async getDocumentApprovals(documentId?: string): Promise<DocumentApproval[]> {
+    const approvals = Array.from(this.documentApprovals.values());
+    if (documentId) {
+      return approvals.filter(a => a.documentId === documentId);
+    }
+    return approvals;
+  }
+
+  async getDocumentApproval(id: string): Promise<DocumentApproval | undefined> {
+    return this.documentApprovals.get(id);
+  }
+
+  async createDocumentApproval(data: InsertDocumentApproval): Promise<DocumentApproval> {
+    const now = new Date().toISOString();
+    const approval: DocumentApproval = {
+      id: randomUUID(),
+      documentId: data.documentId,
+      status: "pending",
+      assignedReviewerId: data.assignedReviewerId,
+      assignedReviewerName: data.assignedReviewerName,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.documentApprovals.set(approval.id, approval);
+    return approval;
+  }
+
+  async updateDocumentApproval(id: string, data: UpdateDocumentApproval): Promise<DocumentApproval | undefined> {
+    const approval = this.documentApprovals.get(id);
+    if (!approval) return undefined;
+    
+    const updated: DocumentApproval = {
+      ...approval,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    if (data.status === "approved" && data.lawyerInitials) {
+      updated.approvalStamp = new Date().toISOString();
+    }
+    
+    this.documentApprovals.set(id, updated);
+    return updated;
+  }
+
+  async addDocumentApprovalAudit(data: Partial<DocumentApprovalAudit>): Promise<DocumentApprovalAudit> {
+    const audit: DocumentApprovalAudit = {
+      id: randomUUID(),
+      documentId: data.documentId || "",
+      approvalId: data.approvalId || "",
+      action: data.action || "created",
+      performedBy: data.performedBy || "",
+      performedByName: data.performedByName || "",
+      performedAt: new Date().toISOString(),
+      previousStatus: data.previousStatus,
+      newStatus: data.newStatus,
+      notes: data.notes,
+      ipAddress: data.ipAddress,
+      metadata: data.metadata,
+    };
+    this.documentApprovalAudits.set(audit.id, audit);
+    return audit;
+  }
+
+  async getDocumentApprovalAudit(documentId: string): Promise<DocumentApprovalAudit[]> {
+    return Array.from(this.documentApprovalAudits.values())
+      .filter(a => a.documentId === documentId)
+      .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+  }
+
+  // ============ CLIENT FORMS ============
+
+  async getClientForms(): Promise<ClientForm[]> {
+    return Array.from(this.clientForms.values()).filter(f => f.isActive);
+  }
+
+  async getClientForm(id: string): Promise<ClientForm | undefined> {
+    return this.clientForms.get(id);
+  }
+
+  async createClientForm(data: InsertClientForm): Promise<ClientForm> {
+    const now = new Date().toISOString();
+    const form: ClientForm = {
+      id: randomUUID(),
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      formFields: data.formFields || [],
+      isPublic: data.isPublic ?? false,
+      requiresSignature: data.requiresSignature ?? false,
+      instructions: data.instructions || "",
+      thankYouMessage: data.thankYouMessage || "Thank you for your submission.",
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.clientForms.set(form.id, form);
+    return form;
+  }
+
+  async updateClientForm(id: string, data: Partial<ClientForm>): Promise<ClientForm | undefined> {
+    const form = this.clientForms.get(id);
+    if (!form) return undefined;
+    const updated = { ...form, ...data, updatedAt: new Date().toISOString() };
+    this.clientForms.set(id, updated);
+    return updated;
+  }
+
+  async deleteClientForm(id: string): Promise<boolean> {
+    return this.clientForms.delete(id);
+  }
+
+  async getClientFormSubmissions(formId?: string): Promise<ClientFormSubmission[]> {
+    const submissions = Array.from(this.clientFormSubmissions.values());
+    if (formId) {
+      return submissions.filter(s => s.formId === formId);
+    }
+    return submissions;
+  }
+
+  async getClientFormSubmission(id: string): Promise<ClientFormSubmission | undefined> {
+    return this.clientFormSubmissions.get(id);
+  }
+
+  async createClientFormSubmission(data: InsertClientFormSubmission): Promise<ClientFormSubmission> {
+    const submission: ClientFormSubmission = {
+      id: randomUUID(),
+      formId: data.formId,
+      matterId: data.matterId,
+      clientName: data.clientName,
+      clientEmail: data.clientEmail,
+      submittedData: data.submittedData,
+      signature: data.signature,
+      signedAt: data.signature ? new Date().toISOString() : undefined,
+      submittedAt: new Date().toISOString(),
+      reviewed: false,
+    };
+    this.clientFormSubmissions.set(submission.id, submission);
+    return submission;
+  }
+
+  async updateClientFormSubmission(id: string, data: Partial<ClientFormSubmission>): Promise<ClientFormSubmission | undefined> {
+    const submission = this.clientFormSubmissions.get(id);
+    if (!submission) return undefined;
+    const updated = { ...submission, ...data };
+    this.clientFormSubmissions.set(id, updated);
+    return updated;
   }
 }
 

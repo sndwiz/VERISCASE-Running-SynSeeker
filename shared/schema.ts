@@ -1553,6 +1553,308 @@ export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type InsertApprovalRequest = z.infer<typeof insertApprovalRequestSchema>;
 export type InsertApprovalComment = z.infer<typeof insertApprovalCommentSchema>;
 
+// ============ DOCUMENT AND FORM MAKER ============
+
+// Document template categories
+export type DocumentCategory = 
+  | "motions"
+  | "pleadings"
+  | "discovery"
+  | "contracts"
+  | "court-filings"
+  | "client-forms"
+  | "correspondence"
+  | "administrative"
+  | "family-law"
+  | "criminal"
+  | "civil"
+  | "probate"
+  | "real-estate"
+  | "business"
+  | "other";
+
+// Utah court jurisdictions
+export type UtahJurisdiction = 
+  | "utah-district-court"
+  | "utah-justice-court"
+  | "utah-juvenile-court"
+  | "utah-appellate-court"
+  | "utah-supreme-court"
+  | "federal-district-utah"
+  | "other";
+
+// Document generation status
+export type DocumentStatus = 
+  | "draft"
+  | "ai-generated"
+  | "pending-review"
+  | "under-review"
+  | "revision-requested"
+  | "approved"
+  | "rejected"
+  | "finalized"
+  | "filed";
+
+// Document template
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: DocumentCategory;
+  jurisdiction: UtahJurisdiction;
+  templateContent: string; // Base template with placeholders
+  requiredFields: DocumentField[];
+  optionalFields: DocumentField[];
+  utahRuleReferences: string[]; // URCP/Utah Code references
+  formatRequirements: DocumentFormatRequirements;
+  bilingualNoticeRequired: boolean;
+  sampleDocument?: string;
+  aiPromptInstructions: string; // Instructions for AI generation
+  tags: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Document field definition
+export interface DocumentField {
+  id: string;
+  name: string;
+  label: string;
+  type: "text" | "textarea" | "date" | "number" | "select" | "checkbox" | "party" | "court" | "case-number";
+  required: boolean;
+  placeholder?: string;
+  options?: string[]; // For select fields
+  defaultValue?: string;
+  validation?: string; // Regex or rule
+  helpText?: string;
+}
+
+// Utah-compliant format requirements
+export interface DocumentFormatRequirements {
+  paperSize: "8.5x11";
+  margins: { top: number; right: number; bottom: number; left: number };
+  fontSize: number;
+  fontFamily: string;
+  lineSpacing: "single" | "double";
+  pageLimit?: number;
+  wordLimit?: number;
+  requiresCaption: boolean;
+  requiresCertificateOfService: boolean;
+  requiresSignatureBlock: boolean;
+  requiresBilingualNotice: boolean;
+}
+
+// Generated document
+export interface GeneratedDocument {
+  id: string;
+  templateId: string;
+  matterId?: string;
+  title: string;
+  documentType: DocumentCategory;
+  jurisdiction: UtahJurisdiction;
+  status: DocumentStatus;
+  content: string; // The generated document content
+  fieldValues: Record<string, any>; // Filled field values
+  aiGenerationPrompt?: string;
+  aiGenerationResponse?: string;
+  formatCompliance: DocumentFormatCompliance;
+  version: number;
+  previousVersionId?: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: Record<string, any>;
+}
+
+// Format compliance check result
+export interface DocumentFormatCompliance {
+  isCompliant: boolean;
+  checks: {
+    name: string;
+    passed: boolean;
+    message: string;
+  }[];
+  utahRulesChecked: string[];
+}
+
+// Document approval record (lawyer review)
+export interface DocumentApproval {
+  id: string;
+  documentId: string;
+  status: "pending" | "in-review" | "approved" | "rejected" | "revision-requested";
+  assignedReviewerId?: string;
+  assignedReviewerName?: string;
+  reviewStartedAt?: string;
+  reviewCompletedAt?: string;
+  lawyerInitials?: string;
+  lawyerSignature?: string;
+  lawyerBarNumber?: string;
+  approvalStamp?: string; // Timestamp of approval
+  revisionNotes?: string;
+  legalReviewNotes?: string;
+  complianceNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Document approval audit trail
+export interface DocumentApprovalAudit {
+  id: string;
+  documentId: string;
+  approvalId: string;
+  action: "created" | "assigned" | "review-started" | "revision-requested" | "approved" | "rejected" | "initialed" | "signed" | "finalized" | "downloaded" | "filed";
+  performedBy: string;
+  performedByName: string;
+  performedAt: string;
+  previousStatus?: DocumentStatus;
+  newStatus?: DocumentStatus;
+  notes?: string;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+}
+
+// Client intake form
+export interface ClientForm {
+  id: string;
+  name: string;
+  description: string;
+  category: DocumentCategory;
+  formFields: DocumentField[];
+  isPublic: boolean; // Can be shared with clients
+  requiresSignature: boolean;
+  instructions: string;
+  thankYouMessage: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Client form submission
+export interface ClientFormSubmission {
+  id: string;
+  formId: string;
+  matterId?: string;
+  clientName: string;
+  clientEmail?: string;
+  submittedData: Record<string, any>;
+  signature?: string;
+  signedAt?: string;
+  ipAddress?: string;
+  submittedAt: string;
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+}
+
+// Utah bilingual notice content
+export const utahBilingualNotice = {
+  english: `NOTICE TO RESPONDING PARTY
+This motion requires you to respond within the time specified by the Utah Rules of Civil Procedure. If you do not respond, the court may grant the relief requested.`,
+  spanish: `AVISO PARA LA PARTE QUE RESPONDE
+Esta moción requiere que usted responda dentro del tiempo especificado por las Reglas de Procedimiento Civil de Utah. Si no responde, el tribunal puede otorgar el alivio solicitado.`
+};
+
+// Utah court format defaults
+export const utahDocumentFormatDefaults: DocumentFormatRequirements = {
+  paperSize: "8.5x11",
+  margins: { top: 1, right: 1, bottom: 1, left: 1 },
+  fontSize: 12,
+  fontFamily: "Times New Roman",
+  lineSpacing: "double",
+  requiresCaption: true,
+  requiresCertificateOfService: true,
+  requiresSignatureBlock: true,
+  requiresBilingualNotice: true
+};
+
+// Utah motion page limits
+export const utahMotionLimits = {
+  motion: { pages: 25, words: 7750 },
+  reply: { pages: 10, words: 2500 },
+  opposition: { pages: 25, words: 7750 }
+};
+
+// Insert schemas for documents
+export const insertDocumentTemplateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  category: z.enum(["motions", "pleadings", "discovery", "contracts", "court-filings", "client-forms", "correspondence", "administrative", "family-law", "criminal", "civil", "probate", "real-estate", "business", "other"]),
+  jurisdiction: z.enum(["utah-district-court", "utah-justice-court", "utah-juvenile-court", "utah-appellate-court", "utah-supreme-court", "federal-district-utah", "other"]),
+  templateContent: z.string(),
+  requiredFields: z.array(z.any()).default([]),
+  optionalFields: z.array(z.any()).default([]),
+  utahRuleReferences: z.array(z.string()).default([]),
+  formatRequirements: z.any(),
+  bilingualNoticeRequired: z.boolean().default(true),
+  sampleDocument: z.string().optional(),
+  aiPromptInstructions: z.string().default(""),
+  tags: z.array(z.string()).default([]),
+  isActive: z.boolean().default(true),
+});
+
+export const insertGeneratedDocumentSchema = z.object({
+  templateId: z.string(),
+  matterId: z.string().optional(),
+  title: z.string().min(1),
+  documentType: z.enum(["motions", "pleadings", "discovery", "contracts", "court-filings", "client-forms", "correspondence", "administrative", "family-law", "criminal", "civil", "probate", "real-estate", "business", "other"]),
+  jurisdiction: z.enum(["utah-district-court", "utah-justice-court", "utah-juvenile-court", "utah-appellate-court", "utah-supreme-court", "federal-district-utah", "other"]),
+  content: z.string(),
+  fieldValues: z.record(z.any()).default({}),
+  aiGenerationPrompt: z.string().optional(),
+  aiGenerationResponse: z.string().optional(),
+  formatCompliance: z.any().optional(),
+  createdBy: z.string(),
+  createdByName: z.string(),
+});
+
+export const insertDocumentApprovalSchema = z.object({
+  documentId: z.string(),
+  assignedReviewerId: z.string().optional(),
+  assignedReviewerName: z.string().optional(),
+});
+
+export const updateDocumentApprovalSchema = z.object({
+  status: z.enum(["pending", "in-review", "approved", "rejected", "revision-requested"]).optional(),
+  lawyerInitials: z.string().optional(),
+  lawyerSignature: z.string().optional(),
+  lawyerBarNumber: z.string().optional(),
+  revisionNotes: z.string().optional(),
+  legalReviewNotes: z.string().optional(),
+  complianceNotes: z.string().optional(),
+});
+
+export const insertClientFormSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  category: z.enum(["motions", "pleadings", "discovery", "contracts", "court-filings", "client-forms", "correspondence", "administrative", "family-law", "criminal", "civil", "probate", "real-estate", "business", "other"]),
+  formFields: z.array(z.any()).default([]),
+  isPublic: z.boolean().default(false),
+  requiresSignature: z.boolean().default(false),
+  instructions: z.string().default(""),
+  thankYouMessage: z.string().default("Thank you for your submission."),
+  isActive: z.boolean().default(true),
+});
+
+export const insertClientFormSubmissionSchema = z.object({
+  formId: z.string(),
+  matterId: z.string().optional(),
+  clientName: z.string().min(1),
+  clientEmail: z.string().email().optional(),
+  submittedData: z.record(z.any()),
+  signature: z.string().optional(),
+});
+
+// Type exports for Document Maker
+export type InsertDocumentTemplate = z.infer<typeof insertDocumentTemplateSchema>;
+export type InsertGeneratedDocument = z.infer<typeof insertGeneratedDocumentSchema>;
+export type InsertDocumentApproval = z.infer<typeof insertDocumentApprovalSchema>;
+export type UpdateDocumentApproval = z.infer<typeof updateDocumentApprovalSchema>;
+export type InsertClientForm = z.infer<typeof insertClientFormSchema>;
+export type InsertClientFormSubmission = z.infer<typeof insertClientFormSubmissionSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

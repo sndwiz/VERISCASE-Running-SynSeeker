@@ -37,6 +37,7 @@ import {
   Home,
   Building2,
   ChevronsUpDown,
+  FilePlus2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board } from "@shared/schema";
@@ -54,6 +55,7 @@ const navigationItems = [
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Documents", url: "/documents", icon: FileText },
+  { title: "Document Maker", url: "/document-maker", icon: FilePlus2 },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Approvals", url: "/approvals", icon: Gavel },

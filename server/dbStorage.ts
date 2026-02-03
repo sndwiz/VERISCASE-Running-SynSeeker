@@ -48,6 +48,18 @@ import type {
   InsertDocProfile,
   FilingTag,
   InsertFilingTag,
+  DocumentTemplate,
+  InsertDocumentTemplate,
+  GeneratedDocument,
+  InsertGeneratedDocument,
+  DocumentApproval,
+  InsertDocumentApproval,
+  UpdateDocumentApproval,
+  DocumentApprovalAudit,
+  ClientForm,
+  InsertClientForm,
+  ClientFormSubmission,
+  InsertClientFormSubmission,
   PeopleOrg,
   InsertPeopleOrg,
   FileItemWithProfile,
@@ -2084,7 +2096,7 @@ export class DbStorage implements IStorage {
     let newStatus = request.status;
     if (data.decision) {
       newStatus = data.decision === "approved" ? "approved" : 
-                  data.decision === "rejected" ? "rejected" : "needs-revision";
+                  data.decision === "rejected" ? "rejected" : "vetting";
     }
     
     await db.update(tables.approvalRequests)
@@ -2096,5 +2108,634 @@ export class DbStorage implements IStorage {
       .where(eq(tables.approvalRequests.id, data.approvalId));
     
     return comment;
+  }
+
+  // ============ DOCUMENT TEMPLATES (In-Memory for now) ============
+  private documentTemplatesCache: Map<string, DocumentTemplate> = new Map();
+  private generatedDocumentsCache: Map<string, GeneratedDocument> = new Map();
+  private documentApprovalsCache: Map<string, DocumentApproval> = new Map();
+  private documentApprovalAuditsCache: Map<string, DocumentApprovalAudit> = new Map();
+  private clientFormsCache: Map<string, ClientForm> = new Map();
+  private clientFormSubmissionsCache: Map<string, ClientFormSubmission> = new Map();
+  private documentTemplatesInitialized = false;
+
+  private initializeDocumentTemplates() {
+    if (this.documentTemplatesInitialized) return;
+    
+    const utahFormatDefaults = {
+      paperSize: "8.5x11" as const,
+      margins: { top: 1, right: 1, bottom: 1, left: 1 },
+      fontSize: 12,
+      fontFamily: "Times New Roman",
+      lineSpacing: "double" as const,
+      requiresCaption: true,
+      requiresCertificateOfService: true,
+      requiresSignatureBlock: true,
+      requiresBilingualNotice: true,
+    };
+
+    const templates: DocumentTemplate[] = [
+      {
+        id: "tpl-motion-continuance",
+        name: "Motion for Continuance",
+        description: "Request to postpone a scheduled hearing, trial, or deadline in Utah courts",
+        category: "motions",
+        jurisdiction: "utah-district-court",
+        templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+MOTION FOR CONTINUANCE
+
+{{movingParty}}, by and through counsel, hereby moves this Court for an order continuing the {{eventType}} currently scheduled for {{currentDate}}.
+
+STATEMENT OF FACTS
+
+{{factStatement}}
+
+GROUNDS FOR CONTINUANCE
+
+{{groundsForContinuance}}
+
+PROPOSED NEW DATE
+
+{{movingParty}} respectfully requests that the {{eventType}} be rescheduled to {{proposedDate}}, or such other date as the Court deems appropriate.
+
+GOOD CAUSE
+
+Good cause exists for this continuance because: {{goodCauseStatement}}
+
+WHEREFORE, {{movingParty}} respectfully requests that this Court grant this Motion and continue the {{eventType}} to {{proposedDate}}.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+{{firmName}}
+{{firmAddress}}
+Attorney for {{representedParty}}
+
+CERTIFICATE OF SERVICE
+
+I hereby certify that on {{serviceDate}}, I served a true and correct copy of the foregoing MOTION FOR CONTINUANCE upon the following:
+
+{{opposingCounselInfo}}
+
+_____________________________
+{{attorneyName}}`,
+        requiredFields: [
+          { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true, placeholder: "Third District Court" },
+          { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington"] },
+          { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+          { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+          { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+          { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+          { id: "movingParty", name: "movingParty", label: "Moving Party", type: "select", required: true, options: ["Plaintiff", "Defendant"] },
+          { id: "eventType", name: "eventType", label: "Event Type", type: "select", required: true, options: ["hearing", "trial", "deposition"] },
+          { id: "currentDate", name: "currentDate", label: "Current Date", type: "date", required: true },
+          { id: "proposedDate", name: "proposedDate", label: "Proposed Date", type: "date", required: true },
+        ],
+        optionalFields: [],
+        utahRuleReferences: ["URCP Rule 7", "URCP Rule 6"],
+        formatRequirements: { ...utahFormatDefaults, pageLimit: 25, wordLimit: 7750 },
+        bilingualNoticeRequired: true,
+        aiPromptInstructions: "Generate a professional motion for continuance following Utah Rules of Civil Procedure.",
+        tags: ["motion", "continuance", "civil"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "tpl-motion-dismiss",
+        name: "Motion to Dismiss",
+        description: "Motion to dismiss under Utah Rules of Civil Procedure Rule 12(b)",
+        category: "motions",
+        jurisdiction: "utah-district-court",
+        templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+MOTION TO DISMISS
+
+{{movingParty}}, by and through counsel, hereby moves this Court pursuant to Utah Rule of Civil Procedure 12(b)({{dismissalBasis}}) for an order dismissing {{dismissTarget}}.
+
+MEMORANDUM IN SUPPORT
+
+I. INTRODUCTION
+
+{{introduction}}
+
+II. STATEMENT OF FACTS
+
+{{factStatement}}
+
+III. ARGUMENT
+
+{{legalArgument}}
+
+IV. CONCLUSION
+
+For the reasons set forth above, {{movingParty}} respectfully requests that this Court grant this Motion and dismiss {{dismissTarget}}.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+Attorney for {{representedParty}}`,
+        requiredFields: [
+          { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+          { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington"] },
+          { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+          { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+          { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+          { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+          { id: "dismissalBasis", name: "dismissalBasis", label: "Dismissal Basis", type: "select", required: true, options: ["1 - Lack of jurisdiction", "6 - Failure to state a claim"] },
+        ],
+        optionalFields: [],
+        utahRuleReferences: ["URCP Rule 12(b)", "URCP Rule 7"],
+        formatRequirements: { ...utahFormatDefaults, pageLimit: 25, wordLimit: 7750 },
+        bilingualNoticeRequired: true,
+        aiPromptInstructions: "Generate a motion to dismiss following Utah Rules of Civil Procedure Rule 12(b).",
+        tags: ["motion", "dismiss", "12(b)"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "tpl-civil-complaint",
+        name: "Civil Complaint",
+        description: "Initial complaint for civil action in Utah courts",
+        category: "pleadings",
+        jurisdiction: "utah-district-court",
+        templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+COMPLAINT
+
+Plaintiff {{plaintiffName}}, by and through counsel, hereby complains against Defendant as follows:
+
+PARTIES
+
+1. Plaintiff is {{plaintiffDescription}}.
+2. Defendant is {{defendantDescription}}.
+
+JURISDICTION AND VENUE
+
+3. This Court has jurisdiction pursuant to {{jurisdictionBasis}}.
+4. Venue is proper because {{venueBasis}}.
+
+FACTUAL ALLEGATIONS
+
+{{factualAllegations}}
+
+CAUSES OF ACTION
+
+{{causesOfAction}}
+
+PRAYER FOR RELIEF
+
+WHEREFORE, Plaintiff requests judgment against Defendant for:
+1. Compensatory damages;
+2. Costs and attorney's fees; and
+3. Such other relief as the Court deems just.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+Attorney for Plaintiff`,
+        requiredFields: [
+          { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+          { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington"] },
+          { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+          { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+        ],
+        optionalFields: [],
+        utahRuleReferences: ["URCP Rule 3", "URCP Rule 8", "URCP Rule 10"],
+        formatRequirements: utahFormatDefaults,
+        bilingualNoticeRequired: false,
+        aiPromptInstructions: "Generate a civil complaint following Utah Rules of Civil Procedure.",
+        tags: ["pleading", "complaint", "civil"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "tpl-answer",
+        name: "Answer to Complaint",
+        description: "Defendant's answer to plaintiff's complaint",
+        category: "pleadings",
+        jurisdiction: "utah-district-court",
+        templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+ANSWER TO COMPLAINT
+
+Defendant {{defendantName}}, by and through counsel, answers Plaintiff's Complaint as follows:
+
+GENERAL DENIAL
+
+Defendant denies each allegation except as specifically admitted herein.
+
+SPECIFIC RESPONSES
+
+{{specificResponses}}
+
+AFFIRMATIVE DEFENSES
+
+{{affirmativeDefenses}}
+
+PRAYER FOR RELIEF
+
+WHEREFORE, Defendant requests:
+1. Dismissal of Plaintiff's Complaint with prejudice;
+2. Costs and attorney's fees; and
+3. Such other relief as the Court deems just.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+Attorney for Defendant`,
+        requiredFields: [
+          { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+          { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington"] },
+          { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+          { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+          { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+          { id: "judgeName", name: "judgeName", label: "Judge Name", type: "text", required: true },
+        ],
+        optionalFields: [],
+        utahRuleReferences: ["URCP Rule 8", "URCP Rule 12"],
+        formatRequirements: utahFormatDefaults,
+        bilingualNoticeRequired: false,
+        aiPromptInstructions: "Generate an answer to complaint following Utah Rules of Civil Procedure.",
+        tags: ["pleading", "answer", "defense"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "tpl-subpoena",
+        name: "Subpoena",
+        description: "Subpoena for witness testimony or document production",
+        category: "discovery",
+        jurisdiction: "utah-district-court",
+        templateContent: `IN THE {{courtName}}
+{{courtCounty}} COUNTY, STATE OF UTAH
+
+{{plaintiffName}},
+    Plaintiff,
+
+vs.
+
+{{defendantName}},
+    Defendant.
+
+Case No. {{caseNumber}}
+Judge {{judgeName}}
+
+SUBPOENA
+
+TO: {{subpoenaRecipient}}
+    {{recipientAddress}}
+
+YOU ARE COMMANDED:
+
+{{subpoenaType}}
+
+{{specificInstructions}}
+
+Failure to comply may result in contempt of court.
+
+DATED this {{day}} day of {{month}}, {{year}}.
+
+BY THE COURT:
+_____________________________
+Clerk of Court
+
+ISSUED BY:
+_____________________________
+{{attorneyName}}
+Utah Bar No. {{barNumber}}
+Attorney for {{representedParty}}`,
+        requiredFields: [
+          { id: "courtName", name: "courtName", label: "Court Name", type: "court", required: true },
+          { id: "courtCounty", name: "courtCounty", label: "County", type: "select", required: true, options: ["Salt Lake", "Utah", "Davis", "Weber", "Washington"] },
+          { id: "plaintiffName", name: "plaintiffName", label: "Plaintiff Name", type: "party", required: true },
+          { id: "defendantName", name: "defendantName", label: "Defendant Name", type: "party", required: true },
+          { id: "caseNumber", name: "caseNumber", label: "Case Number", type: "case-number", required: true },
+          { id: "subpoenaRecipient", name: "subpoenaRecipient", label: "Recipient", type: "text", required: true },
+          { id: "subpoenaType", name: "subpoenaType", label: "Type", type: "select", required: true, options: ["Testify at hearing", "Testify at deposition", "Produce documents"] },
+        ],
+        optionalFields: [],
+        utahRuleReferences: ["URCP Rule 45"],
+        formatRequirements: utahFormatDefaults,
+        bilingualNoticeRequired: false,
+        aiPromptInstructions: "Generate a subpoena following Utah Rules of Civil Procedure Rule 45.",
+        tags: ["discovery", "subpoena"],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    templates.forEach(t => this.documentTemplatesCache.set(t.id, t));
+    this.documentTemplatesInitialized = true;
+  }
+
+  async getDocumentTemplates(category?: string): Promise<DocumentTemplate[]> {
+    this.initializeDocumentTemplates();
+    const templates = Array.from(this.documentTemplatesCache.values());
+    if (category) {
+      return templates.filter(t => t.category === category && t.isActive);
+    }
+    return templates.filter(t => t.isActive);
+  }
+
+  async getDocumentTemplate(id: string): Promise<DocumentTemplate | undefined> {
+    this.initializeDocumentTemplates();
+    return this.documentTemplatesCache.get(id);
+  }
+
+  async createDocumentTemplate(data: InsertDocumentTemplate): Promise<DocumentTemplate> {
+    this.initializeDocumentTemplates();
+    const now = new Date().toISOString();
+    const template: DocumentTemplate = {
+      id: randomUUID(),
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      jurisdiction: data.jurisdiction,
+      templateContent: data.templateContent,
+      requiredFields: data.requiredFields || [],
+      optionalFields: data.optionalFields || [],
+      utahRuleReferences: data.utahRuleReferences || [],
+      formatRequirements: data.formatRequirements || {
+        paperSize: "8.5x11",
+        margins: { top: 1, right: 1, bottom: 1, left: 1 },
+        fontSize: 12,
+        fontFamily: "Times New Roman",
+        lineSpacing: "double",
+        requiresCaption: true,
+        requiresCertificateOfService: true,
+        requiresSignatureBlock: true,
+        requiresBilingualNotice: true,
+      },
+      bilingualNoticeRequired: data.bilingualNoticeRequired ?? true,
+      sampleDocument: data.sampleDocument,
+      aiPromptInstructions: data.aiPromptInstructions || "",
+      tags: data.tags || [],
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.documentTemplatesCache.set(template.id, template);
+    return template;
+  }
+
+  async updateDocumentTemplate(id: string, data: Partial<DocumentTemplate>): Promise<DocumentTemplate | undefined> {
+    this.initializeDocumentTemplates();
+    const template = this.documentTemplatesCache.get(id);
+    if (!template) return undefined;
+    const updated = { ...template, ...data, updatedAt: new Date().toISOString() };
+    this.documentTemplatesCache.set(id, updated);
+    return updated;
+  }
+
+  async deleteDocumentTemplate(id: string): Promise<boolean> {
+    this.initializeDocumentTemplates();
+    return this.documentTemplatesCache.delete(id);
+  }
+
+  async getGeneratedDocuments(matterId?: string): Promise<GeneratedDocument[]> {
+    const docs = Array.from(this.generatedDocumentsCache.values());
+    if (matterId) return docs.filter(d => d.matterId === matterId);
+    return docs;
+  }
+
+  async getGeneratedDocument(id: string): Promise<GeneratedDocument | undefined> {
+    return this.generatedDocumentsCache.get(id);
+  }
+
+  async createGeneratedDocument(data: InsertGeneratedDocument): Promise<GeneratedDocument> {
+    const now = new Date().toISOString();
+    const doc: GeneratedDocument = {
+      id: randomUUID(),
+      templateId: data.templateId,
+      matterId: data.matterId,
+      title: data.title,
+      documentType: data.documentType,
+      jurisdiction: data.jurisdiction,
+      status: "draft",
+      content: data.content,
+      fieldValues: data.fieldValues || {},
+      aiGenerationPrompt: data.aiGenerationPrompt,
+      aiGenerationResponse: data.aiGenerationResponse,
+      formatCompliance: data.formatCompliance || { isCompliant: false, checks: [], utahRulesChecked: [] },
+      version: 1,
+      createdBy: data.createdBy,
+      createdByName: data.createdByName,
+      createdAt: now,
+      updatedAt: now,
+      metadata: {},
+    };
+    this.generatedDocumentsCache.set(doc.id, doc);
+    return doc;
+  }
+
+  async updateGeneratedDocument(id: string, data: Partial<GeneratedDocument>): Promise<GeneratedDocument | undefined> {
+    const doc = this.generatedDocumentsCache.get(id);
+    if (!doc) return undefined;
+    const updated = { ...doc, ...data, updatedAt: new Date().toISOString() };
+    this.generatedDocumentsCache.set(id, updated);
+    return updated;
+  }
+
+  async deleteGeneratedDocument(id: string): Promise<boolean> {
+    return this.generatedDocumentsCache.delete(id);
+  }
+
+  async getDocumentApprovals(documentId?: string): Promise<DocumentApproval[]> {
+    const approvals = Array.from(this.documentApprovalsCache.values());
+    if (documentId) return approvals.filter(a => a.documentId === documentId);
+    return approvals;
+  }
+
+  async getDocumentApproval(id: string): Promise<DocumentApproval | undefined> {
+    return this.documentApprovalsCache.get(id);
+  }
+
+  async createDocumentApproval(data: InsertDocumentApproval): Promise<DocumentApproval> {
+    const now = new Date().toISOString();
+    const approval: DocumentApproval = {
+      id: randomUUID(),
+      documentId: data.documentId,
+      status: "pending",
+      assignedReviewerId: data.assignedReviewerId,
+      assignedReviewerName: data.assignedReviewerName,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.documentApprovalsCache.set(approval.id, approval);
+    return approval;
+  }
+
+  async updateDocumentApproval(id: string, data: UpdateDocumentApproval): Promise<DocumentApproval | undefined> {
+    const approval = this.documentApprovalsCache.get(id);
+    if (!approval) return undefined;
+    const updated: DocumentApproval = {
+      ...approval,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    if (data.status === "approved" && data.lawyerInitials) {
+      updated.approvalStamp = new Date().toISOString();
+    }
+    this.documentApprovalsCache.set(id, updated);
+    return updated;
+  }
+
+  async addDocumentApprovalAudit(data: Partial<DocumentApprovalAudit>): Promise<DocumentApprovalAudit> {
+    const audit: DocumentApprovalAudit = {
+      id: randomUUID(),
+      documentId: data.documentId || "",
+      approvalId: data.approvalId || "",
+      action: data.action || "created",
+      performedBy: data.performedBy || "",
+      performedByName: data.performedByName || "",
+      performedAt: new Date().toISOString(),
+      previousStatus: data.previousStatus,
+      newStatus: data.newStatus,
+      notes: data.notes,
+      ipAddress: data.ipAddress,
+      metadata: data.metadata,
+    };
+    this.documentApprovalAuditsCache.set(audit.id, audit);
+    return audit;
+  }
+
+  async getDocumentApprovalAudit(documentId: string): Promise<DocumentApprovalAudit[]> {
+    return Array.from(this.documentApprovalAuditsCache.values())
+      .filter(a => a.documentId === documentId)
+      .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+  }
+
+  async getClientForms(): Promise<ClientForm[]> {
+    return Array.from(this.clientFormsCache.values()).filter(f => f.isActive);
+  }
+
+  async getClientForm(id: string): Promise<ClientForm | undefined> {
+    return this.clientFormsCache.get(id);
+  }
+
+  async createClientForm(data: InsertClientForm): Promise<ClientForm> {
+    const now = new Date().toISOString();
+    const form: ClientForm = {
+      id: randomUUID(),
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      formFields: data.formFields || [],
+      isPublic: data.isPublic ?? false,
+      requiresSignature: data.requiresSignature ?? false,
+      instructions: data.instructions || "",
+      thankYouMessage: data.thankYouMessage || "Thank you for your submission.",
+      isActive: data.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.clientFormsCache.set(form.id, form);
+    return form;
+  }
+
+  async updateClientForm(id: string, data: Partial<ClientForm>): Promise<ClientForm | undefined> {
+    const form = this.clientFormsCache.get(id);
+    if (!form) return undefined;
+    const updated = { ...form, ...data, updatedAt: new Date().toISOString() };
+    this.clientFormsCache.set(id, updated);
+    return updated;
+  }
+
+  async deleteClientForm(id: string): Promise<boolean> {
+    return this.clientFormsCache.delete(id);
+  }
+
+  async getClientFormSubmissions(formId?: string): Promise<ClientFormSubmission[]> {
+    const submissions = Array.from(this.clientFormSubmissionsCache.values());
+    if (formId) return submissions.filter(s => s.formId === formId);
+    return submissions;
+  }
+
+  async getClientFormSubmission(id: string): Promise<ClientFormSubmission | undefined> {
+    return this.clientFormSubmissionsCache.get(id);
+  }
+
+  async createClientFormSubmission(data: InsertClientFormSubmission): Promise<ClientFormSubmission> {
+    const submission: ClientFormSubmission = {
+      id: randomUUID(),
+      formId: data.formId,
+      matterId: data.matterId,
+      clientName: data.clientName,
+      clientEmail: data.clientEmail,
+      submittedData: data.submittedData,
+      signature: data.signature,
+      signedAt: data.signature ? new Date().toISOString() : undefined,
+      submittedAt: new Date().toISOString(),
+      reviewed: false,
+    };
+    this.clientFormSubmissionsCache.set(submission.id, submission);
+    return submission;
+  }
+
+  async updateClientFormSubmission(id: string, data: Partial<ClientFormSubmission>): Promise<ClientFormSubmission | undefined> {
+    const submission = this.clientFormSubmissionsCache.get(id);
+    if (!submission) return undefined;
+    const updated = { ...submission, ...data };
+    this.clientFormSubmissionsCache.set(id, updated);
+    return updated;
   }
 }

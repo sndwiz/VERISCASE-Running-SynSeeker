@@ -18,6 +18,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Board System:** Customizable boards with task groups and various column types (status, priority, date, person, progress, files, email, approval, etc.). Columns can be added, removed, reordered, and their types changed dynamically.
 - **AI Integration (ClawdBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
 - **Clawbot Gateway Integration:** Connect to OpenClaw/Clawbot for autonomous computer control, shell commands, browser automation, and file management through natural language.
+- **Document & Form Maker:** AI-powered Utah legal document generation system with 5+ templates (Motion for Continuance, Motion to Dismiss, Civil Complaint, Answer to Complaint, Subpoena). Features URCP compliance checking, bilingual notice support, and a lawyer approval workflow with initialing and audit trails. Uses Claude claude-sonnet-4-5 for intelligent document generation.
 - **Daily Briefing:** A personalized dashboard providing users with task summaries, deadlines, and active matter updates.
 - **Filing Cabinet:** A two-layer document classification system with controlled vocabulary, metadata tracking, and Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
