@@ -497,6 +497,14 @@ export type AutomationTriggerType =
   | "update_created"
   | "button_clicked"
   | "email_received"
+  | "subitem_created"
+  | "activity_created"
+  | "item_moved_to_board"
+  | "approval_status_changed"
+  | "approval_required"
+  | "document_uploaded"
+  | "deadline_warning"
+  | "compliance_check"
   | "custom";
 
 export type AutomationActionType =
@@ -513,6 +521,8 @@ export type AutomationActionType =
   | "set_date"
   | "start_time_tracking"
   | "stop_time_tracking"
+  | "adjust_date"
+  | "connect_boards"
   // AI Actions
   | "ai_fill_column"
   | "ai_summarize"
@@ -523,10 +533,19 @@ export type AutomationActionType =
   | "ai_improve"
   | "ai_extract"
   | "ai_write"
+  // Legal/Approval Actions
+  | "request_approval"
+  | "create_approval_record"
+  | "notify_approver"
+  | "escalate_review"
+  | "generate_confirmation"
+  | "log_compliance"
   // Integration Actions
   | "send_slack"
   | "send_sms"
   | "send_email"
+  | "create_contact"
+  | "notify_channel"
   | "custom";
 
 export interface AutomationCondition {
@@ -563,6 +582,149 @@ export interface AutomationRun {
   error?: string;
   executedAt: string;
   completedAt?: string;
+}
+
+// ============ AI ACTION CONFIGURATIONS ============
+
+export interface AIActionConfigBase {
+  sourceColumn?: string;
+  targetColumn: string;
+  customInstructions?: string;
+}
+
+export interface AISummarizeConfig extends AIActionConfigBase {
+  maxLength?: "brief" | "moderate" | "detailed";
+  format?: "paragraph" | "bullet-points" | "numbered-list";
+}
+
+export interface AIExtractConfig extends AIActionConfigBase {
+  extractionFields: string[];
+  outputFormat?: "json" | "text" | "structured";
+}
+
+export interface AIImproveConfig extends AIActionConfigBase {
+  changes: "minimal" | "moderate" | "extensive";
+  length: "shorter" | "same" | "longer";
+  tone: "formal" | "professional" | "friendly" | "natural";
+}
+
+export interface AITranslateConfig extends AIActionConfigBase {
+  targetLanguage: string;
+  preserveFormatting?: boolean;
+}
+
+export interface AIDetectLanguageConfig extends AIActionConfigBase {
+  outputFormat?: "code" | "name" | "both";
+}
+
+export interface AISentimentConfig extends AIActionConfigBase {
+  categories?: string[];
+  includeConfidence?: boolean;
+}
+
+export interface AICategorizeConfig extends AIActionConfigBase {
+  categories: string[];
+  allowMultiple?: boolean;
+}
+
+export interface AIWriteConfig extends AIActionConfigBase {
+  tone: "formal" | "professional" | "friendly" | "natural";
+  length: "brief" | "moderate" | "detailed";
+  style?: "legal" | "business" | "casual";
+  context?: string;
+}
+
+export interface AIFillColumnConfig extends AIActionConfigBase {
+  contextColumns?: string[];
+  format?: string;
+}
+
+export type AIActionConfig =
+  | AISummarizeConfig
+  | AIExtractConfig
+  | AIImproveConfig
+  | AITranslateConfig
+  | AIDetectLanguageConfig
+  | AISentimentConfig
+  | AICategorizeConfig
+  | AIWriteConfig
+  | AIFillColumnConfig;
+
+// ============ APPROVAL & AUDIT TRAIL ============
+
+export type ApprovalStatus = "pending" | "vetting" | "approved" | "confirmed" | "rejected";
+
+export interface ApprovalRecord {
+  id: string;
+  taskId: string;
+  columnId: string;
+  status: ApprovalStatus;
+  requestedBy?: string;
+  requestedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+  initialed?: boolean;
+  initialedBy?: string;
+  initialedAt?: string;
+  signature?: string;
+  contextSnapshot?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalAuditEntry {
+  id: string;
+  approvalId: string;
+  action: "created" | "viewed" | "status_changed" | "initialed" | "note_added" | "reopened";
+  previousStatus?: ApprovalStatus;
+  newStatus?: ApprovalStatus;
+  performedBy: string;
+  performedByName: string;
+  performedAt: string;
+  notes?: string;
+  ipAddress?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface InitialRecord {
+  id: string;
+  taskId: string;
+  columnId?: string;
+  documentId?: string;
+  initialedBy: string;
+  initialedByName: string;
+  initials: string;
+  timestamp: string;
+  reason?: string;
+  verified: boolean;
+  hash?: string;
+}
+
+// ============ AI AUTOMATION TEMPLATE ============
+
+export type AIAutomationCategory = 
+  | "ai-powered"
+  | "legal-compliance"
+  | "notifications"
+  | "status-workflow"
+  | "deadline-management"
+  | "integrations"
+  | "team-collaboration";
+
+export interface AutomationTemplate {
+  id: string;
+  category: AIAutomationCategory;
+  name: string;
+  description: string;
+  icon: string;
+  triggerType: AutomationTriggerType;
+  triggerConfig?: Record<string, any>;
+  actionType: AutomationActionType;
+  actionConfig: Record<string, any>;
+  isAIPowered: boolean;
+  requiredColumns?: ColumnType[];
+  tags: string[];
 }
 
 // ============ DETECTIVE BOARD ============
@@ -1308,9 +1470,7 @@ export const insertCalendarEventSchema = z.object({
 
 export const updateCalendarEventSchema = insertCalendarEventSchema.partial().omit({ createdBy: true });
 
-// ============ APPROVALS ============
-
-export type ApprovalStatus = "pending" | "approved" | "rejected" | "needs-revision";
+// ============ APPROVAL REQUESTS ============
 
 export interface ApprovalRequest {
   id: string;
@@ -1321,7 +1481,7 @@ export interface ApprovalRequest {
   requestedBy: string;
   requestedByName: string;
   assignedTo: string[];
-  status: ApprovalStatus;
+  status: ApprovalStatus; // Uses ApprovalStatus from above
   dueDate?: string;
   priority: Priority;
   comments: ApprovalComment[];

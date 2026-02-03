@@ -21,7 +21,11 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - **Filing Cabinet**: Two-layer document classification with controlled vocabulary (8 categories, 50+ document types), metadata tracking (parties, dates, privilege, Bates ranges), searchable document library, and batch upload support
 - **Evidence Vault**: Immutable file storage with SHA-256 chain-of-custody tracking
 - **Detective Board**: Visual investigation board with draggable nodes and connections
-- **Automations**: Event-driven automation rules with triggers and actions, plus template library with pre-built recipes organized by category
+- **Automations**: Event-driven automation rules with 85+ pre-built templates organized by category:
+  - AI-Powered: Fill columns, detect sentiment, write content, extract info, translate, categorize, summarize
+  - Legal Compliance: Approval workflows, deadline warnings, compliance checks, document processing
+  - Integrations: Slack notifications, Gmail triggers, SMS alerts
+  - Status & Progress, Date & Time, Cross-Board, Notifications, Column Updates
 - **Matter Management**: Full matter/client lifecycle with contacts, threads, timeline
 - **Theme Support**: Dark and light mode with teal accents, smooth transitions
 - **Collapsible Sidebar**: Hierarchical navigation with workspace selector, collapsible sections

@@ -51,7 +51,10 @@ import {
   Globe,
   Hash,
   TrendingUp,
-  LayoutGrid
+  LayoutGrid,
+  Shield,
+  Gavel,
+  Scale
 } from "lucide-react";
 import { SiSlack, SiGmail } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -95,6 +98,11 @@ const TRIGGER_TYPES = {
   update_created: { label: "Update Created", icon: MessageSquare, description: "When a comment/update is added" },
   button_clicked: { label: "Button Clicked", icon: Zap, description: "When a button column is clicked" },
   email_received: { label: "Email Received", icon: Mail, description: "When an email is received" },
+  // Legal Compliance Triggers
+  approval_status_changed: { label: "Approval Changed", icon: Gavel, description: "When approval status changes" },
+  approval_required: { label: "Approval Required", icon: Shield, description: "When item needs approval" },
+  deadline_warning: { label: "Deadline Warning", icon: Clock, description: "When a deadline is approaching" },
+  compliance_check: { label: "Compliance Check", icon: Shield, description: "When compliance verification is needed" },
 };
 
 const ACTION_TYPES = {
@@ -123,6 +131,12 @@ const ACTION_TYPES = {
   start_time_tracking: { label: "Start Time Tracking", icon: Clock, description: "Start tracking time" },
   stop_time_tracking: { label: "Stop Time Tracking", icon: Clock, description: "Stop tracking time" },
   set_date: { label: "Set Date", icon: Calendar, description: "Set a date field value" },
+  // Legal Compliance Actions
+  request_approval: { label: "Request Approval", icon: Gavel, description: "Route for attorney approval" },
+  escalate_review: { label: "Escalate Review", icon: AlertCircle, description: "Escalate to senior reviewer" },
+  generate_confirmation: { label: "Generate Confirmation", icon: FileText, description: "Create audit confirmation record" },
+  log_compliance: { label: "Log Compliance", icon: Shield, description: "Log compliance verification" },
+  create_subtask: { label: "Create Subtask", icon: Plus, description: "Create a related subtask" },
 };
 
 interface AutomationTemplate {
@@ -134,13 +148,14 @@ interface AutomationTemplate {
   triggerLabel: string;
   actionType: string;
   actionLabel: string;
-  icon?: "sparkles" | "slack" | "gmail" | "sms" | "default";
+  icon?: string;
   isAI?: boolean;
   isIntegration?: boolean;
 }
 
 const AUTOMATION_CATEGORIES = [
   { id: "ai_powered", name: "AI-powered", color: "bg-gradient-to-r from-purple-500 to-pink-500", icon: Sparkles },
+  { id: "legal_compliance", name: "Legal Compliance", color: "bg-gradient-to-r from-teal-500 to-emerald-500", icon: Shield },
   { id: "integrations", name: "Integrations", color: "bg-gradient-to-r from-blue-500 to-cyan-500", icon: Globe },
   { id: "status_progress", name: "Status & Progress", color: "bg-purple-500", icon: Target },
   { id: "date_time", name: "Date & Time", color: "bg-yellow-500", icon: Calendar },
@@ -876,10 +891,298 @@ const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     actionType: "update_field",
     actionLabel: "Update field",
   },
+  
+  // ============ LEGAL COMPLIANCE & APPROVAL WORKFLOWS ============
+  
+  // Approval Workflows
+  {
+    id: "legal_approval_status_ready",
+    name: "When status changes to 'Ready for Review', request approval from senior attorney",
+    description: "Route items for legal review when ready",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes to Ready for Review",
+    actionType: "request_approval",
+    actionLabel: "request approval",
+
+  },
+  {
+    id: "legal_approval_document_uploaded",
+    name: "When document is uploaded, request attorney approval",
+    description: "Require attorney sign-off on new documents",
+    category: "legal_compliance",
+    triggerType: "file_uploaded",
+    triggerLabel: "When document is uploaded",
+    actionType: "request_approval",
+    actionLabel: "request approval",
+
+  },
+  {
+    id: "legal_approval_ai_output",
+    name: "When AI writes content, request attorney review before sending",
+    description: "Require human review of all AI-generated legal content",
+    category: "legal_compliance",
+    triggerType: "column_changed",
+    triggerLabel: "When AI output is generated",
+    actionType: "request_approval",
+    actionLabel: "request attorney review",
+
+    isAI: true,
+  },
+  {
+    id: "legal_approval_escalate",
+    name: "When approval is pending for more than 24 hours, escalate to managing partner",
+    description: "Escalate overdue approvals to senior leadership",
+    category: "legal_compliance",
+    triggerType: "due_date_passed",
+    triggerLabel: "When approval is overdue",
+    actionType: "escalate_review",
+    actionLabel: "escalate to partner",
+
+  },
+  {
+    id: "legal_approved_generate_confirmation",
+    name: "When approved by attorney, generate confirmation record",
+    description: "Create audit trail when items are approved",
+    category: "legal_compliance",
+    triggerType: "approval_status_changed",
+    triggerLabel: "When approved",
+    actionType: "generate_confirmation",
+    actionLabel: "create confirmation",
+
+  },
+  
+  // Compliance & Deadline Management
+  {
+    id: "legal_deadline_warning",
+    name: "When court deadline is approaching, notify attorney and paralegal",
+    description: "Alert team about upcoming legal deadlines",
+    category: "legal_compliance",
+    triggerType: "deadline_warning",
+    triggerLabel: "When deadline approaches",
+    actionType: "send_notification",
+    actionLabel: "notify team",
+
+  },
+  {
+    id: "legal_compliance_check",
+    name: "When matter is marked complete, verify all compliance steps are done",
+    description: "Ensure all required steps completed before closing matter",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes to complete",
+    actionType: "log_compliance",
+    actionLabel: "verify compliance",
+
+  },
+  {
+    id: "legal_statute_reminder",
+    name: "When statute of limitations date is within 60 days, escalate priority",
+    description: "Automatic priority escalation for approaching statute deadlines",
+    category: "legal_compliance",
+    triggerType: "deadline_warning",
+    triggerLabel: "When statute date approaches",
+    actionType: "change_priority",
+    actionLabel: "escalate priority",
+
+  },
+  
+  // Document Workflow
+  {
+    id: "legal_doc_extract_parties",
+    name: "When document is uploaded, AI extract party names, case numbers, and dates",
+    description: "Automatically extract key information from legal documents",
+    category: "legal_compliance",
+    triggerType: "file_uploaded",
+    triggerLabel: "When document is uploaded",
+    actionType: "ai_extract",
+    actionLabel: "extract parties and dates",
+    icon: "sparkles",
+    isAI: true,
+  },
+  {
+    id: "legal_doc_categorize",
+    name: "When document is uploaded, AI categorize document type",
+    description: "Auto-classify pleadings, motions, discovery, correspondence",
+    category: "legal_compliance",
+    triggerType: "file_uploaded",
+    triggerLabel: "When document is uploaded",
+    actionType: "ai_categorize",
+    actionLabel: "categorize document",
+    icon: "sparkles",
+    isAI: true,
+  },
+  {
+    id: "legal_doc_summarize",
+    name: "When pleading is filed, AI summarize key arguments",
+    description: "Generate executive summaries of legal filings",
+    category: "legal_compliance",
+    triggerType: "file_uploaded",
+    triggerLabel: "When pleading is uploaded",
+    actionType: "ai_summarize",
+    actionLabel: "summarize arguments",
+    icon: "sparkles",
+    isAI: true,
+  },
+  
+  // Client Communication
+  {
+    id: "legal_client_update_status",
+    name: "When case milestone is reached, notify client",
+    description: "Keep clients informed of major case developments",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When milestone reached",
+    actionType: "send_notification",
+    actionLabel: "notify client",
+
+  },
+  {
+    id: "legal_billing_time_start",
+    name: "When status changes to 'Working', start time tracking",
+    description: "Auto-start billable time when work begins",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes to Working",
+    actionType: "start_time_tracking",
+    actionLabel: "start time",
+
+  },
+  {
+    id: "legal_billing_time_stop",
+    name: "When status changes to 'Complete' or 'Pending', stop time tracking",
+    description: "Auto-stop billable time when work pauses",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes to Complete",
+    actionType: "stop_time_tracking",
+    actionLabel: "stop time",
+
+  },
+  
+  // Quality Control
+  {
+    id: "legal_qc_proofread",
+    name: "When brief is marked ready, AI improve text for grammar and clarity",
+    description: "Auto-proofread legal documents before filing",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When marked ready for filing",
+    actionType: "ai_improve",
+    actionLabel: "improve text",
+    icon: "sparkles",
+    isAI: true,
+  },
+  {
+    id: "legal_qc_cite_check",
+    name: "When citation column is filled, AI verify citation format",
+    description: "Validate legal citation formats",
+    category: "legal_compliance",
+    triggerType: "column_changed",
+    triggerLabel: "When citation added",
+    actionType: "ai_extract",
+    actionLabel: "verify format",
+    icon: "sparkles",
+    isAI: true,
+  },
+];
+
+// Legal Compliance Templates (separate for filtering)
+const LEGAL_TEMPLATES: AutomationTemplate[] = [
+  {
+    id: "legal_intake_categorize",
+    name: "When new matter is created, AI categorize practice area and assign team",
+    description: "Auto-route new matters based on type",
+    category: "legal_compliance",
+    triggerType: "item_created",
+    triggerLabel: "When matter is created",
+    actionType: "ai_categorize",
+    actionLabel: "categorize and assign",
+    icon: "sparkles",
+    isAI: true,
+  },
+  {
+    id: "legal_conflict_check",
+    name: "When new client added, check for conflicts of interest",
+    description: "Automated conflict checking on new matters",
+    category: "legal_compliance",
+    triggerType: "item_created",
+    triggerLabel: "When client is added",
+    actionType: "ai_extract",
+    actionLabel: "check conflicts",
+
+    isAI: true,
+  },
+  {
+    id: "legal_retainer_reminder",
+    name: "When retainer balance is low, notify billing team",
+    description: "Monitor retainer balances and alert when low",
+    category: "legal_compliance",
+    triggerType: "column_changed",
+    triggerLabel: "When balance drops below threshold",
+    actionType: "send_notification",
+    actionLabel: "notify billing",
+
+  },
+  {
+    id: "legal_privilege_review",
+    name: "When document is marked privileged, require attorney confirmation",
+    description: "Ensure privilege designations are verified",
+    category: "legal_compliance",
+    triggerType: "column_changed",
+    triggerLabel: "When marked privileged",
+    actionType: "request_approval",
+    actionLabel: "confirm privilege",
+
+  },
+  {
+    id: "legal_discovery_deadline",
+    name: "When discovery request received, calculate and set response deadline",
+    description: "Auto-calculate discovery response deadlines",
+    category: "legal_compliance",
+    triggerType: "item_created",
+    triggerLabel: "When discovery received",
+    actionType: "set_date",
+    actionLabel: "set deadline",
+
+  },
+  {
+    id: "legal_motion_response",
+    name: "When motion is filed against, calculate opposition deadline",
+    description: "Track motion response deadlines automatically",
+    category: "legal_compliance",
+    triggerType: "item_created",
+    triggerLabel: "When motion received",
+    actionType: "set_date",
+    actionLabel: "set opposition deadline",
+
+  },
+  {
+    id: "legal_court_hearing_prep",
+    name: "When hearing is 7 days away, create preparation checklist",
+    description: "Generate hearing prep tasks automatically",
+    category: "legal_compliance",
+    triggerType: "deadline_warning",
+    triggerLabel: "When hearing approaches",
+    actionType: "create_subtask",
+    actionLabel: "create prep tasks",
+
+  },
+  {
+    id: "legal_closing_checklist",
+    name: "When matter status changes to 'Closing', verify all closing steps",
+    description: "Ensure proper matter closing procedures",
+    category: "legal_compliance",
+    triggerType: "status_changed",
+    triggerLabel: "When matter is closing",
+    actionType: "log_compliance",
+    actionLabel: "verify closing",
+
+  },
 ];
 
 // Combine all templates
-const ALL_TEMPLATES = [...AI_AUTOMATION_TEMPLATES, ...INTEGRATION_TEMPLATES, ...AUTOMATION_TEMPLATES];
+const ALL_TEMPLATES = [...AI_AUTOMATION_TEMPLATES, ...INTEGRATION_TEMPLATES, ...AUTOMATION_TEMPLATES, ...LEGAL_TEMPLATES];
 
 // AI Icon component with gradient background
 function AIIcon({ className }: { className?: string }) {
