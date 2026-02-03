@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Bot, Calendar } from "lucide-react";
+import { Bot, Calendar, Terminal } from "lucide-react";
 import { Link } from "wouter";
 
 import NotFound from "@/pages/not-found";
@@ -23,6 +23,7 @@ import HomePage from "@/pages/home";
 import BoardPage from "@/pages/board";
 import SettingsPage from "@/pages/settings";
 import AIChatPage from "@/pages/ai-chat";
+import ClawbotPage from "@/pages/clawbot";
 import LandingPage from "@/pages/landing";
 import TimeTrackingPage from "@/pages/time-tracking";
 import CalendarPage from "@/pages/calendar-page";
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/" component={HomePage} />
       <Route path="/boards/:id" component={BoardPage} />
       <Route path="/ai-chat" component={AIChatPage} />
+      <Route path="/clawbot" component={ClawbotPage} />
       <Route path="/evidence" component={EvidenceVaultPage} />
       <Route path="/detective" component={DetectiveBoardPage} />
       <Route path="/automations" component={AutomationsPage} />
@@ -138,6 +140,12 @@ function AppLayout() {
                 <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
                   <Calendar className="h-4 w-4" />
                   Daily Briefing
+                </Button>
+              </Link>
+              <Link href="/clawbot">
+                <Button variant="outline" size="sm" className="gap-2" data-testid="button-clawbot-gateway">
+                  <Terminal className="h-4 w-4" />
+                  Clawbot
                 </Button>
               </Link>
               <ThemeToggle />

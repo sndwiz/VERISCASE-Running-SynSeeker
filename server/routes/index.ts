@@ -14,8 +14,11 @@ import { registerTimeTrackingRoutes } from "./time-tracking";
 import { registerCalendarRoutes } from "./calendar";
 import { registerApprovalRoutes } from "./approvals";
 import { registerBriefingRoutes } from "./briefing";
+import clawbotRouter from "./clawbot";
 
 export function registerAllRoutes(app: Express): void {
+  // Clawbot gateway integration
+  app.use('/api/clawbot', clawbotRouter);
   registerBoardRoutes(app);
   registerGroupRoutes(app);
   registerTaskRoutes(app);
