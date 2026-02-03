@@ -9,12 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TaskRow } from "./task-row";
-import type { Group, Task, ColumnDef } from "@shared/schema";
+import { ColumnHeader } from "./column-header";
+import type { Group, Task, ColumnDef, ColumnType, CustomStatusLabel } from "@shared/schema";
 
 interface TaskGroupProps {
   group: Group;
   tasks: Task[];
   columns: ColumnDef[];
+  statusLabels?: CustomStatusLabel[];
   onToggleCollapse: () => void;
   onAddTask: () => void;
   onEditGroup: () => void;
@@ -22,14 +24,25 @@ interface TaskGroupProps {
   onTaskClick: (task: Task) => void;
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   onTaskDelete: (taskId: string) => void;
+  onEditStatusLabels?: () => void;
   selectedTaskIds?: Set<string>;
   onSelectTask?: (taskId: string, selected: boolean) => void;
+  onColumnSort?: (columnId: string, direction: "asc" | "desc") => void;
+  onColumnFilter?: (columnId: string) => void;
+  onColumnDuplicate?: (columnId: string) => void;
+  onColumnRename?: (columnId: string, newTitle: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onColumnHide?: (columnId: string) => void;
+  onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
+  onColumnUpdateDescription?: (columnId: string, description: string) => void;
+  currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
 }
 
 export function TaskGroup({
   group,
   tasks,
   columns,
+  statusLabels,
   onToggleCollapse,
   onAddTask,
   onEditGroup,
@@ -37,8 +50,18 @@ export function TaskGroup({
   onTaskClick,
   onTaskUpdate,
   onTaskDelete,
+  onEditStatusLabels,
   selectedTaskIds = new Set(),
   onSelectTask,
+  onColumnSort,
+  onColumnFilter,
+  onColumnDuplicate,
+  onColumnRename,
+  onColumnDelete,
+  onColumnHide,
+  onColumnChangeType,
+  onColumnUpdateDescription,
+  currentSort,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
@@ -122,10 +145,21 @@ export function TaskGroup({
               {visibleColumns.map((col) => (
                 <div
                   key={col.id}
-                  className="px-2 text-center flex-shrink-0"
+                  className="flex-shrink-0"
                   style={{ width: col.width, minWidth: col.width }}
                 >
-                  {col.title}
+                  <ColumnHeader
+                    column={col}
+                    onSort={onColumnSort}
+                    onFilter={onColumnFilter}
+                    onDuplicate={onColumnDuplicate}
+                    onRename={onColumnRename}
+                    onDelete={onColumnDelete}
+                    onHide={onColumnHide}
+                    onChangeType={onColumnChangeType}
+                    onUpdateDescription={onColumnUpdateDescription}
+                    currentSort={currentSort}
+                  />
                 </div>
               ))}
               <div className="w-8 flex-shrink-0" />
@@ -137,10 +171,12 @@ export function TaskGroup({
                 key={task.id}
                 task={task}
                 columns={visibleColumns}
+                statusLabels={statusLabels}
                 isEven={index % 2 === 0}
                 onClick={() => onTaskClick(task)}
                 onUpdate={(updates) => onTaskUpdate(task.id, updates)}
                 onDelete={() => onTaskDelete(task.id)}
+                onEditStatusLabels={onEditStatusLabels}
                 isSelected={selectedTaskIds.has(task.id)}
                 onSelect={onSelectTask}
               />

@@ -47,15 +47,17 @@ import {
   TimelineCell,
   ProgressTrackingCell,
 } from "./cells/extended-cells";
-import type { Task, ColumnDef, StatusType, Priority, Person, FileAttachment } from "@shared/schema";
+import type { Task, ColumnDef, StatusType, Priority, Person, FileAttachment, CustomStatusLabel } from "@shared/schema";
 
 interface TaskRowProps {
   task: Task;
   columns: ColumnDef[];
+  statusLabels?: CustomStatusLabel[];
   isEven: boolean;
   onClick: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+  onEditStatusLabels?: () => void;
   isSelected?: boolean;
   onSelect?: (taskId: string, selected: boolean) => void;
 }
@@ -63,10 +65,12 @@ interface TaskRowProps {
 export function TaskRow({
   task,
   columns,
+  statusLabels,
   isEven,
   onClick,
   onUpdate,
   onDelete,
+  onEditStatusLabels,
   isSelected = false,
   onSelect,
 }: TaskRowProps) {
@@ -122,6 +126,8 @@ export function TaskRow({
           <StatusCell
             value={task.status}
             onChange={(value: StatusType) => onUpdate({ status: value })}
+            customLabels={statusLabels}
+            onEditLabels={onEditStatusLabels}
             {...cellProps}
           />
         );

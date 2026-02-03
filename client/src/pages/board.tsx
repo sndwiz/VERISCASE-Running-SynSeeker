@@ -8,10 +8,12 @@ import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
-import { TaskDetailDialog } from "@/components/dialogs/task-detail-dialog";
+import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
+import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Board, Group, Task } from "@shared/schema";
+import type { Board, Group, Task, ColumnType, CustomStatusLabel } from "@shared/schema";
+import { defaultStatusLabels } from "@shared/schema";
 
 export default function BoardPage() {
   const [, params] = useRoute("/boards/:id");
@@ -27,6 +29,8 @@ export default function BoardPage() {
   const [groupBy, setGroupBy] = useState<GroupByOption>("default");
   const [automationsPanelOpen, setAutomationsPanelOpen] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [editStatusLabelsOpen, setEditStatusLabelsOpen] = useState(false);
+  const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards", boardId],
@@ -256,6 +260,114 @@ export default function BoardPage() {
     updateBoardMutation.mutate({ columns: reorderedColumns });
   };
 
+  const handleColumnSort = (columnId: string, direction: "asc" | "desc") => {
+    if (currentSort?.columnId === columnId && currentSort.direction === direction) {
+      setCurrentSort(null);
+    } else {
+      setCurrentSort({ columnId, direction });
+    }
+  };
+
+  const handleColumnFilter = (columnId: string) => {
+    toast({ title: `Opening filter for column "${board?.columns.find(c => c.id === columnId)?.title}"` });
+  };
+
+  const handleColumnDuplicate = (columnId: string) => {
+    if (!board) return;
+    const column = board.columns.find(c => c.id === columnId);
+    if (!column) return;
+    const newColumn = {
+      ...column,
+      id: `col-${Date.now()}`,
+      title: `${column.title} (copy)`,
+      order: board.columns.length,
+    };
+    updateBoardMutation.mutate({ columns: [...board.columns, newColumn] });
+    toast({ title: "Column duplicated" });
+  };
+
+  const handleColumnRename = (columnId: string, newTitle: string) => {
+    if (!board) return;
+    const updatedColumns = board.columns.map((col) =>
+      col.id === columnId ? { ...col, title: newTitle } : col
+    );
+    updateBoardMutation.mutate({ columns: updatedColumns });
+    toast({ title: "Column renamed" });
+  };
+
+  const handleColumnHide = (columnId: string) => {
+    handleToggleColumn(columnId, false);
+  };
+
+  const handleColumnChangeType = (columnId: string, newType: ColumnType) => {
+    if (!board) return;
+    const updatedColumns = board.columns.map((col) =>
+      col.id === columnId ? { ...col, type: newType } : col
+    );
+    updateBoardMutation.mutate({ columns: updatedColumns });
+    toast({ title: "Column type changed" });
+  };
+
+  const handleColumnUpdateDescription = (columnId: string, description: string) => {
+    if (!board) return;
+    const updatedColumns = board.columns.map((col) =>
+      col.id === columnId ? { ...col, description } : col
+    );
+    updateBoardMutation.mutate({ columns: updatedColumns });
+    toast({ title: "Column description updated" });
+  };
+
+  const handleSaveStatusLabels = (labels: CustomStatusLabel[]) => {
+    if (!board) return;
+    updateBoardMutation.mutate({ statusLabels: labels });
+    toast({ title: "Status labels updated" });
+  };
+
+  const statusLabels = board?.statusLabels || defaultStatusLabels;
+
+  const sortedTasks = useMemo(() => {
+    if (!currentSort) return filteredTasks;
+    
+    return [...filteredTasks].sort((a, b) => {
+      const column = board?.columns.find(c => c.id === currentSort.columnId);
+      if (!column) return 0;
+      
+      let aVal: any;
+      let bVal: any;
+      
+      switch (column.type) {
+        case "status":
+          aVal = a.status;
+          bVal = b.status;
+          break;
+        case "priority":
+          const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+          aVal = priorityOrder[a.priority] || 0;
+          bVal = priorityOrder[b.priority] || 0;
+          break;
+        case "date":
+          aVal = a.dueDate || "";
+          bVal = b.dueDate || "";
+          break;
+        case "progress":
+          aVal = a.progress || 0;
+          bVal = b.progress || 0;
+          break;
+        default:
+          aVal = a.customFields?.[currentSort.columnId] || "";
+          bVal = b.customFields?.[currentSort.columnId] || "";
+      }
+      
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return currentSort.direction === "asc" 
+          ? aVal.localeCompare(bVal) 
+          : bVal.localeCompare(aVal);
+      }
+      
+      return currentSort.direction === "asc" ? aVal - bVal : bVal - aVal;
+    });
+  }, [filteredTasks, currentSort, board]);
+
   const isLoading = boardLoading || groupsLoading || tasksLoading;
 
   if (isLoading) {
@@ -319,8 +431,9 @@ export default function BoardPage() {
             <TaskGroup
               key={group.id}
               group={group}
-              tasks={filteredTasks.filter((t) => t.groupId === group.id)}
+              tasks={sortedTasks.filter((t) => t.groupId === group.id)}
               columns={board.columns.filter((c) => c.visible)}
+              statusLabels={statusLabels}
               onToggleCollapse={() =>
                 updateGroupMutation.mutate({
                   groupId: group.id,
@@ -333,8 +446,18 @@ export default function BoardPage() {
               onTaskClick={handleTaskClick}
               onTaskUpdate={handleTaskUpdate}
               onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+              onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
               selectedTaskIds={selectedTaskIds}
               onSelectTask={handleSelectTask}
+              onColumnSort={handleColumnSort}
+              onColumnFilter={handleColumnFilter}
+              onColumnDuplicate={handleColumnDuplicate}
+              onColumnRename={handleColumnRename}
+              onColumnDelete={handleRemoveColumn}
+              onColumnHide={handleColumnHide}
+              onColumnChangeType={handleColumnChangeType}
+              onColumnUpdateDescription={handleColumnUpdateDescription}
+              currentSort={currentSort}
             />
           ))
         )}
@@ -365,11 +488,21 @@ export default function BoardPage() {
         defaultGroupId={defaultGroupId}
       />
 
-      <TaskDetailDialog
+      <TaskDetailModal
         open={!!selectedTask}
         onOpenChange={(open) => !open && setSelectedTask(null)}
         task={selectedTask}
+        columns={board.columns}
         onUpdate={handleTaskUpdate}
+        onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
+        statusLabels={statusLabels}
+      />
+
+      <EditStatusLabelsDialog
+        open={editStatusLabelsOpen}
+        onOpenChange={setEditStatusLabelsOpen}
+        statusLabels={statusLabels}
+        onSave={handleSaveStatusLabels}
       />
 
       {boardId && (

@@ -178,6 +178,13 @@ export interface TimeLogEntry {
   note?: string;
 }
 
+// Custom status label configuration
+export interface CustomStatusLabel {
+  id: string;
+  label: string;
+  color: string; // Hex color for the status
+}
+
 // Column definition for the table
 export interface ColumnDef {
   id: string;
@@ -187,6 +194,8 @@ export interface ColumnDef {
   visible: boolean;
   order: number;
   options?: string[];
+  description?: string; // Column description for tooltips
+  statusLabels?: CustomStatusLabel[]; // Custom status labels for status columns
 }
 
 // Task interface
@@ -218,6 +227,15 @@ export interface Task {
   subtasks?: { id: string; title: string; completed: boolean }[];
 }
 
+// Default status labels for boards
+export const defaultStatusLabels: CustomStatusLabel[] = [
+  { id: "not-started", label: "Not Started", color: "#6B7280" },
+  { id: "working-on-it", label: "Working on it", color: "#F59E0B" },
+  { id: "stuck", label: "Stuck", color: "#EF4444" },
+  { id: "done", label: "Done", color: "#22C55E" },
+  { id: "pending-review", label: "Pending Review", color: "#8B5CF6" },
+];
+
 // Board interface
 export interface Board {
   id: string;
@@ -226,6 +244,7 @@ export interface Board {
   color: string;
   icon: string;
   columns: ColumnDef[];
+  statusLabels?: CustomStatusLabel[]; // Board-level custom status labels
   createdAt: string;
   updatedAt: string;
 }
