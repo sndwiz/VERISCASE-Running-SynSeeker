@@ -490,6 +490,11 @@ export type AutomationTriggerType =
   | "moved_to_group"
   | "field_changed"
   | "file_uploaded"
+  | "column_changed"
+  | "item_name_changed"
+  | "update_created"
+  | "button_clicked"
+  | "email_received"
   | "custom";
 
 export type AutomationActionType =
@@ -502,12 +507,30 @@ export type AutomationActionType =
   | "create_subtask"
   | "update_field"
   | "trigger_webhook"
+  | "create_item"
+  | "set_date"
+  | "start_time_tracking"
+  | "stop_time_tracking"
+  // AI Actions
+  | "ai_fill_column"
+  | "ai_summarize"
+  | "ai_categorize"
+  | "ai_detect_language"
+  | "ai_translate"
+  | "ai_sentiment"
+  | "ai_improve"
+  | "ai_extract"
+  | "ai_write"
+  // Integration Actions
+  | "send_slack"
+  | "send_sms"
+  | "send_email"
   | "custom";
 
 export interface AutomationCondition {
   field: string;
   operator: "equals" | "not_equals" | "contains" | "greater_than" | "less_than" | "is_empty" | "is_not_empty";
-  value: any;
+  value?: any;
 }
 
 export interface AutomationRule {
@@ -833,7 +856,11 @@ export const insertAutomationRuleSchema = z.object({
   name: z.string(),
   description: z.string().optional().default(""),
   isActive: z.boolean().optional().default(true),
-  triggerType: z.enum(["item_created", "status_changed", "priority_changed", "due_date_approaching", "due_date_passed", "assigned", "unassigned", "moved_to_group", "field_changed", "file_uploaded", "custom"]),
+  triggerType: z.enum([
+    "item_created", "status_changed", "priority_changed", "due_date_approaching", "due_date_passed",
+    "assigned", "unassigned", "moved_to_group", "field_changed", "file_uploaded",
+    "column_changed", "item_name_changed", "update_created", "button_clicked", "email_received", "custom"
+  ]),
   triggerField: z.string().optional(),
   triggerValue: z.string().optional(),
   conditions: z.array(z.object({
@@ -841,7 +868,16 @@ export const insertAutomationRuleSchema = z.object({
     operator: z.enum(["equals", "not_equals", "contains", "greater_than", "less_than", "is_empty", "is_not_empty"]),
     value: z.any(),
   })).optional().default([]),
-  actionType: z.enum(["change_status", "change_priority", "move_to_group", "assign_person", "unassign_person", "send_notification", "create_subtask", "update_field", "trigger_webhook", "custom"]),
+  actionType: z.enum([
+    "change_status", "change_priority", "move_to_group", "assign_person", "unassign_person",
+    "send_notification", "create_subtask", "update_field", "trigger_webhook", "create_item",
+    "set_date", "start_time_tracking", "stop_time_tracking",
+    // AI Actions
+    "ai_fill_column", "ai_summarize", "ai_categorize", "ai_detect_language", "ai_translate",
+    "ai_sentiment", "ai_improve", "ai_extract", "ai_write",
+    // Integration Actions
+    "send_slack", "send_sms", "send_email", "custom"
+  ]),
   actionConfig: z.record(z.any()),
 });
 
