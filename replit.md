@@ -7,7 +7,7 @@ VERICASE is a comprehensive legal practice management system with a Monday.com-s
 - **Board System**: Multiple customizable boards for different practice areas
 - **Task Groups**: Organize tasks within collapsible groups
 - **Multiple Column Types**: Status, priority, date, person, progress, time tracking, files, email, phone, dropdown, tags, number, long-text, link, approval columns (15+ types)
-- **Approval Column**: Legal verification workflow with 5 states (Pending, Vetting, Approved, Confirmed, Rejected) for AI output review before sending
+- **Approval Column**: Legal verification workflow with 5 states (Pending, Vetting, Approved, Confirmed, Rejected) featuring attorney initialing system, context preview panel, full audit trail with timestamps, and auto-confirmation after required initials
 - **Dynamic Column Management**: Add, remove, toggle visibility, reorder, duplicate, rename, change type, and add descriptions to columns
 - **Column Center**: Monday.com-style column picker with colorful individual icons, search, and category filters (Essentials, More, Team Power-Ups, Board Power-Ups, AI-Powered)
 - **Group Summary Rows**: Aggregated statistics at bottom of task groups showing status distribution bars, progress averages, rating averages, and numeric sums

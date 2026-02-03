@@ -38,7 +38,26 @@ import {
   RefreshCw,
   GitBranch,
   Calendar,
+  FileCheck,
+  History,
+  PenTool,
+  Eye,
+  AlertCircle,
+  Shield,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { format, parseISO } from "date-fns";
 
 interface CellProps {
@@ -192,32 +211,307 @@ export function VoteCell({ value, onChange, onClick }: CellProps) {
 }
 
 // Approval Cell - for legal verification workflow
-export function ApprovalCell({ value, onChange, onClick }: CellProps) {
+interface ApprovalValue {
+  status: string;
+  initials?: Array<{
+    by: string;
+    at: string;
+    status: string;
+  }>;
+  auditTrail?: Array<{
+    action: string;
+    by: string;
+    at: string;
+    notes?: string;
+  }>;
+  contextPreview?: {
+    title: string;
+    description?: string;
+    relatedDocs?: string[];
+  };
+}
+
+function safeFormatDate(dateStr: string | undefined): string {
+  if (!dateStr) return "Unknown date";
+  try {
+    const date = parseISO(dateStr);
+    if (isNaN(date.getTime())) return "Unknown date";
+    return format(date, "MMM d, yyyy HH:mm");
+  } catch {
+    return "Unknown date";
+  }
+}
+
+function safeFormatShortDate(dateStr: string | undefined): string {
+  if (!dateStr) return "";
+  try {
+    const date = parseISO(dateStr);
+    if (isNaN(date.getTime())) return "";
+    return format(date, "MMM d, HH:mm");
+  } catch {
+    return "";
+  }
+}
+
+export function ApprovalCell({ value, onChange, onClick, taskId }: CellProps) {
+  const [showDialog, setShowDialog] = useState(false);
+  const [initialsInput, setInitialsInput] = useState("");
+  const [notes, setNotes] = useState("");
+  const [showAuditTrail, setShowAuditTrail] = useState(false);
+
   const approvalStates = [
-    { value: "pending", label: "Pending", bgColor: "bg-amber-100 dark:bg-amber-900/30", textColor: "text-amber-700 dark:text-amber-300" },
-    { value: "vetting", label: "Vetting", bgColor: "bg-purple-100 dark:bg-purple-900/30", textColor: "text-purple-700 dark:text-purple-300" },
-    { value: "approved", label: "Approved", bgColor: "bg-green-100 dark:bg-green-900/30", textColor: "text-green-700 dark:text-green-300" },
-    { value: "confirmed", label: "3/3 Confirmed", bgColor: "bg-emerald-500", textColor: "text-white" },
-    { value: "rejected", label: "Rejected", bgColor: "bg-red-100 dark:bg-red-900/30", textColor: "text-red-700 dark:text-red-300" },
+    { value: "pending", label: "Pending", icon: Clock, bgColor: "bg-amber-100 dark:bg-amber-900/30", textColor: "text-amber-700 dark:text-amber-300" },
+    { value: "vetting", label: "Vetting", icon: Eye, bgColor: "bg-purple-100 dark:bg-purple-900/30", textColor: "text-purple-700 dark:text-purple-300" },
+    { value: "approved", label: "Approved", icon: CheckCircle2, bgColor: "bg-green-100 dark:bg-green-900/30", textColor: "text-green-700 dark:text-green-300" },
+    { value: "confirmed", label: "Confirmed", icon: Shield, bgColor: "bg-emerald-500", textColor: "text-white" },
+    { value: "rejected", label: "Rejected", icon: XCircle, bgColor: "bg-red-100 dark:bg-red-900/30", textColor: "text-red-700 dark:text-red-300" },
   ];
 
-  const currentState = approvalStates.find(s => s.value === value) || approvalStates[0];
+  const normalizeApprovalValue = (val: any): ApprovalValue => {
+    if (typeof val === "string") {
+      return { status: val || "pending", initials: [], auditTrail: [] };
+    }
+    if (typeof val === "object" && val !== null) {
+      return {
+        status: val.status || "pending",
+        initials: Array.isArray(val.initials) ? val.initials : [],
+        auditTrail: Array.isArray(val.auditTrail) ? val.auditTrail : [],
+        contextPreview: val.contextPreview,
+      };
+    }
+    return { status: "pending", initials: [], auditTrail: [] };
+  };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const approvalData: ApprovalValue = normalizeApprovalValue(value);
+  
+  const currentState = approvalStates.find(s => s.value === approvalData.status) || approvalStates[0];
+  const StateIcon = currentState.icon;
+  const initialsCount = approvalData.initials?.length || 0;
+
+  const handleQuickClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDialog(true);
     onClick?.(e);
-    const currentIndex = approvalStates.findIndex(s => s.value === value);
-    const nextIndex = (currentIndex + 1) % approvalStates.length;
-    onChange(approvalStates[nextIndex].value);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    const now = new Date().toISOString();
+    const newAuditEntry = {
+      action: "status_changed",
+      by: "Current User",
+      at: now,
+      notes: notes || undefined,
+    };
+
+    const updatedValue: ApprovalValue = {
+      ...approvalData,
+      status: newStatus,
+      auditTrail: [...(approvalData.auditTrail || []), newAuditEntry],
+    };
+
+    onChange(updatedValue);
+    setNotes("");
+  };
+
+  const handleAddInitials = () => {
+    if (!initialsInput.trim()) return;
+    
+    const now = new Date().toISOString();
+    const newInitial = {
+      by: initialsInput.toUpperCase(),
+      at: now,
+      status: approvalData.status,
+    };
+    const newAuditEntry = {
+      action: "initialed",
+      by: initialsInput.toUpperCase(),
+      at: now,
+      notes: `Initialed at status: ${currentState.label}`,
+    };
+
+    const updatedValue: ApprovalValue = {
+      ...approvalData,
+      initials: [...(approvalData.initials || []), newInitial],
+      auditTrail: [...(approvalData.auditTrail || []), newAuditEntry],
+    };
+
+    const requiredInitials = 3;
+    if (updatedValue.initials!.length >= requiredInitials && approvalData.status === "approved") {
+      updatedValue.status = "confirmed";
+      updatedValue.auditTrail!.push({
+        action: "status_changed",
+        by: "System",
+        at: now,
+        notes: `Auto-confirmed after ${requiredInitials} initials`,
+      });
+    }
+
+    onChange(updatedValue);
+    setInitialsInput("");
   };
 
   return (
-    <button
-      className={`px-2 py-1 text-xs rounded ${currentState.bgColor} ${currentState.textColor} font-medium whitespace-nowrap`}
-      onClick={handleClick}
-      data-testid="approval-cell"
-    >
-      {currentState.label}
-    </button>
+    <>
+      <button
+        className={`px-2 py-1 text-xs rounded ${currentState.bgColor} ${currentState.textColor} font-medium whitespace-nowrap flex items-center gap-1`}
+        onClick={handleQuickClick}
+        data-testid="approval-cell"
+      >
+        <StateIcon className="h-3 w-3" />
+        {currentState.label}
+        {initialsCount > 0 && (
+          <span className="ml-1 px-1 rounded bg-black/10 dark:bg-white/10 text-[10px]">
+            {initialsCount}/{3}
+          </span>
+        )}
+      </button>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5 text-primary" />
+              Legal Approval Workflow
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg border bg-muted/30">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">CONTEXT PREVIEW</h4>
+              <div className="text-sm">
+                <p className="font-medium">{approvalData.contextPreview?.title || `Task #${taskId || "N/A"}`}</p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {approvalData.contextPreview?.description || "Review this item before changing approval status."}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">CURRENT STATUS</h4>
+              <div className="flex items-center gap-2">
+                <div className={`px-3 py-2 rounded-lg ${currentState.bgColor} ${currentState.textColor} font-medium flex items-center gap-2`}>
+                  <StateIcon className="h-4 w-4" />
+                  {currentState.label}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">CHANGE STATUS</h4>
+              <div className="flex flex-wrap gap-2">
+                {approvalStates.map((state) => {
+                  const Icon = state.icon;
+                  return (
+                    <Button
+                      key={state.value}
+                      size="sm"
+                      variant={state.value === approvalData.status ? "default" : "outline"}
+                      onClick={() => handleStatusChange(state.value)}
+                      className="gap-1"
+                      data-testid={`approval-status-${state.value}`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {state.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <PenTool className="h-3 w-3" />
+                ATTORNEY INITIALS ({initialsCount}/3 required for confirmation)
+              </h4>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  placeholder="Enter initials (e.g., JDS)"
+                  value={initialsInput}
+                  onChange={(e) => setInitialsInput(e.target.value.slice(0, 4))}
+                  className="w-32 uppercase"
+                  data-testid="approval-initials-input"
+                />
+                <Button size="sm" onClick={handleAddInitials} disabled={!initialsInput.trim()} data-testid="button-add-initials">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+              {approvalData.initials && approvalData.initials.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {approvalData.initials.map((initial, idx) => (
+                    <Badge key={idx} variant="secondary" className="gap-1">
+                      <PenTool className="h-3 w-3" />
+                      {initial.by}
+                      <span className="text-[10px] text-muted-foreground">
+                        {safeFormatShortDate(initial.at)}
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">NOTES (OPTIONAL)</h4>
+              <Textarea
+                placeholder="Add notes for the audit trail..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[60px] resize-none"
+                data-testid="approval-notes"
+              />
+            </div>
+
+            <div className="border-t pt-3">
+              <button
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setShowAuditTrail(!showAuditTrail)}
+                data-testid="toggle-audit-trail"
+              >
+                <History className="h-4 w-4" />
+                Audit Trail ({approvalData.auditTrail?.length || 0} entries)
+                {showAuditTrail ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              
+              {showAuditTrail && (
+                <ScrollArea className="h-32 mt-2 border rounded-lg p-2">
+                  {approvalData.auditTrail && approvalData.auditTrail.length > 0 ? (
+                    <div className="space-y-2">
+                      {[...approvalData.auditTrail].reverse().map((entry, idx) => (
+                        <div key={idx} className="text-xs border-b pb-2 last:border-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                              {entry.action.replace("_", " ")}
+                            </Badge>
+                            <span className="font-medium">{entry.by}</span>
+                            <span className="text-muted-foreground">
+                              {safeFormatDate(entry.at)}
+                            </span>
+                          </div>
+                          {entry.notes && (
+                            <p className="text-muted-foreground mt-1 pl-2 border-l-2">{entry.notes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">No audit entries yet</p>
+                  )}
+                </ScrollArea>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
