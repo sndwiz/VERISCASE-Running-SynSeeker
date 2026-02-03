@@ -63,7 +63,56 @@ interface ColumnTypeOption {
   icon: string;
   category: ColumnCategory;
   description?: string;
+  color?: string; // Individual column color
 }
+
+// Individual column colors matching Monday.com style
+const COLUMN_COLORS: Record<string, string> = {
+  "status": "bg-emerald-500",
+  "priority": "bg-red-500",
+  "label": "bg-green-500",
+  "person": "bg-yellow-400",
+  "date": "bg-green-600",
+  "timeline": "bg-green-500",
+  "text": "bg-green-500",
+  "long-text": "bg-pink-500",
+  "number": "bg-yellow-500",
+  "numbers": "bg-yellow-500",
+  "files": "bg-blue-500",
+  "time": "bg-blue-500",
+  "progress": "bg-blue-600",
+  "checkbox": "bg-purple-500",
+  "link": "bg-teal-500",
+  "world-clock": "bg-green-400",
+  "item-id": "bg-blue-500",
+  "phone": "bg-blue-400",
+  "location": "bg-pink-500",
+  "tags": "bg-purple-500",
+  "vote": "bg-green-500",
+  "approval": "bg-emerald-500",
+  "rating": "bg-purple-500",
+  "dropdown": "bg-teal-500",
+  "email": "bg-amber-500",
+  "creation-log": "bg-green-500",
+  "last-updated": "bg-purple-500",
+  "auto-number": "bg-purple-500",
+  "progress-tracking": "bg-blue-600",
+  "button": "bg-purple-500",
+  "dependency": "bg-purple-500",
+  "week": "bg-yellow-500",
+  "formula": "bg-blue-500",
+  "country": "bg-green-400",
+  "color-picker": "bg-blue-500",
+  "time-tracking": "bg-amber-500",
+  "hour": "bg-blue-400",
+  "ai-improve": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-write": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-extract": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-summarize": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-translate": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-sentiment": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "ai-categorize": "bg-gradient-to-br from-purple-500 to-pink-500",
+};
 
 const COLUMN_OPTIONS: ColumnTypeOption[] = [
   // Essentials
@@ -88,6 +137,7 @@ const COLUMN_OPTIONS: ColumnTypeOption[] = [
   { type: "rating", label: "Rating", icon: "star", category: "more", description: "Rate with stars" },
   { type: "link", label: "Link", icon: "link", category: "more", description: "Add URLs" },
   { type: "vote", label: "Vote", icon: "thumbs-up", category: "more", description: "Collect team votes" },
+  { type: "approval", label: "Approval", icon: "check-square", category: "more", description: "Track approval status for legal review" },
   { type: "location", label: "Location", icon: "map-pin", category: "more", description: "Store locations" },
   { type: "world-clock", label: "World Clock", icon: "globe", category: "more", description: "Display time zones" },
   { type: "item-id", label: "Item ID", icon: "hash", category: "more", description: "Unique identifier" },
@@ -247,6 +297,7 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {columns.map((column) => {
                       const IconComponent = COLUMN_ICON_MAP[column.icon] || Hash;
+                      const columnColor = COLUMN_COLORS[column.type] || config.bgColor;
                       return (
                         <button
                           key={column.type}
@@ -254,8 +305,8 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
                           className="flex items-start gap-3 p-3 rounded-lg border hover-elevate text-left transition-all group"
                           data-testid={`add-column-${column.type}`}
                         >
-                          <div className={`p-2 rounded-lg ${config.bgColor} shrink-0`}>
-                            <IconComponent className={`h-4 w-4 ${config.color}`} />
+                          <div className={`p-2 rounded-lg ${columnColor} shrink-0`}>
+                            <IconComponent className="h-4 w-4 text-white" />
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">

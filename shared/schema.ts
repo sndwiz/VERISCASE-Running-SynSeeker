@@ -31,6 +31,7 @@ export type ColumnType =
   | "rating"
   | "link"
   | "vote"
+  | "approval"
   | "location"
   | "world-clock"
   | "item-id"
@@ -101,6 +102,7 @@ export const columnTypeConfig: Record<ColumnType, ColumnTypeConfig> = {
   "rating": { label: "Rating", icon: "star", category: "more", description: "Rate items with stars" },
   "link": { label: "Link", icon: "link", category: "more", description: "Add URLs" },
   "vote": { label: "Vote", icon: "thumbs-up", category: "more", description: "Collect team votes" },
+  "approval": { label: "Approval", icon: "check-circle", category: "more", description: "Track approval status for legal review" },
   "location": { label: "Location", icon: "map-pin", category: "more", description: "Store addresses and locations" },
   "world-clock": { label: "World Clock", icon: "globe", category: "more", description: "Display time zones" },
   "item-id": { label: "Item ID", icon: "hash", category: "more", description: "Unique identifier" },

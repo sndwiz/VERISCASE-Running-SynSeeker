@@ -22,6 +22,7 @@ import {
   PhoneCell,
   RatingCell,
   VoteCell,
+  ApprovalCell,
   LinkCell,
   LocationCell,
   CheckboxCell,
@@ -206,6 +207,14 @@ export function TaskRow({
       case "vote":
         return (
           <VoteCell
+            value={getCustomFieldValue()}
+            onChange={setCustomFieldValue}
+            {...cellProps}
+          />
+        );
+      case "approval":
+        return (
+          <ApprovalCell
             value={getCustomFieldValue()}
             onChange={setCustomFieldValue}
             {...cellProps}

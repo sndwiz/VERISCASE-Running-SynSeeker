@@ -191,6 +191,36 @@ export function VoteCell({ value, onChange, onClick }: CellProps) {
   );
 }
 
+// Approval Cell - for legal verification workflow
+export function ApprovalCell({ value, onChange, onClick }: CellProps) {
+  const approvalStates = [
+    { value: "pending", label: "Pending", bgColor: "bg-amber-100 dark:bg-amber-900/30", textColor: "text-amber-700 dark:text-amber-300" },
+    { value: "vetting", label: "Vetting", bgColor: "bg-purple-100 dark:bg-purple-900/30", textColor: "text-purple-700 dark:text-purple-300" },
+    { value: "approved", label: "Approved", bgColor: "bg-green-100 dark:bg-green-900/30", textColor: "text-green-700 dark:text-green-300" },
+    { value: "confirmed", label: "3/3 Confirmed", bgColor: "bg-emerald-500", textColor: "text-white" },
+    { value: "rejected", label: "Rejected", bgColor: "bg-red-100 dark:bg-red-900/30", textColor: "text-red-700 dark:text-red-300" },
+  ];
+
+  const currentState = approvalStates.find(s => s.value === value) || approvalStates[0];
+
+  const handleClick = (e: React.MouseEvent) => {
+    onClick?.(e);
+    const currentIndex = approvalStates.findIndex(s => s.value === value);
+    const nextIndex = (currentIndex + 1) % approvalStates.length;
+    onChange(approvalStates[nextIndex].value);
+  };
+
+  return (
+    <button
+      className={`px-2 py-1 text-xs rounded ${currentState.bgColor} ${currentState.textColor} font-medium whitespace-nowrap`}
+      onClick={handleClick}
+      data-testid="approval-cell"
+    >
+      {currentState.label}
+    </button>
+  );
+}
+
 // Link Cell
 export function LinkCell({ value, onChange, onClick }: CellProps) {
   const [open, setOpen] = useState(false);
