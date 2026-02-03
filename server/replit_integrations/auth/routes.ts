@@ -100,4 +100,85 @@ export function registerAuthRoutes(app: Express): void {
       res.status(500).json({ message: "Failed to update user role" });
     }
   });
+
+  // Admin: Get team performance metrics
+  app.get("/api/admin/performance", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const users = await authStorage.getAllUsers();
+      const { storage } = await import("../../storage");
+      
+      // Get all tasks and time entries
+      const allTasks = await storage.getTasks();
+      const allTimeEntries = await storage.getTimeEntries();
+      
+      // Calculate individual performance for each user
+      const userPerformance = users.map(user => {
+        // Tasks assigned to user (check assignees array or owner field)
+        const userTasks = allTasks.filter(task => 
+          (task.owner && task.owner.id === user.id) || 
+          (Array.isArray(task.assignees) && task.assignees.some(a => a.id === user.id))
+        );
+        
+        const completedTasks = userTasks.filter(task => task.status === "done");
+        const inProgressTasks = userTasks.filter(task => task.status === "working-on-it");
+        const notStartedTasks = userTasks.filter(task => task.status === "not-started");
+        
+        // Time tracked by user
+        const userTimeEntries = allTimeEntries.filter(entry => entry.userId === user.id);
+        const totalHoursTracked = userTimeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+        const billableHours = userTimeEntries.filter(e => e.billableStatus === "billable").reduce((sum, entry) => sum + (entry.hours || 0), 0);
+        
+        // Calculate completion rate
+        const completionRate = userTasks.length > 0 
+          ? Math.round((completedTasks.length / userTasks.length) * 100) 
+          : 0;
+        
+        return {
+          userId: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          metrics: {
+            totalTasks: userTasks.length,
+            completedTasks: completedTasks.length,
+            inProgressTasks: inProgressTasks.length,
+            notStartedTasks: notStartedTasks.length,
+            completionRate,
+            totalHoursTracked: Math.round(totalHoursTracked * 10) / 10,
+            billableHours: Math.round(billableHours * 10) / 10,
+          }
+        };
+      });
+      
+      // Calculate team-wide metrics
+      const totalTasks = allTasks.length;
+      const totalCompleted = allTasks.filter(t => t.status === "done").length;
+      const totalInProgress = allTasks.filter(t => t.status === "working-on-it").length;
+      const totalNotStarted = allTasks.filter(t => t.status === "not-started").length;
+      const teamCompletionRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+      
+      const totalHours = allTimeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+      const totalBillableHours = allTimeEntries.filter(e => e.billableStatus === "billable").reduce((sum, entry) => sum + (entry.hours || 0), 0);
+      
+      const teamMetrics = {
+        totalMembers: users.length,
+        totalTasks,
+        completedTasks: totalCompleted,
+        inProgressTasks: totalInProgress,
+        notStartedTasks: totalNotStarted,
+        teamCompletionRate,
+        totalHoursTracked: Math.round(totalHours * 10) / 10,
+        totalBillableHours: Math.round(totalBillableHours * 10) / 10,
+      };
+      
+      res.json({
+        teamMetrics,
+        userPerformance
+      });
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      res.status(500).json({ message: "Failed to fetch performance metrics" });
+    }
+  });
 }

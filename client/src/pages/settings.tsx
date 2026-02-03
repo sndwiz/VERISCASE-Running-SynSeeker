@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Bell, Palette, Users, Loader2 } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,41 @@ interface AuthUser {
 interface CurrentUser {
   id: string;
   role: "admin" | "member" | "viewer";
+}
+
+interface UserMetrics {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  notStartedTasks: number;
+  completionRate: number;
+  totalHoursTracked: number;
+  billableHours: number;
+}
+
+interface UserPerformance {
+  userId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  metrics: UserMetrics;
+}
+
+interface TeamMetrics {
+  totalMembers: number;
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  notStartedTasks: number;
+  teamCompletionRate: number;
+  totalHoursTracked: number;
+  totalBillableHours: number;
+}
+
+interface PerformanceData {
+  teamMetrics: TeamMetrics;
+  userPerformance: UserPerformance[];
 }
 
 const AVATAR_COLORS = [
@@ -70,6 +105,11 @@ export default function SettingsPage() {
 
   const { data: users, isLoading: usersLoading } = useQuery<AuthUser[]>({
     queryKey: ["/api/admin/users"],
+    enabled: currentUser?.role === "admin",
+  });
+
+  const { data: performanceData, isLoading: performanceLoading } = useQuery<PerformanceData>({
+    queryKey: ["/api/admin/performance"],
     enabled: currentUser?.role === "admin",
   });
 
@@ -121,6 +161,12 @@ export default function SettingsPage() {
             <TabsTrigger value="team" data-testid="tab-team">
               <Users className="h-4 w-4 mr-2" />
               Team
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="dashboard" data-testid="tab-dashboard">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Dashboard
             </TabsTrigger>
           )}
         </TabsList>
@@ -384,6 +430,141 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="dashboard">
+            <div className="space-y-6">
+              {performanceLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : performanceData ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <Card data-testid="card-team-members">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                        <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold" data-testid="text-team-members-count">{performanceData.teamMetrics.totalMembers}</div>
+                        <p className="text-xs text-muted-foreground">Active team members</p>
+                      </CardContent>
+                    </Card>
+                    <Card data-testid="card-completion-rate">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                        <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold" data-testid="text-completion-rate">{performanceData.teamMetrics.teamCompletionRate}%</div>
+                        <p className="text-xs text-muted-foreground">
+                          {performanceData.teamMetrics.completedTasks} of {performanceData.teamMetrics.totalTasks} tasks
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card data-testid="card-hours-tracked">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                        <CardTitle className="text-sm font-medium">Hours Tracked</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold" data-testid="text-hours-tracked">{performanceData.teamMetrics.totalHoursTracked}h</div>
+                        <p className="text-xs text-muted-foreground">
+                          {performanceData.teamMetrics.totalBillableHours}h billable
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card data-testid="card-in-progress">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+                        <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold" data-testid="text-in-progress-count">{performanceData.teamMetrics.inProgressTasks}</div>
+                        <p className="text-xs text-muted-foreground">
+                          {performanceData.teamMetrics.notStartedTasks} not started
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card data-testid="card-individual-performance">
+                    <CardHeader>
+                      <CardTitle>Individual Performance</CardTitle>
+                      <CardDescription>
+                        Task completion and time tracking by team member
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {performanceData.userPerformance.map((user) => (
+                          <div key={user.userId} className="space-y-3" data-testid={`row-user-performance-${user.userId}`}>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback
+                                  className="text-white"
+                                  style={{ backgroundColor: getColorForUser(user.userId) }}
+                                >
+                                  {getInitials(user.firstName, user.lastName, user.email)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <p className="font-medium" data-testid={`text-user-name-${user.userId}`}>
+                                    {user.firstName && user.lastName
+                                      ? `${user.firstName} ${user.lastName}`
+                                      : user.email?.split("@")[0] || "User"}
+                                  </p>
+                                  <Badge variant="secondary">{user.role}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pl-12">
+                              <div className="bg-muted/50 rounded-lg p-3" data-testid={`metric-tasks-${user.userId}`}>
+                                <p className="text-xs text-muted-foreground">Tasks Assigned</p>
+                                <p className="text-lg font-semibold">{user.metrics.totalTasks}</p>
+                              </div>
+                              <div className="bg-muted/50 rounded-lg p-3" data-testid={`metric-completed-${user.userId}`}>
+                                <p className="text-xs text-muted-foreground">Completed</p>
+                                <p className="text-lg font-semibold text-green-600 dark:text-green-400">{user.metrics.completedTasks}</p>
+                              </div>
+                              <div className="bg-muted/50 rounded-lg p-3" data-testid={`metric-rate-${user.userId}`}>
+                                <p className="text-xs text-muted-foreground">Completion Rate</p>
+                                <p className="text-lg font-semibold">{user.metrics.completionRate}%</p>
+                              </div>
+                              <div className="bg-muted/50 rounded-lg p-3" data-testid={`metric-hours-${user.userId}`}>
+                                <p className="text-xs text-muted-foreground">Hours Tracked</p>
+                                <p className="text-lg font-semibold">{user.metrics.totalHoursTracked}h</p>
+                              </div>
+                            </div>
+                            
+                            <div className="w-full bg-muted rounded-full h-2 ml-12" data-testid={`progress-bar-${user.userId}`}>
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${user.metrics.completionRate}%` }}
+                              />
+                            </div>
+                            
+                            <Separator />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    Unable to load performance data
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         )}
       </Tabs>
