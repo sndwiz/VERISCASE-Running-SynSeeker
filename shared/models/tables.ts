@@ -9,6 +9,8 @@ export const boards = pgTable("boards", {
   color: varchar("color", { length: 20 }).default("#6366f1"),
   icon: varchar("icon", { length: 50 }).default("layout-grid"),
   columns: jsonb("columns").default([]),
+  clientId: varchar("client_id"),
+  matterId: varchar("matter_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

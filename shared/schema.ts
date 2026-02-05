@@ -246,7 +246,9 @@ export interface Board {
   color: string;
   icon: string;
   columns: ColumnDef[];
-  statusLabels?: CustomStatusLabel[]; // Board-level custom status labels
+  statusLabels?: CustomStatusLabel[];
+  clientId?: string | null;
+  matterId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -772,6 +774,8 @@ export const insertBoardSchema = z.object({
     order: z.number(),
     options: z.array(z.string()).optional(),
   })).optional(),
+  clientId: z.string().nullable().optional(),
+  matterId: z.string().nullable().optional(),
 });
 
 export const insertGroupSchema = z.object({
