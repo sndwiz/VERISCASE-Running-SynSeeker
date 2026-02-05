@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -17,14 +18,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import type { Client, Matter } from "@shared/schema";
 
 const formSchema = z.object({
   name: z.string().min(1, "Board name is required"),
   description: z.string().optional(),
   color: z.string().default("#6366f1"),
+  clientId: z.string().nullable().optional(),
+  matterId: z.string().nullable().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,8 +62,26 @@ export function CreateBoardDialog({
       name: "",
       description: "",
       color: "#6366f1",
+      clientId: null,
+      matterId: null,
     },
   });
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    enabled: open,
+  });
+
+  const { data: matters = [] } = useQuery<Matter[]>({
+    queryKey: ["/api/matters"],
+    enabled: open,
+  });
+
+  const selectedClientId = form.watch("clientId");
+
+  const filteredMatters = selectedClientId
+    ? matters.filter(m => m.clientId === selectedClientId)
+    : [];
 
   const handleSubmit = (data: FormData) => {
     onSubmit(data);
@@ -106,6 +135,67 @@ export function CreateBoardDialog({
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client (optional)</FormLabel>
+                  <Select
+                    onValueChange={(val) => {
+                      field.onChange(val === "__none__" ? null : val);
+                      if (val === "__none__") {
+                        form.setValue("matterId", null);
+                      }
+                    }}
+                    value={field.value || "__none__"}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-client">
+                        <SelectValue placeholder="Select a client" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">No client (general board)</SelectItem>
+                      {clients.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedClientId && filteredMatters.length > 0 && (
+              <FormField
+                control={form.control}
+                name="matterId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Case/Matter (optional)</FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(val === "__none__" ? null : val)}
+                      value={field.value || "__none__"}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-matter">
+                          <SelectValue placeholder="Select a case" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">No specific case</SelectItem>
+                        {filteredMatters.map(m => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

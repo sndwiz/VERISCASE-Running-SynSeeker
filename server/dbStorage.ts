@@ -209,34 +209,45 @@ export class DbStorage implements IStorage {
   }
 
   // ============ BOARD METHODS ============
-  async getBoards(): Promise<Board[]> {
-    await this.ensureInitialized();
-    const rows = await db.select().from(tables.boards).orderBy(asc(tables.boards.createdAt));
-    return rows.map(r => ({
+  private rowToBoard(r: any): Board {
+    return {
       id: r.id,
       name: r.name,
       description: r.description || "",
       color: r.color || "#6366f1",
       icon: r.icon || "layout-grid",
       columns: (r.columns as ColumnDef[]) || [],
+      clientId: r.clientId || null,
+      matterId: r.matterId || null,
       createdAt: toISOString(r.createdAt) || new Date().toISOString(),
       updatedAt: toISOString(r.updatedAt) || new Date().toISOString(),
-    }));
+    };
+  }
+
+  async getBoards(): Promise<Board[]> {
+    await this.ensureInitialized();
+    const rows = await db.select().from(tables.boards).orderBy(asc(tables.boards.createdAt));
+    return rows.map(r => this.rowToBoard(r));
+  }
+
+  async getBoardsByClient(clientId: string): Promise<Board[]> {
+    const rows = await db.select().from(tables.boards)
+      .where(eq(tables.boards.clientId, clientId))
+      .orderBy(asc(tables.boards.createdAt));
+    return rows.map(r => this.rowToBoard(r));
+  }
+
+  async getBoardsByMatter(matterId: string): Promise<Board[]> {
+    const rows = await db.select().from(tables.boards)
+      .where(eq(tables.boards.matterId, matterId))
+      .orderBy(asc(tables.boards.createdAt));
+    return rows.map(r => this.rowToBoard(r));
   }
 
   async getBoard(id: string): Promise<Board | undefined> {
     const [row] = await db.select().from(tables.boards).where(eq(tables.boards.id, id));
     if (!row) return undefined;
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description || "",
-      color: row.color || "#6366f1",
-      icon: row.icon || "layout-grid",
-      columns: (row.columns as ColumnDef[]) || [],
-      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
-      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
-    };
+    return this.rowToBoard(row);
   }
 
   async createBoard(data: InsertBoard): Promise<Board> {
@@ -249,19 +260,12 @@ export class DbStorage implements IStorage {
       color: data.color || "#6366f1",
       icon: data.icon || "layout-grid",
       columns: (data.columns as any) || defaultColumns,
+      clientId: data.clientId || null,
+      matterId: data.matterId || null,
       createdAt: now,
       updatedAt: now,
     }).returning();
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description || "",
-      color: row.color || "#6366f1",
-      icon: row.icon || "layout-grid",
-      columns: (row.columns as ColumnDef[]) || [],
-      createdAt: toISOString(row.createdAt) || now.toISOString(),
-      updatedAt: toISOString(row.updatedAt) || now.toISOString(),
-    };
+    return this.rowToBoard(row);
   }
 
   async updateBoard(id: string, data: Partial<Board>): Promise<Board | undefined> {
@@ -269,16 +273,7 @@ export class DbStorage implements IStorage {
     if (data.columns) updateData.columns = data.columns as any;
     const [row] = await db.update(tables.boards).set(updateData).where(eq(tables.boards.id, id)).returning();
     if (!row) return undefined;
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description || "",
-      color: row.color || "#6366f1",
-      icon: row.icon || "layout-grid",
-      columns: (row.columns as ColumnDef[]) || [],
-      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
-      updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
-    };
+    return this.rowToBoard(row);
   }
 
   async deleteBoard(id: string): Promise<boolean> {

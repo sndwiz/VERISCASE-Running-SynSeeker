@@ -89,7 +89,7 @@ function AppLayout() {
   });
 
   const createBoardMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string; color: string }) =>
+    mutationFn: (data: { name: string; description?: string; color: string; clientId?: string | null; matterId?: string | null }) =>
       apiRequest("POST", "/api/boards", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
@@ -117,7 +117,7 @@ function AppLayout() {
   }
 
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
 

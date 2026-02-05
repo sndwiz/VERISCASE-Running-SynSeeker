@@ -41,6 +41,16 @@ export function registerMatterRoutes(app: Express): void {
     try {
       const data = insertMatterSchema.parse(req.body);
       const matter = await storage.createMatter(data);
+
+      await storage.createBoard({
+        name: matter.name,
+        description: `Case board for ${matter.name}`,
+        color: "#6366f1",
+        icon: "briefcase",
+        clientId: matter.clientId,
+        matterId: matter.id,
+      });
+
       res.status(201).json(matter);
     } catch (error) {
       if (error instanceof z.ZodError) {

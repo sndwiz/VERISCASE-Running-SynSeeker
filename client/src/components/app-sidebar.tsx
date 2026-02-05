@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -10,8 +11,16 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,13 +43,16 @@ import {
   Network,
   Zap,
   ChevronDown,
+  ChevronRight,
   Home,
   Building2,
   ChevronsUpDown,
   FilePlus2,
+  FolderOpen,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Board } from "@shared/schema";
+import type { Board, Client, Matter } from "@shared/schema";
 
 const workspaces = [
   { id: "default", name: "Main Workspace", icon: Building2 },
@@ -70,10 +82,70 @@ const aiInvestigationItems = [
 
 export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
   const [location] = useLocation();
-  const [boardsOpen, setBoardsOpen] = useState(true);
+  const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [practiceOpen, setPracticeOpen] = useState(true);
   const [currentWorkspace] = useState(workspaces[0]);
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const { data: matters = [] } = useQuery<Matter[]>({
+    queryKey: ["/api/matters"],
+  });
+
+  const toggleClient = (clientId: string) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
+
+  const { generalBoards, clientMap } = useMemo(() => {
+    const general: Board[] = [];
+    const clientBoardMap = new Map<string, { client: Client; matters: Map<string, { matter: Matter; boards: Board[] }> }>();
+
+    clients.forEach(c => {
+      clientBoardMap.set(c.id, {
+        client: c,
+        matters: new Map(),
+      });
+    });
+
+    matters.forEach(m => {
+      const entry = clientBoardMap.get(m.clientId);
+      if (entry) {
+        entry.matters.set(m.id, { matter: m, boards: [] });
+      }
+    });
+
+    boards.forEach(b => {
+      if (b.clientId && b.matterId) {
+        const clientEntry = clientBoardMap.get(b.clientId);
+        if (clientEntry) {
+          const matterEntry = clientEntry.matters.get(b.matterId);
+          if (matterEntry) {
+            matterEntry.boards.push(b);
+            return;
+          }
+        }
+      }
+      general.push(b);
+    });
+
+    return { generalBoards: general, clientMap: clientBoardMap };
+  }, [boards, clients, matters]);
+
+  const clientsWithMatters = useMemo(() => {
+    return Array.from(clientMap.values()).filter(entry => entry.matters.size > 0);
+  }, [clientMap]);
 
   return (
     <Sidebar>
@@ -116,7 +188,6 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
-        {/* Dashboard link */}
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -130,17 +201,16 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Boards - Collapsible */}
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between pr-1">
             <button
               type="button"
               className="flex items-center gap-1 hover:opacity-80"
-              onClick={() => setBoardsOpen(!boardsOpen)}
-              data-testid="toggle-boards-section"
+              onClick={() => setCasesOpen(!casesOpen)}
+              data-testid="toggle-cases-section"
             >
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${boardsOpen ? "" : "-rotate-90"}`} />
-              <span>Boards</span>
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${casesOpen ? "" : "-rotate-90"}`} />
+              <span>Case Boards</span>
             </button>
             <Button
               variant="ghost"
@@ -152,10 +222,10 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
               <Plus className="h-3 w-3" />
             </Button>
           </SidebarGroupLabel>
-          {boardsOpen && (
+          {casesOpen && (
             <SidebarGroupContent>
               <SidebarMenu>
-                {boards.map((board) => (
+                {generalBoards.map((board) => (
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton
                       asChild
@@ -171,6 +241,66 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+
+                {clientsWithMatters.map(({ client, matters: matterMap }) => (
+                  <Collapsible
+                    key={client.id}
+                    open={expandedClients.has(client.id)}
+                    onOpenChange={() => toggleClient(client.id)}
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton
+                          data-testid={`toggle-client-${client.id}`}
+                          className="w-full"
+                        >
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate font-medium">{client.name}</span>
+                          <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${expandedClients.has(client.id) ? "rotate-90" : ""}`} />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {Array.from(matterMap.values()).map(({ matter, boards: matterBoards }) => {
+                            const board = matterBoards[0];
+                            if (board) {
+                              return (
+                                <SidebarMenuSubItem key={board.id}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    isActive={location === `/boards/${board.id}`}
+                                  >
+                                    <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
+                                      <Briefcase
+                                        className="h-3 w-3"
+                                        style={{ color: board.color }}
+                                      />
+                                      <span className="truncate text-xs">{matter.name}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            }
+                            return (
+                              <SidebarMenuSubItem key={matter.id}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={false}
+                                >
+                                  <Link href={`/matters`} data-testid={`link-matter-${matter.id}`}>
+                                    <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                                    <span className="truncate text-xs text-muted-foreground">{matter.name}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                ))}
+
                 {boards.length === 0 && (
                   <div className="px-2 py-3 text-xs text-muted-foreground">
                     No boards yet. Create one to get started.
@@ -181,7 +311,6 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
           )}
         </SidebarGroup>
 
-        {/* AI & Investigation - Collapsible */}
         <SidebarGroup>
           <SidebarGroupLabel>
             <button
@@ -215,7 +344,6 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
           )}
         </SidebarGroup>
 
-        {/* Legal Practice - Collapsible */}
         <SidebarGroup>
           <SidebarGroupLabel>
             <button

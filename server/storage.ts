@@ -81,6 +81,8 @@ const defaultColumns: ColumnDef[] = [
 export interface IStorage {
   // Boards
   getBoards(): Promise<Board[]>;
+  getBoardsByClient(clientId: string): Promise<Board[]>;
+  getBoardsByMatter(matterId: string): Promise<Board[]>;
   getBoard(id: string): Promise<Board | undefined>;
   createBoard(data: InsertBoard): Promise<Board>;
   updateBoard(id: string, data: Partial<Board>): Promise<Board | undefined>;
@@ -480,6 +482,14 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getBoardsByClient(clientId: string): Promise<Board[]> {
+    return Array.from(this.boards.values()).filter(b => b.clientId === clientId);
+  }
+
+  async getBoardsByMatter(matterId: string): Promise<Board[]> {
+    return Array.from(this.boards.values()).filter(b => b.matterId === matterId);
+  }
+
   async getBoard(id: string): Promise<Board | undefined> {
     return this.boards.get(id);
   }
@@ -494,6 +504,8 @@ export class MemStorage implements IStorage {
       color: data.color || "#6366f1",
       icon: data.icon || "layout-grid",
       columns: (data.columns as ColumnDef[]) || [...defaultColumns],
+      clientId: data.clientId || null,
+      matterId: data.matterId || null,
       createdAt: now,
       updatedAt: now,
     };

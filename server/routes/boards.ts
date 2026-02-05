@@ -4,9 +4,17 @@ import { insertBoardSchema, updateBoardSchema } from "@shared/schema";
 import { z } from "zod";
 
 export function registerBoardRoutes(app: Express): void {
-  app.get("/api/boards", async (_req, res) => {
+  app.get("/api/boards", async (req, res) => {
     try {
-      const boards = await storage.getBoards();
+      const { clientId, matterId } = req.query;
+      let boards;
+      if (clientId && typeof clientId === "string") {
+        boards = await storage.getBoardsByClient(clientId);
+      } else if (matterId && typeof matterId === "string") {
+        boards = await storage.getBoardsByMatter(matterId);
+      } else {
+        boards = await storage.getBoards();
+      }
       res.json(boards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch boards" });
