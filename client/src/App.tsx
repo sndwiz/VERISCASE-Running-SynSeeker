@@ -36,6 +36,7 @@ import AutomationsPage from "@/pages/automations";
 import FilingCabinetPage from "@/pages/filing-cabinet";
 import DailyBriefingPage from "@/pages/daily-briefing";
 import DocumentMakerPage from "@/pages/document-maker";
+import MeetingNotesPage from "@/pages/meeting-notes";
 
 import type { Board } from "@shared/schema";
 
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/approvals" component={ApprovalsPage} />
       <Route path="/briefing" component={DailyBriefingPage} />
+      <Route path="/meetings" component={MeetingNotesPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

@@ -67,6 +67,8 @@ import type {
   InsertClientForm,
   ClientFormSubmission,
   InsertClientFormSubmission,
+  Meeting,
+  InsertMeeting,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -258,6 +260,13 @@ export interface IStorage {
   getClientFormSubmission(id: string): Promise<ClientFormSubmission | undefined>;
   createClientFormSubmission(data: InsertClientFormSubmission): Promise<ClientFormSubmission>;
   updateClientFormSubmission(id: string, data: Partial<ClientFormSubmission>): Promise<ClientFormSubmission | undefined>;
+
+  // Meetings
+  getMeetings(): Promise<Meeting[]>;
+  getMeeting(id: string): Promise<Meeting | undefined>;
+  createMeeting(data: InsertMeeting): Promise<Meeting>;
+  updateMeeting(id: string, data: Partial<Meeting>): Promise<Meeting | undefined>;
+  deleteMeeting(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -294,6 +303,7 @@ export class MemStorage implements IStorage {
   private documentApprovalAudits: Map<string, DocumentApprovalAudit> = new Map();
   private clientForms: Map<string, ClientForm> = new Map();
   private clientFormSubmissions: Map<string, ClientFormSubmission> = new Map();
+  private meetingsMap: Map<string, Meeting> = new Map();
 
   constructor() {
     this.initializeSampleData();
@@ -2356,6 +2366,51 @@ Attorney for Plaintiff                  Attorney for Defendant`,
     const updated = { ...submission, ...data };
     this.clientFormSubmissions.set(id, updated);
     return updated;
+  }
+
+  async getMeetings(): Promise<Meeting[]> {
+    return Array.from(this.meetingsMap.values()).sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }
+
+  async getMeeting(id: string): Promise<Meeting | undefined> {
+    return this.meetingsMap.get(id);
+  }
+
+  async createMeeting(data: InsertMeeting): Promise<Meeting> {
+    const meeting: Meeting = {
+      id: randomUUID(),
+      title: data.title,
+      matterId: data.matterId || null,
+      date: data.date,
+      duration: data.duration || 0,
+      status: data.status || "recorded",
+      participants: data.participants as any[] || [],
+      summary: data.summary || "",
+      mainPoints: data.mainPoints as any[] || [],
+      topics: data.topics as any[] || [],
+      transcript: data.transcript as any[] || [],
+      actionItems: data.actionItems as any[] || [],
+      tags: data.tags || [],
+      createdBy: data.createdBy,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.meetingsMap.set(meeting.id, meeting);
+    return meeting;
+  }
+
+  async updateMeeting(id: string, data: Partial<Meeting>): Promise<Meeting | undefined> {
+    const meeting = this.meetingsMap.get(id);
+    if (!meeting) return undefined;
+    const updated = { ...meeting, ...data, updatedAt: new Date() };
+    this.meetingsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteMeeting(id: string): Promise<boolean> {
+    return this.meetingsMap.delete(id);
   }
 }
 

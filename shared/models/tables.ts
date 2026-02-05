@@ -418,7 +418,29 @@ export const approvalRequests = pgTable("approval_requests", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ============ MEETINGS ============
+export const meetings = pgTable("meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 500 }).notNull(),
+  matterId: varchar("matter_id").references(() => matters.id, { onDelete: "set null" }),
+  date: varchar("date", { length: 50 }).notNull(),
+  duration: integer("duration").default(0),
+  status: varchar("status", { length: 50 }).default("recorded"),
+  participants: jsonb("participants").default([]),
+  summary: text("summary").default(""),
+  mainPoints: jsonb("main_points").default([]),
+  topics: jsonb("topics").default([]),
+  transcript: jsonb("transcript").default([]),
+  actionItems: jsonb("action_items").default([]),
+  tags: jsonb("tags").default([]),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type exports
+export type MeetingRecord = typeof meetings.$inferSelect;
+export type InsertMeetingRecord = typeof meetings.$inferInsert;
 export type BoardRecord = typeof boards.$inferSelect;
 export type InsertBoardRecord = typeof boards.$inferInsert;
 export type GroupRecord = typeof groups.$inferSelect;

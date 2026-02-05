@@ -40,6 +40,9 @@ export async function registerRoutes(
   // AI features - any authenticated role
   app.use("/api/ai", isAuthenticated, requireAnyRole);
   
+  // Meeting notes - viewer can read, member+ can write
+  app.use("/api/meetings", isAuthenticated, viewerReadOnly);
+  
   // Register all other API routes
   registerAllRoutes(app);
   

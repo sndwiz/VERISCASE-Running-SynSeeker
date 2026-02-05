@@ -1851,6 +1851,98 @@ export const insertClientFormSubmissionSchema = z.object({
   signature: z.string().optional(),
 });
 
+// ============ MEETING NOTES ============
+export interface MeetingParticipant {
+  name: string;
+  email?: string;
+  role?: string;
+  color?: string;
+}
+
+export interface MeetingTopic {
+  title: string;
+  content: string;
+  expanded?: boolean;
+}
+
+export interface TranscriptEntry {
+  speaker: string;
+  timestamp: string;
+  text: string;
+}
+
+export interface MeetingActionItem {
+  id: string;
+  text: string;
+  assignee?: string;
+  dueDate?: string;
+  completed: boolean;
+}
+
+export const meetingParticipantSchema = z.object({
+  name: z.string(),
+  email: z.string().optional(),
+  role: z.string().optional(),
+  color: z.string().optional(),
+});
+
+export const meetingTopicSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  expanded: z.boolean().optional(),
+});
+
+export const transcriptEntrySchema = z.object({
+  speaker: z.string(),
+  timestamp: z.string(),
+  text: z.string(),
+});
+
+export const meetingActionItemSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  assignee: z.string().optional(),
+  dueDate: z.string().optional(),
+  completed: z.boolean(),
+});
+
+export const insertMeetingSchema = z.object({
+  title: z.string().min(1),
+  matterId: z.string().optional(),
+  date: z.string(),
+  duration: z.number().default(0),
+  status: z.enum(["scheduled", "recording", "recorded", "processing", "summarized"]).default("recorded"),
+  participants: z.array(meetingParticipantSchema).default([]),
+  summary: z.string().default(""),
+  mainPoints: z.array(z.string()).default([]),
+  topics: z.array(meetingTopicSchema).default([]),
+  transcript: z.array(transcriptEntrySchema).default([]),
+  actionItems: z.array(meetingActionItemSchema).default([]),
+  tags: z.array(z.string()).default([]),
+  createdBy: z.string(),
+});
+
+export type Meeting = {
+  id: string;
+  title: string;
+  matterId: string | null;
+  date: string;
+  duration: number | null;
+  status: string | null;
+  participants: MeetingParticipant[];
+  summary: string | null;
+  mainPoints: string[];
+  topics: MeetingTopic[];
+  transcript: TranscriptEntry[];
+  actionItems: MeetingActionItem[];
+  tags: string[];
+  createdBy: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
+
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+
 // Type exports for Document Maker
 export type InsertDocumentTemplate = z.infer<typeof insertDocumentTemplateSchema>;
 export type InsertGeneratedDocument = z.infer<typeof insertGeneratedDocumentSchema>;

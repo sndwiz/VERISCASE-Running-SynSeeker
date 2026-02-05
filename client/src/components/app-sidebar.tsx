@@ -50,6 +50,7 @@ import {
   FilePlus2,
   FolderOpen,
   User,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -71,6 +72,7 @@ const navigationItems = [
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Approvals", url: "/approvals", icon: Gavel },
+  { title: "Meeting Notes", url: "/meetings", icon: Mic },
 ];
 
 const aiInvestigationItems = [

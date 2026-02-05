@@ -16,6 +16,7 @@ import { registerApprovalRoutes } from "./approvals";
 import { registerBriefingRoutes } from "./briefing";
 import clawbotRouter from "./clawbot";
 import documentsRouter from "./documents";
+import { registerMeetingRoutes } from "./meetings";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -37,4 +38,5 @@ export function registerAllRoutes(app: Express): void {
   registerCalendarRoutes(app);
   registerApprovalRoutes(app);
   registerBriefingRoutes(app);
+  registerMeetingRoutes(app);
 }
