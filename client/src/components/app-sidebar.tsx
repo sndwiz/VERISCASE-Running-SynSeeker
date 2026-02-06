@@ -64,7 +64,10 @@ interface AppSidebarProps {
   onCreateBoard: () => void;
 }
 
+import { LayoutDashboard } from "lucide-react";
+
 const navigationItems = [
+  { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Documents", url: "/documents", icon: FileText },
@@ -365,7 +368,7 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
-                      isActive={location === item.url}
+                      isActive={location === item.url || location.startsWith(item.url + "/")}
                     >
                       <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
                         <item.icon className="h-4 w-4" />

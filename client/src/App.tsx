@@ -37,6 +37,8 @@ import FilingCabinetPage from "@/pages/filing-cabinet";
 import DailyBriefingPage from "@/pages/daily-briefing";
 import DocumentMakerPage from "@/pages/document-maker";
 import MeetingNotesPage from "@/pages/meeting-notes";
+import ClientDashboardPage from "@/pages/client-dashboard";
+import ClientDetailDashboard from "@/pages/client-detail-dashboard";
 
 import type { Board } from "@shared/schema";
 
@@ -52,6 +54,8 @@ function Router() {
       <Route path="/automations" component={AutomationsPage} />
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
+      <Route path="/client-dashboard/:clientId" component={ClientDetailDashboard} />
+      <Route path="/client-dashboard" component={ClientDashboardPage} />
       <Route path="/documents" component={FilingCabinetPage} />
       <Route path="/document-maker" component={DocumentMakerPage} />
       <Route path="/time-tracking" component={TimeTrackingPage} />
