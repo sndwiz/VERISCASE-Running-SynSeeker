@@ -18,11 +18,9 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Check if user already exists
     const existingUser = await this.getUser(userData.id);
     
     if (existingUser) {
-      // User exists - update profile data but preserve existing role
       const [user] = await db
         .update(users)
         .set({
@@ -31,14 +29,30 @@ class AuthStorage implements IAuthStorage {
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
-          // Preserve existing role - never overwrite on login
         })
         .where(eq(users.id, userData.id))
         .returning();
       return user;
     }
+
+    if (userData.email) {
+      const [existingByEmail] = await db.select().from(users).where(eq(users.email, userData.email));
+      if (existingByEmail) {
+        const [user] = await db
+          .update(users)
+          .set({
+            id: userData.id,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profileImageUrl: userData.profileImageUrl,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.email, userData.email))
+          .returning();
+        return user;
+      }
+    }
     
-    // New user - check if this is the first user (should become admin)
     const existingUsers = await db.select().from(users);
     const hasAdmin = existingUsers.some(u => u.role === "admin");
     const roleToAssign = !hasAdmin && existingUsers.length === 0 ? "admin" : "member";

@@ -593,7 +593,7 @@ export default function SecurityDashboardPage() {
                       { label: "Rate limiting on auth endpoints", status: true, note: "20 attempts per 15 minutes" },
                       { label: "Content Security Policy", status: true, note: "Strict CSP headers via Helmet" },
                       { label: "XSS protection", status: true, note: "Input sanitization + security headers" },
-                      { label: "CORS origin whitelist", status: true, note: "Only Replit domains allowed" },
+                      { label: "CORS origin whitelist", status: true, note: "Only authorized domains allowed" },
                       { label: "Evidence chain of custody", status: true, note: "SHA-256 hash verification" },
                       { label: "Clickjacking protection", status: true, note: "X-Frame-Options: DENY" },
                     ].map((item) => (

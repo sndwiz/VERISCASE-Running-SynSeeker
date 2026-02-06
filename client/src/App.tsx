@@ -45,6 +45,9 @@ import MatterDetailPage from "@/pages/matter-detail";
 import BillingDashboard from "@/pages/billing-dashboard";
 import ClientBillingPage from "@/pages/client-billing";
 import MatterBillingPage from "@/pages/matter-billing";
+import LegalAIPage from "@/pages/legal-ai";
+import IntakeFormsPage from "@/pages/intake-forms";
+import CommunicationsPage from "@/pages/communications";
 
 import type { Board } from "@shared/schema";
 
@@ -68,13 +71,16 @@ function Router() {
       <Route path="/client-dashboard" component={ClientDashboardPage} />
       <Route path="/documents" component={FilingCabinetPage} />
       <Route path="/document-maker" component={DocumentMakerPage} />
+      <Route path="/legal-ai" component={LegalAIPage} />
       <Route path="/time-tracking" component={TimeTrackingPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/approvals" component={ApprovalsPage} />
       <Route path="/briefing" component={DailyBriefingPage} />
       <Route path="/meetings" component={MeetingNotesPage} />
       <Route path="/vibe-code" component={VibeCodePage} />
+      <Route path="/communications" component={CommunicationsPage} />
       <Route path="/security" component={SecurityDashboardPage} />
+      <Route path="/intake-forms" component={IntakeFormsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

@@ -55,6 +55,9 @@ import {
   Sparkles,
   DollarSign,
   Receipt,
+  ClipboardList,
+  MessageSquare,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -76,11 +79,13 @@ const navigationItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Billing", url: "/billing", icon: DollarSign },
   { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Document Maker", url: "/document-maker", icon: FilePlus2 },
+  { title: "Legal AI", url: "/legal-ai", icon: Wand2 },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Communications", url: "/communications", icon: MessageSquare },
   { title: "Approvals", url: "/approvals", icon: Gavel },
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
+  { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
 ];
 
 const aiInvestigationItems = [
