@@ -1,0 +1,305 @@
+Below are 30 law-firm automation recipes written in the same Monday-style Trigger → Conditions → Actions format using the catalog keys from your VERICASE system. Paste these into Replit as your template library.
+
+⸻
+
+VERICASE Automation Templates (30)
+
+1) “Waiting on Client → Follow-Up Task in 3 Days”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Waiting on Client” }
+	•	Actions:
+	•	act.task.create { scope: “board”, board_id: “”, title: “Client follow-up”, assignee: “<ITEM_ASSIGNEE_OR_DEFAULT>”, due_date: “NOW+3D”, links: { item_id: “” } }
+	•	act.item.add_comment { board_id: “”, item_id: “”, text: “Auto: Follow-up task created for 3 days from now.” }
+
+⸻
+
+2) “New Intake Created → Assign Intake Owner + Tag #intake”
+	•	Trigger: item.created
+	•	Conditions:
+	•	cond.item_in_group { group_id: “Intake” }
+	•	Actions:
+	•	act.item.assign_user { board_id: “”, item_id: “”, user_id: “<INTAKE_OWNER>” }
+	•	act.item.add_tag { board_id: “”, item_id: “”, tag: “intake” }
+
+⸻
+
+3) “Due Date in 48h + Not Complete → Reminder”
+	•	Trigger: time.before_due_date
+	•	Conditions:
+	•	cond.status_is { column_id: “<STATUS_COL>”, value: “Complete”, negate: true }
+	•	Actions:
+	•	act.notify.in_app { user_id: “<ITEM_ASSIGNEE>”, text: “Reminder: due in 48 hours — <ITEM_TITLE>”, link: { item_id: “” } }
+	•	act.item.add_comment { board_id: “”, item_id: “”, text: “Auto: Reminder sent (48h before due date).” }
+
+⸻
+
+4) “Overdue + Not Complete → Move to Urgent + Tag #overdue”
+	•	Trigger: time.after_due_date
+	•	Conditions:
+	•	cond.status_is { column_id: “<STATUS_COL>”, value: “Complete”, negate: true }
+	•	Actions:
+	•	act.item.move_group { board_id: “”, item_id: “”, group_id: “Urgent” }
+	•	act.item.add_tag { board_id: “”, item_id: “”, tag: “overdue” }
+
+⸻
+
+5) “Status → Filed → Create ‘Confirm Filing Receipt’ Task”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Filed” }
+	•	Actions:
+	•	act.task.create { scope: “board”, board_id: “”, title: “Confirm filing receipt & docket entry”, assignee: “”, due_date: “NOW+1D”, links: { item_id: “” } }
+
+⸻
+
+6) “Status → Drafting → Set Due Date 7 Days Out”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Drafting” }
+	•	Actions:
+	•	act.item.set_due_date { board_id: “”, item_id: “”, date: “NOW+7D” }
+
+⸻
+
+7) “Tag #urgent Added → Assign Lead Attorney + Move to Urgent”
+	•	Trigger: item.tag_added
+	•	Conditions:
+	•	cond.tag_contains { tag: “urgent” }
+	•	Actions:
+	•	act.item.assign_user { board_id: “”, item_id: “”, user_id: “<LEAD_ATTORNEY>” }
+	•	act.item.move_group { board_id: “”, item_id: “”, group_id: “Urgent” }
+
+⸻
+
+8) “File Uploaded to Item → OCR It”
+	•	Trigger: file.uploaded_to_item
+	•	Conditions:
+	•	cond.file_type_is { type: “pdf” }
+	•	Actions:
+	•	act.file.request_ocr { file_id: “” }
+	•	act.item.add_comment { board_id: “”, item_id: “”, text: “Auto: OCR requested for uploaded file.” }
+
+⸻
+
+9) “OCR Completed → Classify Doc + Route to Folder”
+	•	Trigger: file.ocr_completed
+	•	Conditions:
+	•	cond.ocr_confidence_gte { threshold: 0.65 }
+	•	Actions:
+	•	act.file.add_label { file_id: “”, label: “<DOC_TYPE_FROM_CLASSIFIER>” }
+	•	act.file.route_to_folder { file_id: “”, folder: “/Matters//Documents/<DOC_TYPE_FROM_CLASSIFIER>” }
+
+⸻
+
+10) “Deadline Detected in OCR → Set Due Date + Tag #deadline”
+	•	Trigger: signal.deadline_detected
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.7 }
+	•	Actions:
+	•	act.item.set_due_date { board_id: “”, item_id: “<LINKED_ITEM_OR_CREATE_DEADLINE_ITEM>”, date: “<DETECTED_DATE>” }
+	•	act.item.add_tag { board_id: “”, item_id: “<LINKED_ITEM_OR_CREATE_DEADLINE_ITEM>”, tag: “deadline” }
+
+⸻
+
+11) “Event Detected → Create Calendar Event”
+	•	Trigger: signal.event_detected
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.7 }
+	•	Actions:
+	•	act.event.create { scope: “matter”, matter_id: “”, title: “<EVENT_TITLE>”, start_time: “<EVENT_START>”, end_time: “<EVENT_END>”, participants: [”<ITEM_ASSIGNEE>”], citations: “” }
+
+⸻
+
+12) “Action Item Detected → Create Task + Assign Mentioned User”
+	•	Trigger: signal.action_item_detected
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.7 }
+	•	Actions:
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “<ACTION_TEXT>”, assignee: “<MENTIONED_USER_OR_DEFAULT>”, due_date: “NOW+3D”, links: { file_id: “”, anchor: “” } }
+
+⸻
+
+13) “Privilege Detected → Tag File Sensitive + Restrict”
+	•	Trigger: signal.privilege_detected
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.75 }
+	•	Actions:
+	•	act.file.add_label { file_id: “”, label: “privileged” }
+	•	act.item.add_comment { board_id: “”, item_id: “”, text: “Auto: Potential privilege detected — file labeled ‘privileged’.” }
+
+⸻
+
+14) “Contradiction Detected → Create Review Task + Tag #conflict”
+	•	Trigger: signal.contradiction_detected
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.65 }
+	•	Actions:
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Review contradiction flagged by system”, assignee: “<LEAD_ATTORNEY>”, due_date: “NOW+2D”, links: { citations: “” } }
+	•	act.item.add_tag { board_id: “”, item_id: “”, tag: “conflict” }
+
+⸻
+
+15) “Mentioned in Comment → Assign as Watcher + Notify”
+	•	Trigger: item.mentioned_user
+	•	Conditions: (none)
+	•	Actions:
+	•	act.notify.in_app { user_id: “<MENTIONED_USER>”, text: “You were mentioned on <ITEM_TITLE>”, link: { item_id: “” } }
+
+⸻
+
+16) “Status → Discovery → Create Checklist Subtasks”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Discovery” }
+	•	Actions:
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Send discovery requests”, assignee: “”, due_date: “NOW+5D”, links: { item_id: “” } }
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Calendar discovery deadlines”, assignee: “”, due_date: “NOW+2D”, links: { item_id: “” } }
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Draft discovery responses outline”, assignee: “<LEAD_ATTORNEY>”, due_date: “NOW+7D”, links: { item_id: “” } }
+
+⸻
+
+17) “New Evidence Uploaded → Create ‘Chain of Custody’ Item”
+	•	Trigger: file.uploaded_to_board
+	•	Conditions:
+	•	cond.file_type_is { type: “image” }
+	•	Actions:
+	•	act.item.create { board_id: “<EVIDENCE_BOARD>”, group_id: “Chain of Custody”, fields_json: { title: “Chain of custody: <FILE_NAME>”, status: “New”, linked_file: “” } }
+
+⸻
+
+18) “Receipt Detected → Route to Receipts + Create Expense Item”
+	•	Trigger: file.classified
+	•	Conditions:
+	•	cond.doc_type_is { doc_type: “receipt” }
+	•	Actions:
+	•	act.file.route_to_folder { file_id: “”, folder: “/Operations/Receipts” }
+	•	act.item.create { board_id: “<BILLING_BOARD>”, group_id: “Expenses”, fields_json: { title: “Expense:  ”, status: “Needs Review”, linked_file: “” } }
+
+⸻
+
+19) “Invoice Detected → Create Billing Task”
+	•	Trigger: file.classified
+	•	Conditions:
+	•	cond.doc_type_is { doc_type: “invoice” }
+	•	Actions:
+	•	act.task.create { scope: “board”, board_id: “<BILLING_BOARD>”, title: “Review invoice and log billing”, assignee: “<BILLING_ADMIN>”, due_date: “NOW+2D”, links: { file_id: “” } }
+
+⸻
+
+20) “Police Report Detected → Add Tag + Create Summary Task”
+	•	Trigger: file.classified
+	•	Conditions:
+	•	cond.doc_type_is { doc_type: “police_report” }
+	•	Actions:
+	•	act.file.add_label { file_id: “”, label: “police_report” }
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Summarize police report (key facts + timeline)”, assignee: “”, due_date: “NOW+3D”, links: { file_id: “” } }
+
+⸻
+
+21) “Medical Record Detected → Route + Privilege Tag”
+	•	Trigger: file.classified
+	•	Conditions:
+	•	cond.doc_type_is { doc_type: “medical_record” }
+	•	Actions:
+	•	act.file.route_to_folder { file_id: “”, folder: “/Matters//Documents/Medical” }
+	•	act.file.add_label { file_id: “”, label: “sensitive” }
+
+⸻
+
+22) “Status → Settlement Negotiation → Create Offer Tracker Column”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Settlement Negotiation” }
+	•	Actions:
+	•	act.board.create_column { board_id: “”, column_type: “number”, name: “Offer Amount” }
+	•	act.board.create_column { board_id: “”, column_type: “text”, name: “Offer Notes” }
+
+⸻
+
+23) “Daily Digest at 9am → Notify Team of Due/Overdue”
+	•	Trigger: time.daily_at
+	•	Conditions: (configured in trigger)
+	•	Actions:
+	•	act.notify.in_app { user_id: “”, text: “Daily digest: due today + overdue items are ready to review.”, link: { board_id: “” } }
+
+⸻
+
+24) “Task Completed → Set Item Status Complete”
+	•	Trigger: item.updated
+	•	Conditions:
+	•	cond.signal_contains_keyword { keyword: “TASK_COMPLETED:<TASK_ID>” }  (or replace with your actual task completion trigger)
+	•	Actions:
+	•	act.item.set_status { board_id: “”, item_id: “”, column_id: “<STATUS_COL>”, value: “Complete” }
+
+⸻
+
+25) “Status → Needs Review → Assign Reviewer”
+	•	Trigger: item.status_changed
+	•	Conditions:
+	•	cond.status_changed_to { column_id: “<STATUS_COL>”, value: “Needs Review” }
+	•	Actions:
+	•	act.item.assign_user { board_id: “”, item_id: “”, user_id: “” }
+
+⸻
+
+26) “New Client Created → Create Standard Matter Boards”
+	•	Trigger: client.created
+	•	Conditions: (none)
+	•	Actions:
+	•	act.item.add_comment { board_id: “<OPS_BOARD>”, item_id: “<CLIENT_ITEM>”, text: “Auto: Create standard boards (Intake, Tasks, Evidence, Deadlines) — pending approval.” }
+	•	(If you have board creation actions, convert to proposals; otherwise keep as suggestion.)
+
+⸻
+
+27) “File Uploaded to Chat → Route to Board Files + Link to Mentioned Item”
+	•	Trigger: file.uploaded_to_chat
+	•	Conditions: (none)
+	•	Actions:
+	•	act.file.route_to_folder { file_id: “”, folder: “/Boards//Files” }
+	•	act.item.link_file { board_id: “”, item_id: “<ITEM_FROM_CONTEXT_OR_SELECT>”, file_id: “” }
+
+⸻
+
+28) “Due Date Changed → Notify Assignee”
+	•	Trigger: item.due_date_changed
+	•	Conditions: (none)
+	•	Actions:
+	•	act.notify.in_app { user_id: “<ITEM_ASSIGNEE>”, text: “Due date updated for <ITEM_TITLE>.”, link: { item_id: “” } }
+
+⸻
+
+29) “Detective Anomaly Score High → Create Investigation Task”
+	•	Trigger: detective.anomaly_score_threshold
+	•	Conditions:
+	•	cond.signal_confidence_gte { threshold: 0.7 }
+	•	Actions:
+	•	act.task.create { scope: “matter”, matter_id: “”, title: “Review anomaly spike: <ENTITY_NAME>”, assignee: “”, due_date: “NOW+2D”, links: { detective_entity_id: “”, citations: “” } }
+	•	act.item.add_tag { board_id: “”, item_id: “”, tag: “anomaly” }
+
+⸻
+
+30) “After Due Date + Still Waiting on Client → Escalate”
+	•	Trigger: time.after_due_date
+	•	Conditions:
+	•	cond.status_is { column_id: “<STATUS_COL>”, value: “Waiting on Client” }
+	•	Actions:
+	•	act.item.add_tag { board_id: “”, item_id: “”, tag: “escalate” }
+	•	act.notify.in_app { user_id: “<LEAD_ATTORNEY>”, text: “Escalation: item overdue and still Waiting on Client — <ITEM_TITLE>”, link: { item_id: “” } }
+	•	act.item.add_comment { board_id: “”, item_id: “”, text: “Auto: Escalated to lead attorney.” }
+
+⸻
+
+Notes for Replit Implementation (copy/paste rules)
+	•	Replace placeholders like:
+	•	<BOARD>, <ITEM>, <STATUS_COL>, <MATTER>
+	•	<LEAD_ATTORNEY>, <PARALEGAL>, <BILLING_ADMIN>, <INVESTIGATOR>
+	•	Use your existing automation engine’s JSON format, but keep:
+	•	trigger_key
+	•	conditions_json[]
+	•	actions_json[]
+	•	All templates should be importable as “Automation Templates” in the UI.
+
+⸻
+
+If you want the next level, I can rewrite these as strict JSON objects matching the exact schema we defined earlier (trigger_key, trigger_config_json, conditions_json, actions_json) so you can seed them directly into your DB in one go.

@@ -1,0 +1,351 @@
+VERICASE: Automation Catalog (Seed Spec) — Monday-style + AI-ready
+
+Goal
+
+Create a single Automation Catalog that lists every trigger, condition, and action your system supports (Monday/Zapier-style), in a consistent schema. This catalog is what lets the AI assistant understand, explain, generate, and audit automations safely.
+
+This is written to paste into Replit as your build doc.
+
+⸻
+
+1) Catalog object format (one entry per Trigger or Action)
+
+A) Trigger definition
+
+Each trigger must have:
+	•	key: unique string, e.g. item.status_changed
+	•	label: human name
+	•	description: what it means
+	•	scope: what it can run on (board, item, matter, client, global)
+	•	inputs: required input fields it receives when it fires
+	•	supports_conditions: list of condition keys allowed with this trigger
+	•	supports_actions: list of action keys allowed after this trigger
+	•	examples: 1–3 natural language examples
+
+B) Action definition
+
+Each action must have:
+	•	key: unique string, e.g. item.set_status
+	•	label
+	•	description
+	•	scope
+	•	inputs: required fields
+	•	side_effects: what it modifies
+	•	requires_permissions: e.g. board_edit, automation_admin
+	•	examples
+
+⸻
+
+2) Condition catalog format (filters)
+
+Conditions are reusable filters. Each condition includes:
+	•	key
+	•	label
+	•	description
+	•	inputs (what parameters the condition needs)
+
+⸻
+
+3) Seed Catalog: Triggers (MVP + legal workflow)
+
+Board / Item Triggers
+	1.	item.created
+
+	•	Fires when an item is created.
+
+	2.	item.updated
+
+	•	Fires when any field changes (used carefully; can be noisy).
+
+	3.	item.status_changed
+
+	•	Fires when a status-type column changes.
+	•	Inputs: board_id, item_id, column_id, old_value, new_value, changed_by
+
+	4.	item.assignee_changed
+
+	•	Fires when assignee changes.
+
+	5.	item.due_date_changed
+
+	•	Fires when due date changes.
+
+	6.	item.tag_added
+
+	•	Fires when a tag is added.
+
+	7.	item.tag_removed
+
+	•	Fires when a tag is removed.
+
+	8.	item.comment_added
+
+	•	Fires when a comment/update is posted.
+
+	9.	item.mentioned_user
+
+	•	Fires when a user is @mentioned in a comment or chat message.
+
+	10.	item.moved_group
+
+	•	Fires when an item changes group/section within a board.
+
+File / Evidence Triggers
+	11.	file.uploaded_to_item
+
+	•	Fires when a file is attached to an item.
+
+	12.	file.uploaded_to_board
+
+	•	Fires when a file is attached at the board level.
+
+	13.	file.uploaded_to_chat
+
+	•	Fires when a file is dropped into board chat/master chat.
+
+	14.	file.ocr_completed
+
+	•	Fires when OCR/extraction finishes for a file.
+
+	15.	file.classified
+
+	•	Fires when a file gets a doc_type classification.
+
+OCR / NLP Signal Triggers (your “secret sauce”)
+	16.	signal.deadline_detected
+
+	•	Fires when OCR/extracted text contains a date that looks like a deadline.
+	•	Inputs: file_id, detected_date, confidence, snippet, anchor
+
+	17.	signal.event_detected
+
+	•	Fires when text suggests an event/meeting/hearing.
+
+	18.	signal.action_item_detected
+
+	•	Fires when text suggests an action item (draft/serve/file/call).
+
+	19.	signal.privilege_detected
+
+	•	Fires when content likely privileged/sensitive.
+
+	20.	signal.contradiction_detected
+
+	•	Fires when your analysis flags conflicting statements (with citations).
+
+Time-based Triggers
+	21.	time.daily_at
+
+	•	Fires daily at a set time.
+
+	22.	time.weekly_on
+
+	•	Fires weekly on certain days.
+
+	23.	time.before_due_date
+
+	•	Fires X days/hours before due date on an item.
+
+	24.	time.after_due_date
+
+	•	Fires X days/hours after due date if not complete.
+
+Matter / Client Triggers
+	25.	matter.created
+	26.	matter.status_changed
+	27.	client.created
+
+Detective Board Triggers (optional but aligned with your vision)
+	28.	detective.anomaly_score_threshold
+
+	•	Fires when anomaly score > threshold for an entity/hypothesis.
+
+	29.	detective.hypothesis_score_changed
+
+	•	Fires when support score changes significantly.
+
+⸻
+
+4) Seed Catalog: Conditions (filters)
+
+Generic Conditions
+	1.	cond.board_is (board_id)
+	2.	cond.item_in_group (group_id)
+	3.	cond.status_is (column_id, value)
+	4.	cond.status_changed_to (column_id, value)
+	5.	cond.assignee_is (user_id)
+	6.	cond.tag_contains (tag)
+	7.	cond.due_within_days (days)
+	8.	cond.due_is_overdue (bool)
+	9.	cond.created_within_days (days)
+	10.	cond.updated_within_days (days)
+
+File/Evidence Conditions
+	11.	cond.file_type_is (pdf/image/doc/sheet/audio)
+	12.	cond.ocr_confidence_gte (threshold)
+	13.	cond.doc_type_is (invoice/contract/medical/police/etc)
+
+Signal Conditions
+	14.	cond.signal_confidence_gte (threshold)
+	15.	cond.signal_contains_keyword (keyword)
+	16.	cond.privilege_level_is (normal/sensitive/privileged)
+
+Permission Condition (prevents bad automations)
+	17.	cond.actor_has_permission (permission_key)
+
+⸻
+
+5) Seed Catalog: Actions (MVP)
+
+Item Actions
+	1.	act.item.set_status
+
+	•	Inputs: board_id, item_id, column_id, value
+
+	2.	act.item.assign_user
+
+	•	Inputs: board_id, item_id, user_id
+
+	3.	act.item.set_due_date
+
+	•	Inputs: board_id, item_id, date
+
+	4.	act.item.add_tag
+
+	•	Inputs: board_id, item_id, tag
+
+	5.	act.item.remove_tag
+
+	•	Inputs: board_id, item_id, tag
+
+	6.	act.item.move_group
+
+	•	Inputs: board_id, item_id, group_id
+
+	7.	act.item.create
+
+	•	Inputs: board_id, group_id (optional), fields_json
+
+	8.	act.item.add_comment
+
+	•	Inputs: board_id, item_id, text
+
+	9.	act.item.link_file
+
+	•	Inputs: board_id, item_id, file_id
+
+	10.	act.item.set_field_value
+
+	•	Inputs: board_id, item_id, column_id, value (generic)
+
+Task Actions (if tasks are separate from items)
+	11.	act.task.create
+
+	•	Inputs: matter_id or board_id, title, assignee, due_date, links
+
+	12.	act.task.assign
+	13.	act.task.complete
+
+Board Actions
+	14.	act.board.create_group
+	15.	act.board.create_column
+	16.	act.board.rename_column
+	17.	act.board.reorder_columns (proposal-first)
+
+File Actions
+	18.	act.file.request_ocr
+	19.	act.file.route_to_folder
+	20.	act.file.soft_delete
+	21.	act.file.add_label
+
+Notifications
+	22.	act.notify.in_app
+	23.	act.notify.email (if you support)
+	24.	act.notify.sms (optional)
+
+Calendar / Events
+	25.	act.event.create
+
+	•	Inputs: matter_id/board_id, title, start_time, end_time, participants, citations
+
+Detective Board Actions (optional)
+	26.	act.detective.add_hypothesis
+	27.	act.detective.link_entities (proposal-first)
+
+⸻
+
+6) Automation Rule Schema (stored in DB)
+
+All automations are stored as:
+	•	id
+	•	scope_type / scope_id (board/matter/client)
+	•	name
+	•	trigger_key
+	•	trigger_config_json
+	•	conditions_json (list of condition objects)
+	•	actions_json (list of action objects)
+	•	enabled
+	•	created_by
+	•	created_at
+
+Condition object:
+	•	condition_key
+	•	params_json
+
+Action object:
+	•	action_key
+	•	params_json
+
+⸻
+
+7) Assistant requirements (so it uses this catalog correctly)
+
+When user asks for an automation
+
+Assistant must:
+	1.	Load board context (schema + existing rules)
+	2.	Load automation_catalog
+	3.	Produce a draft rule that uses only supported keys
+	4.	Provide a simulation preview:
+	•	how many items would trigger
+	•	what actions would happen
+	•	conflicts detected
+	5.	Create an action proposal to add/enable the rule
+	6.	Execute only after approval
+
+When user asks “what does this automation do?”
+
+Assistant:
+	•	translates rule → plain English
+	•	lists edge cases and conflicts
+
+⸻
+
+8) MVP Acceptance Tests (so you know it works)
+	1.	User says: “When status becomes Waiting on Client, create a follow-up task in 3 days”
+
+	•	Assistant outputs:
+	•	trigger: item.status_changed
+	•	condition: status_changed_to “Waiting on Client”
+	•	actions: task.create + due_date=+3 days
+
+	2.	User says: “If OCR detects a deadline, set due date and tag #deadline”
+
+	•	trigger: signal.deadline_detected
+	•	condition: confidence >= threshold
+	•	actions: item.set_due_date + item.add_tag
+
+	3.	User says: “Explain this automation”
+
+	•	outputs accurate English + risks (“could loop if status change triggers itself”)
+
+⸻
+
+Next step (fastest)
+
+Take this catalog and paste it into your Replit project as:
+	•	a seed JSON file (later), or
+	•	a DB seed script (later),
+but for now it’s your source of truth.
+
+If you want, I can also write the first 15 “law-firm automation recipes” using these keys (client follow-ups, deadline tracking, intake routing, evidence upload triage, privilege tagging, etc.) in the same plain-English format so you can drop them in as templates.
