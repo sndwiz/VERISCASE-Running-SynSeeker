@@ -25,6 +25,7 @@ import insightsRouter from "./insights";
 import organizerRouter from "./organizer";
 import chatRouter from "./chat";
 import washRouter from "./wash";
+import { registerBillingVerifierRoutes } from "./billing-verifier";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -57,4 +58,5 @@ export function registerAllRoutes(app: Express): void {
   app.use(insightsRouter);
   app.use('/api/chats', chatRouter);
   app.use(washRouter);
+  registerBillingVerifierRoutes(app);
 }

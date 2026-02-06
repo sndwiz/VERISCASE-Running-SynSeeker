@@ -2360,6 +2360,50 @@ export const insertWashJobSchema = z.object({
 
 export type InsertWashJob = z.infer<typeof insertWashJobSchema>;
 
+// ============ BILLING VERIFIER ============
+export const insertBillingProfileSchema = z.object({
+  clientName: z.string().min(1, "Client name is required").max(255),
+  matterId: z.string().nullable().optional(),
+  aliases: z.array(z.string()).default([]),
+  phones: z.array(z.string()).default([]),
+  keyParties: z.array(z.string()).default([]),
+  hourlyRate: z.number().min(0).default(350),
+  longThreshold: z.number().min(0).default(6),
+  dayThreshold: z.number().min(0).default(10),
+  roundingIncrement: z.number().min(0.01).default(0.1),
+  roundingDirection: z.enum(["up", "down", "nearest"]).default("up"),
+  minimumEntry: z.number().min(0).default(0),
+  travelTimeRate: z.number().min(0).max(1).default(1),
+  paymentTerms: z.enum(["receipt", "net15", "net30", "net60"]).default("receipt"),
+  retainerBalance: z.number().min(0).default(0),
+  firmName: z.string().max(255).optional(),
+  attorneyName: z.string().max(255).optional(),
+  firmAddress: z.string().optional(),
+});
+
+export type InsertBillingProfile = z.infer<typeof insertBillingProfileSchema>;
+
+export const insertBillingReviewLogSchema = z.object({
+  profileId: z.string().optional(),
+  reviewData: z.any().default([]),
+  summary: z.any().default({}),
+});
+
+export type InsertBillingReviewLog = z.infer<typeof insertBillingReviewLogSchema>;
+
+export const insertBillingPipelineResultSchema = z.object({
+  profileId: z.string().optional(),
+  totalEntries: z.number().default(0),
+  totalHours: z.number().default(0),
+  totalAmount: z.number().default(0),
+  flaggedCount: z.number().default(0),
+  qualityIssueCount: z.number().default(0),
+  entriesData: z.any().default([]),
+  settings: z.any().default({}),
+});
+
+export type InsertBillingPipelineResult = z.infer<typeof insertBillingPipelineResultSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

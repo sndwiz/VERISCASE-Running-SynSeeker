@@ -51,6 +51,7 @@ import CommunicationsPage from "@/pages/communications";
 import UploadOrganizerPage from "@/pages/upload-organizer";
 import MasterChatPage from "@/pages/master-chat";
 import DocumentWashPage from "@/pages/document-wash";
+import BillingVerifierPage from "@/pages/billing-verifier";
 
 import type { Board } from "@shared/schema";
 
@@ -87,6 +88,7 @@ function Router() {
       <Route path="/upload-organizer" component={UploadOrganizerPage} />
       <Route path="/master-chat" component={MasterChatPage} />
       <Route path="/document-wash" component={DocumentWashPage} />
+      <Route path="/billing-verifier" component={BillingVerifierPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

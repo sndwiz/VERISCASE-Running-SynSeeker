@@ -970,3 +970,67 @@ export type WashEntityRecord = typeof washEntities.$inferSelect;
 export type InsertWashEntityRecord = typeof washEntities.$inferInsert;
 export type WashMappingRecord = typeof washMappings.$inferSelect;
 export type InsertWashMappingRecord = typeof washMappings.$inferInsert;
+
+// ============ BILLING VERIFIER ============
+export const billingProfiles = pgTable("billing_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  matterId: varchar("matter_id"),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  aliases: text("aliases").array().default([]),
+  phones: text("phones").array().default([]),
+  keyParties: text("key_parties").array().default([]),
+  hourlyRate: real("hourly_rate").default(350),
+  longThreshold: real("long_threshold").default(6),
+  dayThreshold: real("day_threshold").default(10),
+  roundingIncrement: real("rounding_increment").default(0.1),
+  roundingDirection: varchar("rounding_direction", { length: 20 }).default("up"),
+  minimumEntry: real("minimum_entry").default(0),
+  travelTimeRate: real("travel_time_rate").default(1),
+  paymentTerms: varchar("payment_terms", { length: 20 }).default("receipt"),
+  retainerBalance: real("retainer_balance").default(0),
+  firmName: varchar("firm_name", { length: 255 }),
+  attorneyName: varchar("attorney_name", { length: 255 }),
+  firmAddress: text("firm_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_billing_profiles_user").on(table.userId),
+  index("IDX_billing_profiles_matter").on(table.matterId),
+]);
+
+export const billingReviewLogs = pgTable("billing_review_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  profileId: varchar("profile_id").references(() => billingProfiles.id, { onDelete: "cascade" }),
+  reviewData: jsonb("review_data").default([]),
+  summary: jsonb("summary").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_billing_review_logs_user").on(table.userId),
+  index("IDX_billing_review_logs_profile").on(table.profileId),
+]);
+
+export const billingPipelineResults = pgTable("billing_pipeline_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  profileId: varchar("profile_id").references(() => billingProfiles.id, { onDelete: "cascade" }),
+  totalEntries: integer("total_entries").default(0),
+  totalHours: real("total_hours").default(0),
+  totalAmount: real("total_amount").default(0),
+  flaggedCount: integer("flagged_count").default(0),
+  qualityIssueCount: integer("quality_issue_count").default(0),
+  entriesData: jsonb("entries_data").default([]),
+  settings: jsonb("settings").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_billing_results_user").on(table.userId),
+  index("IDX_billing_results_profile").on(table.profileId),
+]);
+
+export type BillingProfileRecord = typeof billingProfiles.$inferSelect;
+export type InsertBillingProfileRecord = typeof billingProfiles.$inferInsert;
+export type BillingReviewLogRecord = typeof billingReviewLogs.$inferSelect;
+export type InsertBillingReviewLogRecord = typeof billingReviewLogs.$inferInsert;
+export type BillingPipelineResultRecord = typeof billingPipelineResults.$inferSelect;
+export type InsertBillingPipelineResultRecord = typeof billingPipelineResults.$inferInsert;

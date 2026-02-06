@@ -59,6 +59,7 @@ import {
   ClipboardList,
   MessageSquare,
   Wand2,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -91,6 +92,7 @@ const navigationItems = [
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
+  { title: "Billing Verifier", url: "/billing-verifier", icon: ClipboardCheck },
 ];
 
 const aiInvestigationItems = [
