@@ -107,18 +107,19 @@ export class DbStorage implements IStorage {
     
     // Create a sample board
     const board = await this.createBoard({
-      name: "Active Cases",
-      description: "Track ongoing legal cases and matters",
-      color: "#6366f1",
+      name: "Mercer Case - Master Board",
+      description: "State of Utah v. Unknown - Death of Nathan Mercer | Track all investigation tasks, motions, and deadlines",
+      color: "#dc2626",
       icon: "layout-grid",
     });
 
     // Create sample groups
     const groupsData = [
-      { title: "Discovery", color: "#3b82f6", order: 0 },
-      { title: "In Progress", color: "#f59e0b", order: 1 },
-      { title: "Under Review", color: "#8b5cf6", order: 2 },
-      { title: "Completed", color: "#10b981", order: 3 },
+      { title: "Critical - Immediate", color: "#dc2626", order: 0 },
+      { title: "Active Investigation", color: "#f59e0b", order: 1 },
+      { title: "Discovery & Motions", color: "#3b82f6", order: 2 },
+      { title: "Research & Analysis", color: "#8b5cf6", order: 3 },
+      { title: "Completed", color: "#10b981", order: 4 },
     ];
 
     const groupIds: string[] = [];
@@ -131,15 +132,8 @@ export class DbStorage implements IStorage {
       groupIds.push(group.id);
     }
 
-    // Create sample tasks
-    const sampleTasks = [
-      { title: "Review contract for Smith Corp acquisition", status: "working-on-it" as const, priority: "high" as const, groupIdx: 1, progress: 60 },
-      { title: "Prepare witness statements", status: "not-started" as const, priority: "medium" as const, groupIdx: 0, progress: 0 },
-      { title: "File motion for summary judgment", status: "stuck" as const, priority: "critical" as const, groupIdx: 1, progress: 35 },
-      { title: "Client meeting preparation - Johnson case", status: "pending-review" as const, priority: "high" as const, groupIdx: 2, progress: 85 },
-      { title: "Research precedent cases for IP dispute", status: "working-on-it" as const, priority: "medium" as const, groupIdx: 0, progress: 45 },
-      { title: "Draft settlement agreement", status: "done" as const, priority: "low" as const, groupIdx: 3, progress: 100 },
-    ];
+    // Create sample tasks (placeholder - full tasks added by seedDemoData)
+    const sampleTasks: { title: string; status: any; priority: any; groupIdx: number; progress: number }[] = [];
 
     for (const t of sampleTasks) {
       await this.createTask({
@@ -158,52 +152,25 @@ export class DbStorage implements IStorage {
       });
     }
 
-    // Create a second board
+    // Create a second board for evidence tracking
     const board2 = await this.createBoard({
-      name: "Client Documents",
-      description: "Document management and tracking",
-      color: "#10b981",
+      name: "Evidence & Discovery Tracker",
+      description: "Track evidence collection, chain of custody, and discovery requests for Mercer investigation",
+      color: "#7c3aed",
       icon: "file-text",
     });
 
-    const docGroup = await this.createGroup({
-      title: "Pending Review",
-      color: "#f59e0b",
-      collapsed: false,
-      boardId: board2.id,
-      order: 0,
-    });
-
-    // Create sample clients
-    const sampleClients = [
-      { name: "Smith Corporation", email: "legal@smithcorp.com", notes: "" },
-      { name: "Johnson Family Trust", email: "johnson.trust@email.com", notes: "" },
-      { name: "Metro Development LLC", email: "contracts@metrodev.com", notes: "" },
+    const evidenceGroups = [
+      { title: "Awaiting Analysis", color: "#f59e0b", order: 0 },
+      { title: "Under Review", color: "#3b82f6", order: 1 },
+      { title: "Processed", color: "#10b981", order: 2 },
     ];
 
-    const clientIds: string[] = [];
-    for (const c of sampleClients) {
-      const client = await this.createClient(c);
-      clientIds.push(client.id);
-    }
-
-    // Create sample matters
-    const sampleMatters = [
-      { name: "Smith Corp Acquisition Review", caseNumber: "2026-CORP-001", clientIdx: 0, matterType: "corporate", practiceArea: "corporate", description: "Review and due diligence for proposed acquisition" },
-      { name: "Johnson Estate Planning", caseNumber: "2026-ESTATE-042", clientIdx: 1, matterType: "estate", practiceArea: "estate", description: "Comprehensive estate planning and trust administration" },
-      { name: "Metro v. City Development Dispute", caseNumber: "2026-LIT-089", clientIdx: 2, matterType: "litigation", practiceArea: "litigation", description: "Commercial real estate development dispute litigation" },
-    ];
-
-    for (const m of sampleMatters) {
-      await this.createMatter({
-        name: m.name,
-        caseNumber: m.caseNumber,
-        clientId: clientIds[m.clientIdx],
-        matterType: m.matterType,
-        practiceArea: m.practiceArea,
-        description: m.description,
-        status: "active",
-        openedDate: new Date().toISOString(),
+    for (const g of evidenceGroups) {
+      await this.createGroup({
+        ...g,
+        collapsed: false,
+        boardId: board2.id,
       });
     }
 
