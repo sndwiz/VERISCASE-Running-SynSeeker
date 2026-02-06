@@ -73,6 +73,15 @@ import type {
   InsertAuditLog,
   SecurityEvent,
   InsertSecurityEvent,
+  Expense,
+  InsertExpense,
+  Invoice,
+  InsertInvoice,
+  InvoiceLineItem,
+  Payment,
+  InsertPayment,
+  TrustTransaction,
+  InsertTrustTransaction,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -217,6 +226,28 @@ export interface IStorage {
   updateTimeEntry(id: string, data: Partial<TimeEntry>): Promise<TimeEntry | undefined>;
   deleteTimeEntry(id: string): Promise<boolean>;
 
+  // Expenses
+  getExpenses(filters?: { clientId?: string; matterId?: string }): Promise<Expense[]>;
+  getExpense(id: string): Promise<Expense | undefined>;
+  createExpense(data: InsertExpense): Promise<Expense>;
+  updateExpense(id: string, data: Partial<Expense>): Promise<Expense | undefined>;
+  deleteExpense(id: string): Promise<boolean>;
+
+  // Invoices
+  getInvoices(filters?: { clientId?: string; matterId?: string }): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  createInvoice(data: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: string): Promise<boolean>;
+
+  // Payments
+  getPayments(filters?: { clientId?: string; invoiceId?: string }): Promise<Payment[]>;
+  createPayment(data: InsertPayment): Promise<Payment>;
+
+  // Trust Transactions
+  getTrustTransactions(filters?: { clientId?: string; matterId?: string }): Promise<TrustTransaction[]>;
+  createTrustTransaction(data: InsertTrustTransaction): Promise<TrustTransaction>;
+
   // Calendar Events
   getCalendarEvents(matterId?: string): Promise<CalendarEvent[]>;
   getCalendarEvent(id: string): Promise<CalendarEvent | undefined>;
@@ -318,6 +349,11 @@ export class MemStorage implements IStorage {
   private clientForms: Map<string, ClientForm> = new Map();
   private clientFormSubmissions: Map<string, ClientFormSubmission> = new Map();
   private meetingsMap: Map<string, Meeting> = new Map();
+  private expenses: Map<string, Expense> = new Map();
+  private invoices: Map<string, Invoice> = new Map();
+  private payments: Map<string, Payment> = new Map();
+  private trustTransactions: Map<string, TrustTransaction> = new Map();
+  private invoiceCounter: number = 1000;
 
   constructor() {
     this.initializeSampleData();
@@ -1438,6 +1474,161 @@ export class MemStorage implements IStorage {
 
   async deleteTimeEntry(id: string): Promise<boolean> {
     return this.timeEntries.delete(id);
+  }
+
+  // Expenses
+  async getExpenses(filters?: { clientId?: string; matterId?: string }): Promise<Expense[]> {
+    let all = Array.from(this.expenses.values());
+    if (filters?.clientId) all = all.filter(e => e.clientId === filters.clientId);
+    if (filters?.matterId) all = all.filter(e => e.matterId === filters.matterId);
+    return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async getExpense(id: string): Promise<Expense | undefined> {
+    return this.expenses.get(id);
+  }
+
+  async createExpense(data: InsertExpense): Promise<Expense> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const expense: Expense = {
+      id,
+      matterId: data.matterId,
+      clientId: data.clientId,
+      date: data.date,
+      amount: data.amount,
+      description: data.description,
+      category: data.category,
+      billable: data.billable ?? true,
+      reimbursable: data.reimbursable ?? false,
+      vendor: data.vendor,
+      receiptUrl: data.receiptUrl,
+      createdBy: data.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.expenses.set(id, expense);
+    return expense;
+  }
+
+  async updateExpense(id: string, data: Partial<Expense>): Promise<Expense | undefined> {
+    const expense = this.expenses.get(id);
+    if (!expense) return undefined;
+    const updated = { ...expense, ...data, updatedAt: new Date().toISOString() };
+    this.expenses.set(id, updated);
+    return updated;
+  }
+
+  async deleteExpense(id: string): Promise<boolean> {
+    return this.expenses.delete(id);
+  }
+
+  // Invoices
+  async getInvoices(filters?: { clientId?: string; matterId?: string }): Promise<Invoice[]> {
+    let all = Array.from(this.invoices.values());
+    if (filters?.clientId) all = all.filter(i => i.clientId === filters.clientId);
+    if (filters?.matterId) all = all.filter(i => i.matterId === filters.matterId);
+    return all.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    return this.invoices.get(id);
+  }
+
+  async createInvoice(data: InsertInvoice): Promise<Invoice> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    this.invoiceCounter++;
+    const invoice: Invoice = {
+      id,
+      invoiceNumber: `INV-${this.invoiceCounter}`,
+      clientId: data.clientId,
+      matterId: data.matterId,
+      issueDate: data.issueDate,
+      dueDate: data.dueDate,
+      status: data.status || "draft",
+      lineItems: data.lineItems || [],
+      subtotal: data.subtotal || 0,
+      taxRate: data.taxRate || 0,
+      taxAmount: data.taxAmount || 0,
+      totalAmount: data.totalAmount || 0,
+      paidAmount: data.paidAmount || 0,
+      balanceDue: data.balanceDue || 0,
+      notes: data.notes,
+      paymentTerms: data.paymentTerms,
+      createdBy: data.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.invoices.set(id, invoice);
+    return invoice;
+  }
+
+  async updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice | undefined> {
+    const invoice = this.invoices.get(id);
+    if (!invoice) return undefined;
+    const updated = { ...invoice, ...data, updatedAt: new Date().toISOString() };
+    this.invoices.set(id, updated);
+    return updated;
+  }
+
+  async deleteInvoice(id: string): Promise<boolean> {
+    return this.invoices.delete(id);
+  }
+
+  // Payments
+  async getPayments(filters?: { clientId?: string; invoiceId?: string }): Promise<Payment[]> {
+    let all = Array.from(this.payments.values());
+    if (filters?.clientId) all = all.filter(p => p.clientId === filters.clientId);
+    if (filters?.invoiceId) all = all.filter(p => p.invoiceId === filters.invoiceId);
+    return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async createPayment(data: InsertPayment): Promise<Payment> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const payment: Payment = {
+      id,
+      invoiceId: data.invoiceId,
+      clientId: data.clientId,
+      date: data.date,
+      amount: data.amount,
+      method: data.method,
+      reference: data.reference,
+      notes: data.notes,
+      createdBy: data.createdBy,
+      createdAt: now,
+    };
+    this.payments.set(id, payment);
+    return payment;
+  }
+
+  // Trust Transactions
+  async getTrustTransactions(filters?: { clientId?: string; matterId?: string }): Promise<TrustTransaction[]> {
+    let all = Array.from(this.trustTransactions.values());
+    if (filters?.clientId) all = all.filter(t => t.clientId === filters.clientId);
+    if (filters?.matterId) all = all.filter(t => t.matterId === filters.matterId);
+    return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async createTrustTransaction(data: InsertTrustTransaction): Promise<TrustTransaction> {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const transaction: TrustTransaction = {
+      id,
+      clientId: data.clientId,
+      matterId: data.matterId,
+      date: data.date,
+      amount: data.amount,
+      type: data.type,
+      description: data.description,
+      reference: data.reference,
+      runningBalance: data.runningBalance || 0,
+      createdBy: data.createdBy,
+      createdAt: now,
+    };
+    this.trustTransactions.set(id, transaction);
+    return transaction;
   }
 
   // Calendar Events

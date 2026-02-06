@@ -42,6 +42,9 @@ import ClientDetailDashboard from "@/pages/client-detail-dashboard";
 import VibeCodePage from "@/pages/vibe-code";
 import SecurityDashboardPage from "@/pages/security-dashboard";
 import MatterDetailPage from "@/pages/matter-detail";
+import BillingDashboard from "@/pages/billing-dashboard";
+import ClientBillingPage from "@/pages/client-billing";
+import MatterBillingPage from "@/pages/matter-billing";
 
 import type { Board } from "@shared/schema";
 
@@ -55,9 +58,12 @@ function Router() {
       <Route path="/evidence" component={EvidenceVaultPage} />
       <Route path="/detective" component={DetectiveBoardPage} />
       <Route path="/automations" component={AutomationsPage} />
+      <Route path="/matters/:matterId/billing" component={MatterBillingPage} />
       <Route path="/matters/:id" component={MatterDetailPage} />
       <Route path="/matters" component={MattersPage} />
+      <Route path="/clients/:clientId/billing" component={ClientBillingPage} />
       <Route path="/clients" component={ClientsPage} />
+      <Route path="/billing" component={BillingDashboard} />
       <Route path="/client-dashboard/:clientId" component={ClientDetailDashboard} />
       <Route path="/client-dashboard" component={ClientDashboardPage} />
       <Route path="/documents" component={FilingCabinetPage} />

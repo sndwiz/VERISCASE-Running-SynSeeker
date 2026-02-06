@@ -478,6 +478,87 @@ export const securityEvents = pgTable("security_events", {
   index("IDX_security_created").on(table.createdAt),
 ]);
 
+// ============ EXPENSES ============
+export const expenses = pgTable("expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id", { length: 255 }).notNull(),
+  clientId: varchar("client_id", { length: 255 }).notNull(),
+  date: varchar("date", { length: 32 }).notNull(),
+  amount: real("amount").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  billable: boolean("billable").default(true),
+  reimbursable: boolean("reimbursable").default(false),
+  vendor: varchar("vendor", { length: 255 }),
+  receiptUrl: text("receipt_url"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_expense_client").on(table.clientId),
+  index("IDX_expense_matter").on(table.matterId),
+]);
+
+// ============ INVOICES ============
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: varchar("invoice_number", { length: 50 }).notNull(),
+  clientId: varchar("client_id", { length: 255 }).notNull(),
+  matterId: varchar("matter_id", { length: 255 }),
+  issueDate: varchar("issue_date", { length: 32 }).notNull(),
+  dueDate: varchar("due_date", { length: 32 }).notNull(),
+  status: varchar("status", { length: 30 }).default("draft"),
+  lineItems: jsonb("line_items").default([]),
+  subtotal: real("subtotal").default(0),
+  taxRate: real("tax_rate").default(0),
+  taxAmount: real("tax_amount").default(0),
+  totalAmount: real("total_amount").default(0),
+  paidAmount: real("paid_amount").default(0),
+  balanceDue: real("balance_due").default(0),
+  notes: text("notes"),
+  paymentTerms: text("payment_terms"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_invoice_client").on(table.clientId),
+  index("IDX_invoice_status").on(table.status),
+]);
+
+// ============ PAYMENTS ============
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id", { length: 255 }).notNull(),
+  clientId: varchar("client_id", { length: 255 }).notNull(),
+  date: varchar("date", { length: 32 }).notNull(),
+  amount: real("amount").notNull(),
+  method: varchar("method", { length: 30 }).notNull(),
+  reference: varchar("reference", { length: 255 }),
+  notes: text("notes"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_payment_invoice").on(table.invoiceId),
+  index("IDX_payment_client").on(table.clientId),
+]);
+
+// ============ TRUST TRANSACTIONS ============
+export const trustTransactions = pgTable("trust_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id", { length: 255 }).notNull(),
+  matterId: varchar("matter_id", { length: 255 }),
+  date: varchar("date", { length: 32 }).notNull(),
+  amount: real("amount").notNull(),
+  type: varchar("type", { length: 30 }).notNull(),
+  description: text("description").notNull(),
+  reference: varchar("reference", { length: 255 }),
+  runningBalance: real("running_balance").default(0),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_trust_client").on(table.clientId),
+]);
+
 // Type exports
 export type AuditLogRecord = typeof auditLogs.$inferSelect;
 export type InsertAuditLogRecord = typeof auditLogs.$inferInsert;

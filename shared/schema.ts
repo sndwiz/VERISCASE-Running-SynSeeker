@@ -1539,8 +1539,187 @@ export const insertApprovalCommentSchema = z.object({
   decision: z.enum(["approved", "rejected", "vetting"]).optional(),
 });
 
+// ============ BILLING - EXPENSES ============
+
+export type ExpenseCategory =
+  | "filing-fees"
+  | "court-costs"
+  | "expert-witness"
+  | "travel"
+  | "copying"
+  | "postage"
+  | "process-serving"
+  | "deposition"
+  | "research"
+  | "transcript"
+  | "mediation"
+  | "investigation"
+  | "technology"
+  | "other";
+
+export interface Expense {
+  id: string;
+  matterId: string;
+  clientId: string;
+  date: string;
+  amount: number;
+  description: string;
+  category: ExpenseCategory;
+  billable: boolean;
+  reimbursable: boolean;
+  vendor?: string;
+  receiptUrl?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const insertExpenseSchema = z.object({
+  matterId: z.string(),
+  clientId: z.string(),
+  date: z.string(),
+  amount: z.number().min(0),
+  description: z.string().min(1),
+  category: z.enum(["filing-fees", "court-costs", "expert-witness", "travel", "copying", "postage", "process-serving", "deposition", "research", "transcript", "mediation", "investigation", "technology", "other"]),
+  billable: z.boolean().default(true),
+  reimbursable: z.boolean().default(false),
+  vendor: z.string().optional(),
+  receiptUrl: z.string().optional(),
+  createdBy: z.string(),
+});
+
+export const updateExpenseSchema = insertExpenseSchema.partial().omit({ matterId: true, clientId: true, createdBy: true });
+
+// ============ BILLING - INVOICES ============
+
+export type InvoiceStatus = "draft" | "sent" | "viewed" | "partially-paid" | "paid" | "overdue" | "void" | "write-off";
+
+export interface InvoiceLineItem {
+  id: string;
+  type: "time" | "expense" | "flat-fee" | "adjustment";
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  timeEntryId?: string;
+  expenseId?: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  clientId: string;
+  matterId?: string;
+  issueDate: string;
+  dueDate: string;
+  status: InvoiceStatus;
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  balanceDue: number;
+  notes?: string;
+  paymentTerms?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const insertInvoiceSchema = z.object({
+  clientId: z.string(),
+  matterId: z.string().optional(),
+  issueDate: z.string(),
+  dueDate: z.string(),
+  status: z.enum(["draft", "sent", "viewed", "partially-paid", "paid", "overdue", "void", "write-off"]).default("draft"),
+  lineItems: z.array(z.object({
+    id: z.string(),
+    type: z.enum(["time", "expense", "flat-fee", "adjustment"]),
+    description: z.string(),
+    quantity: z.number(),
+    rate: z.number(),
+    amount: z.number(),
+    timeEntryId: z.string().optional(),
+    expenseId: z.string().optional(),
+  })).default([]),
+  subtotal: z.number().default(0),
+  taxRate: z.number().default(0),
+  taxAmount: z.number().default(0),
+  totalAmount: z.number().default(0),
+  paidAmount: z.number().default(0),
+  balanceDue: z.number().default(0),
+  notes: z.string().optional(),
+  paymentTerms: z.string().optional(),
+  createdBy: z.string(),
+});
+
+export const updateInvoiceSchema = insertInvoiceSchema.partial().omit({ clientId: true, createdBy: true });
+
+// ============ BILLING - PAYMENTS ============
+
+export type PaymentMethod = "check" | "wire" | "ach" | "credit-card" | "cash" | "trust-transfer" | "other";
+
+export interface Payment {
+  id: string;
+  invoiceId: string;
+  clientId: string;
+  date: string;
+  amount: number;
+  method: PaymentMethod;
+  reference?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export const insertPaymentSchema = z.object({
+  invoiceId: z.string(),
+  clientId: z.string(),
+  date: z.string(),
+  amount: z.number().min(0.01),
+  method: z.enum(["check", "wire", "ach", "credit-card", "cash", "trust-transfer", "other"]),
+  reference: z.string().optional(),
+  notes: z.string().optional(),
+  createdBy: z.string(),
+});
+
+// ============ BILLING - TRUST ACCOUNTS ============
+
+export type TrustTransactionType = "deposit" | "withdrawal" | "transfer-in" | "transfer-out" | "interest" | "fee";
+
+export interface TrustTransaction {
+  id: string;
+  clientId: string;
+  matterId?: string;
+  date: string;
+  amount: number;
+  type: TrustTransactionType;
+  description: string;
+  reference?: string;
+  runningBalance: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export const insertTrustTransactionSchema = z.object({
+  clientId: z.string(),
+  matterId: z.string().optional(),
+  date: z.string(),
+  amount: z.number(),
+  type: z.enum(["deposit", "withdrawal", "transfer-in", "transfer-out", "interest", "fee"]),
+  description: z.string().min(1),
+  reference: z.string().optional(),
+  runningBalance: z.number().default(0),
+  createdBy: z.string(),
+});
+
 // Type exports
 export type InsertBoard = z.infer<typeof insertBoardSchema>;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertTrustTransaction = z.infer<typeof insertTrustTransactionSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type InsertAIConversation = z.infer<typeof insertAIConversationSchema>;

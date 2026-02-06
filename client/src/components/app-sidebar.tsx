@@ -53,6 +53,8 @@ import {
   Mic,
   Server,
   Sparkles,
+  DollarSign,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -72,6 +74,7 @@ const navigationItems = [
   { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Clients", url: "/clients", icon: Users },
+  { title: "Billing", url: "/billing", icon: DollarSign },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Document Maker", url: "/document-maker", icon: FilePlus2 },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
@@ -276,6 +279,17 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location === `/clients/${client.id}/billing`}
+                            >
+                              <Link href={`/clients/${client.id}/billing`} data-testid={`link-client-billing-${client.id}`}>
+                                <Receipt className="h-3 w-3 text-muted-foreground" />
+                                <span className="truncate text-xs">Billing</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
                           {Array.from(matterMap.values()).map(({ matter, boards: matterBoards }) => {
                             const board = matterBoards[0];
                             if (board) {
