@@ -54,7 +54,11 @@ import {
   LayoutGrid,
   Shield,
   Gavel,
-  Scale
+  Scale,
+  Workflow,
+  Send,
+  BarChart3,
+  RefreshCw
 } from "lucide-react";
 import { SiSlack, SiGmail } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1497,6 +1501,7 @@ export default function AutomationsPage() {
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("templates");
   const [showAIBuilder, setShowAIBuilder] = useState(false);
+  const [workflowInput, setWorkflowInput] = useState("");
   
   // Simulated pattern-based suggestions (in production, this would come from analyzing user behavior)
   const [suggestedAutomations] = useState([
@@ -2221,6 +2226,81 @@ export default function AutomationsPage() {
           />
         </div>
       )}
+
+      <div className="border-b overflow-auto" data-testid="section-ai-workflows">
+        <div className="relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1e293b 0%, #172554 50%, #312e81 100%)" }}>
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-40 h-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.4), transparent)" }} />
+            <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full" style={{ background: "radial-gradient(circle, rgba(20,184,166,0.3), transparent)" }} />
+          </div>
+          <div className="relative px-6 py-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-md" style={{ backgroundColor: "rgba(99,102,241,0.2)" }}>
+                  <Workflow className="h-5 w-5 text-indigo-300" />
+                </div>
+                <Badge variant="secondary" className="text-xs text-indigo-200" style={{ backgroundColor: "rgba(99,102,241,0.25)" }}>
+                  AI Workflows
+                </Badge>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-1" data-testid="text-workflows-title">
+                Orchestrate your work with AI workflows
+              </h2>
+              <p className="text-sm text-slate-300 mb-5 max-w-lg">
+                Combine multiple automations into intelligent workflows that adapt to your legal practice. Describe what you need and let AI build it.
+              </p>
+
+              <div className="flex items-center gap-2 max-w-xl mb-6">
+                <div className="relative flex-1 flex items-center bg-white/10 border border-white/20 rounded-md backdrop-blur-sm">
+                  <Sparkles className="absolute left-3 h-4 w-4 text-indigo-300" />
+                  <Input
+                    value={workflowInput}
+                    onChange={(e) => setWorkflowInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && workflowInput.trim()) { handleBuildFromAI(workflowInput); setWorkflowInput(""); } }}
+                    placeholder="Describe your workflow in plain English..."
+                    className="border-0 bg-transparent text-white placeholder:text-slate-400 pl-10 focus-visible:ring-0 shadow-none"
+                    data-testid="input-workflow-prompt"
+                  />
+                </div>
+                <Button
+                  onClick={() => { if (workflowInput.trim()) { handleBuildFromAI(workflowInput); setWorkflowInput(""); } }}
+                  disabled={!workflowInput.trim()}
+                  className="gap-2 shrink-0"
+                  data-testid="button-create-workflow"
+                >
+                  <Send className="h-4 w-4" />
+                  Build
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="section-workflow-templates">
+                {[
+                  { icon: MessageSquare, title: "Meeting Summarizer", desc: "Record, transcribe, and summarize meeting notes automatically", color: "#6366f1" },
+                  { icon: Smile, title: "Feedback Sentiment", desc: "Analyze client feedback, detect sentiment, and route responses", color: "#ec4899" },
+                  { icon: BarChart3, title: "Case Intake Triage", desc: "Categorize new cases, assign teams, and set priorities", color: "#f59e0b" },
+                  { icon: RefreshCw, title: "Weekly Case Digest", desc: "Compile weekly updates across all active matters", color: "#22c55e" },
+                ].map((template, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleBuildFromAI(template.title + ": " + template.desc)}
+                    className="p-3 rounded-md text-left"
+                    style={{ backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    data-testid={`button-workflow-template-${i}`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-md" style={{ backgroundColor: `${template.color}25` }}>
+                        <template.icon className="h-4 w-4" style={{ color: template.color }} />
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-white mb-0.5">{template.title}</p>
+                    <p className="text-xs text-slate-400 line-clamp-2">{template.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {!selectedBoardId ? (
         <div className="flex-1 flex items-center justify-center">

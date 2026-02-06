@@ -41,6 +41,7 @@ import {
   Sparkles,
   Users,
   X,
+  CheckCircle2,
 } from "lucide-react";
 import type { Meeting, MeetingParticipant, MeetingTopic, TranscriptEntry } from "@shared/schema";
 
@@ -107,10 +108,43 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
 
   return (
     <div className="p-4 md:p-6 space-y-4" data-testid="meeting-list-view">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Meeting Notes</h1>
-          <p className="text-sm text-muted-foreground">AI-powered meeting summaries and insights</p>
+      <div
+        className="relative rounded-md p-6 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 overflow-hidden"
+        data-testid="section-hero-banner"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/10 blur-3xl -translate-y-1/2 translate-x-1/4" />
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-300" />
+            <span className="text-xs font-medium text-blue-300" data-testid="badge-ai-powered">AI-Powered</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white" data-testid="text-hero-title">AI Meeting Notetaker</h1>
+            <p className="text-white/80 text-sm mt-1" data-testid="text-hero-subtitle">Turn discussions into results</p>
+          </div>
+          <ul className="space-y-1.5">
+            <li className="flex items-center gap-2 text-white/70 text-sm" data-testid="text-hero-feature-1">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Automatic transcription and speaker detection
+            </li>
+            <li className="flex items-center gap-2 text-white/70 text-sm" data-testid="text-hero-feature-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              AI-generated summaries and action items
+            </li>
+            <li className="flex items-center gap-2 text-white/70 text-sm" data-testid="text-hero-feature-3">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Smart search across all your meetings
+            </li>
+          </ul>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button className="bg-white text-slate-900 hover:bg-white/90" data-testid="button-record-meeting">
+              <Mic className="h-4 w-4 mr-2" />
+              Record a Meeting
+            </Button>
+            <Button variant="outline" className="border-white/30 text-white bg-transparent" data-testid="button-learn-more">
+              Learn More
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -131,6 +165,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
             <TableRow>
               <TableHead className="min-w-[250px]">Meeting</TableHead>
               <TableHead>Participants</TableHead>
+              <TableHead>Recording</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Duration</TableHead>
               <TableHead>Status</TableHead>
@@ -140,7 +175,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   {meetings.length === 0 ? "No meetings yet" : "No matching meetings"}
                 </TableCell>
               </TableRow>
@@ -169,6 +204,12 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
                 </TableCell>
                 <TableCell>
                   <ParticipantAvatars participants={(meeting.participants || []) as MeetingParticipant[]} />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5" data-testid={`recording-indicator-${meeting.id}`}>
+                    <div className="h-2 w-2 rounded-full bg-red-500" />
+                    <span className="text-muted-foreground text-xs">{formatDuration(meeting.duration || 0)}</span>
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {formatDate(meeting.date)} {formatTime(meeting.date)}

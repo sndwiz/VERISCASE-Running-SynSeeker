@@ -172,7 +172,7 @@ const COLUMN_OPTIONS: ColumnTypeOption[] = [
 
 const CATEGORY_CONFIG: Record<ColumnCategory, { label: string; icon: any; color: string }> = {
   "essentials": { label: "Essentials", icon: LayoutGrid, color: "text-blue-500" },
-  "more": { label: "More Columns", icon: Layers, color: "text-green-500" },
+  "more": { label: "Super useful", icon: Layers, color: "text-green-500" },
   "team-power-up": { label: "Team Power-Up", icon: Users, color: "text-purple-500" },
   "board-power-up": { label: "Board Power-Up", icon: Zap, color: "text-orange-500" },
   "combo": { label: "Combos", icon: Layers, color: "text-pink-500" },
@@ -320,6 +320,40 @@ function PowerUpCard({ column, onAdd }: { column: ColumnTypeOption; onAdd: () =>
           className="w-full text-xs"
           onClick={onAdd}
           data-testid={`button-add-column-${column.type}`}
+        >
+          Add to board
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const FEATURED_COLUMN_TYPES = ["button", "number", "progress"];
+
+function FeaturedColumnCard({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  const color = COLUMN_COLORS[column.type] || "#6366f1";
+  const IconComponent = COLUMN_ICON_MAP[column.icon] || Hash;
+
+  return (
+    <div
+      className="flex flex-col rounded-md border hover-elevate transition-all overflow-visible"
+      data-testid={`featured-column-${column.type}`}
+    >
+      <div
+        className="h-28 flex items-center justify-center rounded-t-md"
+        style={{ backgroundColor: `${color}15` }}
+      >
+        <IconComponent className="h-10 w-10" style={{ color: color }} />
+      </div>
+      <div className="p-3">
+        <p className="font-semibold text-sm">{column.label}</p>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{column.description}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3 text-xs"
+          onClick={onAdd}
+          data-testid={`button-add-featured-${column.type}`}
         >
           Add to board
         </Button>
@@ -511,6 +545,28 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
 
         <ScrollArea className="flex-1 max-h-[500px]">
           <div className="p-5 space-y-8">
+            {selectedCategory === "all" && !searchQuery && (
+              <div className="space-y-3" data-testid="section-featured">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Star className="h-4 w-4" />
+                  Featured
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {FEATURED_COLUMN_TYPES.map((type) => {
+                    const col = COLUMN_OPTIONS.find((c) => c.type === type);
+                    if (!col) return null;
+                    return (
+                      <FeaturedColumnCard
+                        key={col.type}
+                        column={col}
+                        onAdd={() => handleAddColumn(col)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {categoryOrder.map((category) => {
               const columns = groupedColumns[category];
               if (!columns || columns.length === 0) return null;

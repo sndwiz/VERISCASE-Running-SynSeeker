@@ -17,11 +17,32 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Bot, Send, Plus, Trash2, MessageSquare, Loader2, Briefcase, Link } from "lucide-react";
+import { Bot, Send, Plus, Trash2, MessageSquare, Loader2, Briefcase, Link, Paperclip, Mic, LayoutGrid, FileText, Globe, BarChart3, Lightbulb, Sparkles, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 import type { Matter } from "@shared/schema";
+
+const QUICK_ACTIONS = [
+  { icon: LayoutGrid, label: "Create a board", color: "#3b82f6" },
+  { icon: FileText, label: "Write a doc", color: "#8b5cf6" },
+  { icon: Globe, label: "Research online", color: "#06b6d4" },
+  { icon: BarChart3, label: "Analyze data", color: "#f59e0b" },
+  { icon: Lightbulb, label: "Brainstorm ideas", color: "#22c55e" },
+  { icon: Sparkles, label: "Generate content", color: "#ec4899" },
+  { icon: Briefcase, label: "Draft a brief", color: "#6366f1" },
+  { icon: GraduationCap, label: "Learn about", color: "#14b8a6" },
+];
+
+const SUGGESTED_STARTERS = [
+  { title: "Draft a motion for continuance", description: "Create a professional legal motion with proper URCP formatting and citations", badge: "Legal", badgeColor: "#3b82f6" },
+  { title: "Research case law precedents", description: "Find relevant precedents, statutes, and case citations for your matter", badge: "Research", badgeColor: "#8b5cf6" },
+  { title: "Summarize deposition transcript", description: "Get key takeaways, contradictions, and notable statements from depositions", badge: "AI", badgeColor: "#ec4899" },
+  { title: "Review contract for risks", description: "Analyze contract terms, identify potential risks, and suggest amendments", badge: "Analysis", badgeColor: "#f59e0b" },
+  { title: "Generate a case timeline", description: "Create a chronological timeline of events from case documents", badge: "Planning", badgeColor: "#22c55e" },
+  { title: "Draft client communication", description: "Write professional correspondence to clients about case updates", badge: "Writing", badgeColor: "#06b6d4" },
+];
 
 interface AIModel {
   id: string;
@@ -54,11 +75,13 @@ export default function AIChatPage() {
   const { toast } = useToast();
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [landingMessage, setLandingMessage] = useState("");
   const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-5");
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingLandingMessage = useRef<string | null>(null);
 
   const { data: modelsData } = useQuery<{ models: AIModel[] }>({
     queryKey: ["/api/ai/models"],
@@ -92,8 +115,13 @@ export default function AIChatPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setSelectedConversationId(data.id);
+      if (pendingLandingMessage.current) {
+        setMessage(pendingLandingMessage.current);
+        pendingLandingMessage.current = null;
+      }
     },
     onError: () => {
+      pendingLandingMessage.current = null;
       toast({ title: "Failed to create conversation", variant: "destructive" });
     },
   });
@@ -152,6 +180,19 @@ export default function AIChatPage() {
     const matter = selectedMatterId ? matters.find(m => m.id === selectedMatterId) : null;
     createConversationMutation.mutate({
       title: matter ? `Chat: ${matter.name}` : "New Chat",
+      model: selectedModel,
+      matterId: selectedMatterId || undefined,
+    });
+  };
+
+  const handleLandingSubmit = (text: string) => {
+    if (!text.trim()) return;
+    pendingLandingMessage.current = text.trim();
+    setLandingMessage("");
+    const matter = selectedMatterId ? matters.find(m => m.id === selectedMatterId) : null;
+    const title = text.length > 40 ? text.slice(0, 40) + "..." : text;
+    createConversationMutation.mutate({
+      title: matter ? `Chat: ${matter.name}` : title,
       model: selectedModel,
       matterId: selectedMatterId || undefined,
     });
@@ -423,47 +464,98 @@ export default function AIChatPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full p-8">
-            <Card className="max-w-md w-full text-center">
-              <CardContent className="pt-8 pb-8">
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
-                  <Bot className="h-10 w-10 text-white" />
+          <div className="flex flex-col h-full overflow-auto" data-testid="section-ai-greeting">
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-3xl mx-auto w-full">
+              <div className="text-center mb-8">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mx-auto mb-5 shadow-lg">
+                  <Bot className="h-8 w-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold mb-1" data-testid="text-ai-welcome-title">ClawdBot</h2>
-                <p className="text-lg text-muted-foreground mb-3">Your AI Legal Assistant</p>
-                <p className="text-muted-foreground mb-6" data-testid="text-ai-welcome-description">
-                  I'm here to help with legal research, case analysis, document drafting,
-                  and answering your legal questions. Let's get started!
+                <h1 className="text-3xl font-bold mb-2" data-testid="text-ai-greeting-title">
+                  Hi there,
+                </h1>
+                <p className="text-2xl text-muted-foreground font-medium" data-testid="text-ai-greeting-subtitle">
+                  What would you like to do today?
                 </p>
-                <Button onClick={handleNewChat} size="lg" className="gap-2" data-testid="button-start-chat">
-                  <Plus className="h-4 w-4" />
-                  Start New Chat
-                </Button>
-                
-                <div className="mt-6 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-3" data-testid="text-available-models-label">Available Models:</p>
-                  <div className="flex flex-wrap justify-center gap-2" data-testid="list-available-models">
-                    {models.filter(m => m.available).map((model) => (
-                      <span
-                        key={model.id}
-                        className="px-3 py-1 text-sm bg-muted rounded-md"
-                        data-testid={`badge-model-${model.id}`}
-                      >
-                        {model.name}
-                      </span>
-                    ))}
-                    {models.filter(m => m.available).length === 0 && (
-                      <>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-gpt5">GPT-5</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-gpt4o">GPT-4o</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-sonnet">Claude Sonnet</span>
-                        <span className="px-3 py-1 text-sm bg-muted rounded-md" data-testid="badge-model-fallback-opus">Claude Opus</span>
-                      </>
+              </div>
+
+              <div className="w-full max-w-xl mb-10">
+                <div className="relative flex items-center border rounded-md bg-background shadow-sm">
+                  <Button size="icon" variant="ghost" className="shrink-0 ml-1" data-testid="button-landing-attach">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Input
+                    value={landingMessage}
+                    onChange={(e) => setLandingMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLandingSubmit(landingMessage)}
+                    placeholder="Ask ClawdBot anything..."
+                    className="border-0 focus-visible:ring-0 shadow-none flex-1"
+                    data-testid="input-landing-message"
+                  />
+                  <Button size="icon" variant="ghost" className="shrink-0" data-testid="button-landing-context">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="shrink-0" data-testid="button-landing-mic">
+                    <Mic className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    className="shrink-0 mr-1"
+                    disabled={!landingMessage.trim() || createConversationMutation.isPending}
+                    onClick={() => handleLandingSubmit(landingMessage)}
+                    data-testid="button-landing-send"
+                  >
+                    {createConversationMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
                     )}
-                  </div>
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-6 mb-12" data-testid="section-quick-actions">
+                {QUICK_ACTIONS.map((action, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleLandingSubmit(action.label)}
+                    className="flex flex-col items-center gap-2 group"
+                    data-testid={`button-quick-action-${i}`}
+                  >
+                    <div
+                      className="h-12 w-12 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${action.color}15`, border: `1.5px solid ${action.color}30` }}
+                    >
+                      <action.icon className="h-5 w-5" style={{ color: action.color }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground text-center max-w-[72px] leading-tight">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="w-full" data-testid="section-suggested-starters">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Suggested starters</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {SUGGESTED_STARTERS.map((starter, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleLandingSubmit(starter.title)}
+                      className="text-left p-4 rounded-md border hover-elevate"
+                      data-testid={`button-starter-${i}`}
+                    >
+                      <Badge
+                        variant="secondary"
+                        className="text-xs mb-2 text-white"
+                        style={{ backgroundColor: starter.badgeColor }}
+                      >
+                        {starter.badge}
+                      </Badge>
+                      <p className="font-medium text-sm mb-1">{starter.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{starter.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
