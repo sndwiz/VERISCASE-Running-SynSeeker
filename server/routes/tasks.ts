@@ -91,6 +91,16 @@ export function registerTaskRoutes(app: Express): void {
         return res.status(404).json({ error: "Task not found" });
       }
 
+      const targetBoard = await storage.getBoard(targetBoardId);
+      if (!targetBoard) {
+        return res.status(400).json({ error: "Target board not found" });
+      }
+      const targetGroups = await storage.getGroups(targetBoardId);
+      const groupBelongsToBoard = targetGroups.some(g => g.id === targetGroupId);
+      if (!groupBelongsToBoard) {
+        return res.status(400).json({ error: "Target group does not belong to target board" });
+      }
+
       const mirroredTask = await storage.createTask({
         title: `[Mirror] ${originalTask.title}`,
         description: originalTask.description || "",
@@ -126,6 +136,16 @@ export function registerTaskRoutes(app: Express): void {
       const task = await storage.getTask(req.params.id);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
+      }
+
+      const targetBoard = await storage.getBoard(targetBoardId);
+      if (!targetBoard) {
+        return res.status(400).json({ error: "Target board not found" });
+      }
+      const targetGroups = await storage.getGroups(targetBoardId);
+      const groupBelongsToBoard = targetGroups.some(g => g.id === targetGroupId);
+      if (!groupBelongsToBoard) {
+        return res.status(400).json({ error: "Target group does not belong to target board" });
       }
 
       const updatedTask = await storage.updateTask(req.params.id, {
