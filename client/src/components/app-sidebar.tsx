@@ -85,6 +85,7 @@ const navigationItems = [
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Communications", url: "/communications", icon: MessageSquare },
+  { title: "Master Chat", url: "/master-chat", icon: MessageSquare },
   { title: "Approvals", url: "/approvals", icon: Gavel },
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },

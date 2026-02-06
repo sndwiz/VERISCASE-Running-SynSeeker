@@ -49,6 +49,7 @@ import LegalAIPage from "@/pages/legal-ai";
 import IntakeFormsPage from "@/pages/intake-forms";
 import CommunicationsPage from "@/pages/communications";
 import UploadOrganizerPage from "@/pages/upload-organizer";
+import MasterChatPage from "@/pages/master-chat";
 
 import type { Board } from "@shared/schema";
 
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/security" component={SecurityDashboardPage} />
       <Route path="/intake-forms" component={IntakeFormsPage} />
       <Route path="/upload-organizer" component={UploadOrganizerPage} />
+      <Route path="/master-chat" component={MasterChatPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

@@ -1,0 +1,303 @@
+VERICASE Feature: Board Chat + Master Chat (Live, File-Aware, Action-Aware)
+
+Goal
+
+Add a live chat panel on every board (right side) that all board members see in real time. Messages support @mentions, #tags, and attachments. Any file dropped into chat is automatically:
+	1.	stored,
+	2.	linked to the board (and optionally a specific item/task),
+	3.	parsed (OCR/extract/transcribe),
+	4.	used to suggest or create deadlines, events, tasks, and assignments.
+
+Also add a Master Conversation (Macro Chat) at the Client/Matter level that can reference everything across the client: all boards, files, tasks, and timelines. It can propose moving boards, creating boards, suggesting workflows, and answering questions using the stored evidence (with citations).
+
+This should feel like iPhone Notes-style mention/tagging, but with “Monday x Clio x CRM” behavior.
+
+⸻
+
+Part A — Board Chat (Micro Chat) UI / UX
+
+Where it appears
+
+On every board view:
+	•	Right-side collapsible panel: Chat
+	•	Always visible to board members
+	•	Shows presence indicators (who’s online / typing)
+
+Chat features
+
+Messages support:
+	•	Plain text
+	•	@mentions of users (@alex)
+	•	#tags (#deadline, #invoice, #medical, #followup)
+	•	Task references (TASK-123 or clickable task chips)
+	•	Item references (board item chips)
+	•	Attachments (drag/drop)
+
+Message composer behaviors
+	•	Typing “@” brings up board members
+	•	Typing “#” brings up tag suggestions
+	•	Typing “/” opens slash commands (optional MVP):
+	•	/task <title> create task draft
+	•	/deadline <date> <desc> create deadline draft
+	•	/link <item> link message to item
+
+“Plan first” rule for automation
+
+When a file is uploaded or a message contains action signals (deadlines/assignments):
+	•	Show a small “Detected actions” box:
+	•	“I found 2 potential deadlines and 1 task assignment. Apply?”
+	•	User clicks Approve to apply changes
+	•	Default: apply only for board admins or message author
+
+⸻
+
+Part B — What happens when files are uploaded in chat
+
+Pipeline (same as previous OCR modules)
+
+On attachment upload:
+	1.	Save file to storage
+	2.	Create board_assets row (linked to board + chat message)
+	3.	Run extraction:
+	•	PDF selectable text → extract
+	•	scanned/image → OCR
+	•	audio → transcribe
+	4.	Store derived text + anchors for citations
+	5.	Run “triage classifier” to decide:
+	•	doc type
+	•	whether it contains dates, deadlines, meetings, tasks
+	•	whether it relates to a specific board item/task
+	6.	Generate a proposed update plan (never auto-applies without approval)
+	7.	If approved:
+	•	create/update tasks
+	•	add due dates
+	•	add events (calendar-like)
+	•	tag relevant people/items
+	•	link the asset to the relevant location on board
+
+Mapping rules (board placement)
+
+If file upload happens inside a Board Chat:
+	•	default destination = that board’s “Files” area
+	•	if message is linked to an item/task → attach it there too
+	•	if OCR detects a deadline date → propose updating:
+	•	an existing task’s due date (if referenced)
+	•	or creating a new “Deadline item” / “Calendar event” entity
+
+If a user @mentions someone + includes action language (“please”, “need”, “by Friday”) → propose a task assigned to that person.
+
+⸻
+
+Part C — Master Conversation (Macro Chat)
+
+Where it lives
+
+At the Client or Matter level:
+	•	“Client HQ” page (or “Matter HQ” page)
+	•	A big chat called Master Chat
+	•	Can access:
+	•	all boards under that client/matter
+	•	all files across boards
+	•	all tasks, events, deadlines, notes
+	•	all insight summaries (themes/timeline/contradictions module outputs)
+
+What it can do
+
+Master Chat can:
+	•	Answer questions with citations to stored files/anchors
+	•	Search across all boards and surface relevant items
+	•	Propose:
+	•	moving/renaming boards
+	•	creating new boards/templates
+	•	reorganizing statuses/columns
+	•	generating “Board Update Packs”
+	•	creating cross-board tasks/events
+	•	It must propose plan first; user approves before changes happen
+
+Safety + permissions
+	•	It can only act within the user’s permission scope:
+	•	If user can’t edit a board, Macro Chat can only suggest
+	•	Every action produces an audit log entry
+
+⸻
+
+Part D — Data Model (minimum)
+
+1) board_chats
+	•	id
+	•	board_id
+	•	created_at
+
+2) chat_messages
+	•	id
+	•	chat_id
+	•	sender_user_id
+	•	body_text
+	•	body_rich_json (for mentions/tags/refs)
+	•	created_at
+	•	updated_at
+	•	reply_to_message_id (optional)
+
+3) chat_message_entities
+
+This stores parsed structure for “iPhone Notes style”.
+	•	id
+	•	message_id
+	•	type (mention | tag | task_ref | item_ref | date_ref)
+	•	value (e.g., user_id, “deadline”, task_id, item_id, “2026-02-10”)
+	•	start_index, end_index (optional)
+
+4) chat_attachments
+	•	id
+	•	message_id
+	•	file_id (links to your global files table)
+	•	created_at
+
+5) client_master_chats
+	•	id
+	•	client_id (or matter_id)
+	•	created_at
+
+(Or reuse chats with scope_type + scope_id.)
+
+6) action_proposals
+
+Stores “plan before changes.”
+	•	id
+	•	scope_type (board | client | matter)
+	•	scope_id
+	•	created_by_user_id
+	•	source_message_id (optional)
+	•	status (draft | awaiting_approval | approved | rejected | executed)
+	•	summary_text
+	•	created_at
+
+7) action_proposal_items
+	•	id
+	•	action_proposal_id
+	•	action_type (create_task | update_due_date | create_event | move_board | tag_item | attach_file)
+	•	payload_json (all needed fields)
+	•	confidence (high/med/low)
+	•	rationale
+	•	executed_at (nullable)
+	•	result_json (nullable)
+
+8) audit_log
+	•	id
+	•	actor_user_id
+	•	action_type
+	•	target_type
+	•	target_id
+	•	before_json
+	•	after_json
+	•	created_at
+
+⸻
+
+Part E — Real-time (live chat implementation)
+
+MVP architecture
+
+Use WebSockets or a real-time service.
+
+Minimum:
+	•	Server maintains channels keyed by chat_id
+	•	On new message:
+	•	save to DB
+	•	broadcast to all connected clients in that chat
+	•	Typing indicators optional MVP
+
+Replit-friendly approach:
+	•	Use socket.io if Node
+	•	Or use a hosted realtime DB if you already have one
+	•	Must handle reconnect + message history fetch
+
+Permissions
+
+Only members of the board can:
+	•	view and post in that board chat
+Master chat:
+	•	only members with access to client/matter can join
+
+⸻
+
+Part F — API Endpoints (minimum)
+
+Chat
+	•	GET /api/boards/:boardId/chat
+	•	returns chat_id + latest 50 messages
+	•	POST /api/chats/:chatId/messages
+	•	create message (with parsed entities)
+	•	POST /api/chats/:chatId/attachments
+	•	upload attachment(s), returns file_id(s)
+
+Action proposals
+	•	GET /api/action-proposals/:proposalId
+	•	POST /api/action-proposals
+	•	create proposal from a message or uploaded file
+	•	POST /api/action-proposals/:proposalId/approve
+	•	POST /api/action-proposals/:proposalId/execute
+	•	execute with batch limit (like “10 preview” rule if needed)
+
+Master chat
+	•	GET /api/clients/:clientId/master-chat
+	•	same message endpoints
+
+⸻
+
+Part G — Message intelligence rules (what triggers proposals)
+
+Detect and propose (not auto-do):
+	•	Dates (“Feb 10”, “next Friday”) → create event/deadline candidate
+	•	Action verbs (“file”, “serve”, “submit”, “call”, “draft”) → task candidate
+	•	@mentions + action language → assignment candidate
+	•	#tags:
+	•	if #deadline near date → treat as deadline candidate
+	•	if #invoice → route file to billing ops folder
+	•	File types:
+	•	receipts → suggest routing to Operations/Receipts and optionally create expense item
+	•	contracts → suggest “Legal Docs” folder + add “review contract” task
+
+Always show:
+	•	proposed changes list
+	•	confidence + rationale
+	•	“Apply” button
+
+⸻
+
+Part H — Build Order (MVP first)
+	1.	Add chat panel UI on board (static history + send message)
+	2.	Add websocket real-time messaging
+	3.	Add @mentions and #tags parsing + rendering chips
+	4.	Add attachments upload to chat
+	5.	On attachment upload: run extraction/OCR pipeline (reuse your ingestion module)
+	6.	Generate “Detected actions” proposal UI + approval
+	7.	Execute approved actions (create tasks, due dates, attach files)
+	8.	Add Master Chat scoped to client/matter with cross-board search + plan proposals
+	9.	Add “move board / create board” proposals + audit log
+
+⸻
+
+Part I — Definition of “done”
+
+On any board:
+	•	Everyone sees live chat on the right
+	•	Messages support @mentions, #tags, references
+	•	Uploading a file produces a proposal like:
+	•	“Attach to Task X, set due date Feb 12, assign @Sam, tag #deadline”
+	•	No changes apply until approved
+	•	After approval, system executes and logs changes
+
+At client/matter level:
+	•	Master chat can answer “What are our upcoming deadlines?” across boards with citations
+	•	It can propose moving boards or creating tasks/events, and requires approval
+
+⸻
+
+Quick blunt note (important)
+
+“Automatically placed correctly” needs guardrails or it’ll turn into a confident mess. The safe pattern is:
+detect → propose → approve → execute → log → undo
+That’s how you keep this legal/workflow-grade instead of “AI chaos generator.”
+
+If you paste this into Replit, your dev/agent has a clear spec to implement without inventing new rules.

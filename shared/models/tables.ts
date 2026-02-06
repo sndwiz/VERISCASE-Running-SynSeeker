@@ -817,3 +817,101 @@ export type OrganizePlanItemRecord = typeof organizePlanItems.$inferSelect;
 export type InsertOrganizePlanItemRecord = typeof organizePlanItems.$inferInsert;
 export type FileChangeLogRecord = typeof fileChangeLog.$inferSelect;
 export type InsertFileChangeLogRecord = typeof fileChangeLog.$inferInsert;
+
+// ============ BOARD CHAT + MASTER CHAT ============
+export const boardChats = pgTable("board_chats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scopeType: varchar("scope_type", { length: 20 }).notNull().default("board"),
+  boardId: varchar("board_id").references(() => boards.id, { onDelete: "cascade" }),
+  clientId: varchar("client_id"),
+  matterId: varchar("matter_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_board_chats_board_id").on(table.boardId),
+  index("IDX_board_chats_client_id").on(table.clientId),
+  index("IDX_board_chats_matter_id").on(table.matterId),
+]);
+
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chatId: varchar("chat_id").notNull().references(() => boardChats.id, { onDelete: "cascade" }),
+  senderUserId: varchar("sender_user_id").notNull(),
+  bodyText: text("body_text").notNull(),
+  bodyRichJson: jsonb("body_rich_json"),
+  replyToMessageId: varchar("reply_to_message_id"),
+  isSystemMessage: boolean("is_system_message").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_chat_messages_chat_id").on(table.chatId),
+  index("IDX_chat_messages_sender").on(table.senderUserId),
+  index("IDX_chat_messages_created").on(table.createdAt),
+]);
+
+export const chatMessageEntities = pgTable("chat_message_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+  entityType: varchar("entity_type", { length: 30 }).notNull(),
+  value: varchar("value", { length: 500 }).notNull(),
+  startIndex: integer("start_index"),
+  endIndex: integer("end_index"),
+}, (table) => [
+  index("IDX_chat_entities_message").on(table.messageId),
+  index("IDX_chat_entities_type").on(table.entityType),
+]);
+
+export const chatAttachments = pgTable("chat_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileSize: integer("file_size").default(0),
+  mimeType: varchar("mime_type", { length: 100 }),
+  storagePath: varchar("storage_path", { length: 1000 }),
+  extractedText: text("extracted_text"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_chat_attachments_message").on(table.messageId),
+]);
+
+export const actionProposals = pgTable("action_proposals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scopeType: varchar("scope_type", { length: 20 }).notNull(),
+  scopeId: varchar("scope_id").notNull(),
+  chatId: varchar("chat_id").references(() => boardChats.id, { onDelete: "set null" }),
+  sourceMessageId: varchar("source_message_id").references(() => chatMessages.id, { onDelete: "set null" }),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("awaiting_approval"),
+  summaryText: text("summary_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_action_proposals_scope").on(table.scopeType, table.scopeId),
+  index("IDX_action_proposals_chat").on(table.chatId),
+  index("IDX_action_proposals_status").on(table.status),
+]);
+
+export const actionProposalItems = pgTable("action_proposal_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id").notNull().references(() => actionProposals.id, { onDelete: "cascade" }),
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  payloadJson: jsonb("payload_json").notNull(),
+  confidence: varchar("confidence", { length: 10 }).default("medium"),
+  rationale: text("rationale"),
+  executedAt: timestamp("executed_at"),
+  resultJson: jsonb("result_json"),
+}, (table) => [
+  index("IDX_action_items_proposal").on(table.proposalId),
+]);
+
+export type BoardChatRecord = typeof boardChats.$inferSelect;
+export type InsertBoardChatRecord = typeof boardChats.$inferInsert;
+export type ChatMessageRecord = typeof chatMessages.$inferSelect;
+export type InsertChatMessageRecord = typeof chatMessages.$inferInsert;
+export type ChatMessageEntityRecord = typeof chatMessageEntities.$inferSelect;
+export type InsertChatMessageEntityRecord = typeof chatMessageEntities.$inferInsert;
+export type ChatAttachmentRecord = typeof chatAttachments.$inferSelect;
+export type InsertChatAttachmentRecord = typeof chatAttachments.$inferInsert;
+export type ActionProposalRecord = typeof actionProposals.$inferSelect;
+export type InsertActionProposalRecord = typeof actionProposals.$inferInsert;
+export type ActionProposalItemRecord = typeof actionProposalItems.$inferSelect;
+export type InsertActionProposalItemRecord = typeof actionProposalItems.$inferInsert;

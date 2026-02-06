@@ -2266,6 +2266,22 @@ export interface OrganizePlanGroup {
   }>;
 }
 
+// ============ BOARD CHAT + MASTER CHAT ============
+export const sendChatMessageSchema = z.object({
+  bodyText: z.string().min(1).max(10000),
+  replyToMessageId: z.string().optional(),
+  attachmentIds: z.array(z.string()).optional(),
+});
+export type SendChatMessage = z.infer<typeof sendChatMessageSchema>;
+
+export const approveProposalSchema = z.object({
+  approvedItemIds: z.array(z.string()),
+});
+
+export type ChatMessageEntityType = "mention" | "tag" | "task_ref" | "item_ref" | "date_ref";
+export type ProposalStatus = "draft" | "awaiting_approval" | "approved" | "rejected" | "executed";
+export type ProposalActionType = "create_task" | "update_due_date" | "create_event" | "move_board" | "tag_item" | "attach_file" | "assign_user";
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

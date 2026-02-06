@@ -7,6 +7,7 @@ import { viewerReadOnly, requireMemberOrAbove, requireAnyRole, requireAdmin } fr
 import { auditMiddleware } from "./security/audit";
 import { sessionIpTracking } from "./security/session";
 import { errorHandler } from "./utils/errors";
+import { setupSocketIO } from "./socket";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -105,6 +106,9 @@ export async function registerRoutes(
   // Upload organizer - member or above
   app.use("/api/organizer", isAuthenticated, requireMemberOrAbove);
 
+  // Board chat + Master chat - any authenticated role
+  app.use("/api/chats", isAuthenticated, requireAnyRole);
+
   // Security dashboard - admin only
   app.use("/api/security", isAuthenticated, requireAdmin);
   
@@ -113,6 +117,9 @@ export async function registerRoutes(
   
   // Bootstrap first admin user after routes are set up (fallback for existing users)
   bootstrapFirstAdmin();
+
+  // Set up WebSocket server for real-time chat
+  setupSocketIO(httpServer);
 
   app.use(errorHandler);
   

@@ -8,6 +8,7 @@ import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
 import { WorkflowRecorder, useWorkflowRecorder } from "@/components/board/workflow-recorder";
 import { ColumnCenter } from "@/components/board/column-center";
+import { BoardChatPanel } from "@/components/board-chat";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
@@ -569,6 +570,8 @@ export default function BoardPage() {
       )}
 
       {boardId && <WorkflowRecorder boardId={boardId} />}
+
+      {boardId && <BoardChatPanel boardId={boardId} boardName={board?.name} />}
     </div>
   );
 }
