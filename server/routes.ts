@@ -111,6 +111,9 @@ export async function registerRoutes(
 
   // Security dashboard - admin only
   app.use("/api/security", isAuthenticated, requireAdmin);
+
+  // Document Wash - member or above
+  app.use("/api/wash", isAuthenticated, requireMemberOrAbove);
   
   // Register all other API routes
   registerAllRoutes(app);

@@ -51,6 +51,7 @@ import {
   FolderOpen,
   User,
   Mic,
+  ShieldCheck,
   Server,
   Sparkles,
   DollarSign,
@@ -89,6 +90,7 @@ const navigationItems = [
   { title: "Approvals", url: "/approvals", icon: Gavel },
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
+  { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
 ];
 
 const aiInvestigationItems = [

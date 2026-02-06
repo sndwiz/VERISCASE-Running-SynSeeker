@@ -915,3 +915,58 @@ export type ActionProposalRecord = typeof actionProposals.$inferSelect;
 export type InsertActionProposalRecord = typeof actionProposals.$inferInsert;
 export type ActionProposalItemRecord = typeof actionProposalItems.$inferSelect;
 export type InsertActionProposalItemRecord = typeof actionProposalItems.$inferInsert;
+
+// ============ DOCUMENT WASH ============
+export const washJobs = pgTable("wash_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id"),
+  userId: varchar("user_id").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  originalText: text("original_text").notNull(),
+  washedText: text("washed_text"),
+  policy: varchar("policy", { length: 20 }).notNull().default("strict"),
+  reversible: boolean("reversible").notNull().default(true),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  entityCount: integer("entity_count").default(0),
+  piiReport: jsonb("pii_report"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_wash_jobs_matter").on(table.matterId),
+  index("IDX_wash_jobs_user").on(table.userId),
+  index("IDX_wash_jobs_status").on(table.status),
+]);
+
+export const washEntities = pgTable("wash_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => washJobs.id, { onDelete: "cascade" }),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  originalValue: text("original_value").notNull(),
+  replacement: text("replacement").notNull(),
+  startIndex: integer("start_index").notNull(),
+  endIndex: integer("end_index").notNull(),
+  confidence: real("confidence").default(0.9),
+  detectedBy: varchar("detected_by", { length: 20 }).default("regex"),
+}, (table) => [
+  index("IDX_wash_entities_job").on(table.jobId),
+  index("IDX_wash_entities_type").on(table.entityType),
+]);
+
+export const washMappings = pgTable("wash_mappings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  originalValue: text("original_value").notNull(),
+  replacement: text("replacement").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_wash_mappings_matter").on(table.matterId),
+  index("IDX_wash_mappings_lookup").on(table.matterId, table.entityType),
+]);
+
+export type WashJobRecord = typeof washJobs.$inferSelect;
+export type InsertWashJobRecord = typeof washJobs.$inferInsert;
+export type WashEntityRecord = typeof washEntities.$inferSelect;
+export type InsertWashEntityRecord = typeof washEntities.$inferInsert;
+export type WashMappingRecord = typeof washMappings.$inferSelect;
+export type InsertWashMappingRecord = typeof washMappings.$inferInsert;

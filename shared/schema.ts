@@ -2282,6 +2282,84 @@ export type ChatMessageEntityType = "mention" | "tag" | "task_ref" | "item_ref" 
 export type ProposalStatus = "draft" | "awaiting_approval" | "approved" | "rejected" | "executed";
 export type ProposalActionType = "create_task" | "update_due_date" | "create_event" | "move_board" | "tag_item" | "attach_file" | "assign_user";
 
+// ============ DOCUMENT WASH ============
+export type WashPolicy = "strict" | "medium" | "minimal";
+export type WashStatus = "pending" | "processing" | "completed" | "failed";
+export type WashEntityType =
+  | "person"
+  | "email"
+  | "phone"
+  | "address"
+  | "ssn"
+  | "date"
+  | "case_number"
+  | "financial"
+  | "organization"
+  | "government_id"
+  | "medical"
+  | "other";
+
+export interface WashJob {
+  id: string;
+  matterId: string | null;
+  userId: string;
+  title: string;
+  originalText: string;
+  washedText: string | null;
+  policy: WashPolicy;
+  reversible: boolean;
+  status: WashStatus;
+  entityCount: number;
+  piiReport: WashPiiReport | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WashEntity {
+  id: string;
+  jobId: string;
+  entityType: WashEntityType;
+  originalValue: string;
+  replacement: string;
+  startIndex: number;
+  endIndex: number;
+  confidence: number;
+  detectedBy: "regex" | "ai" | "hybrid";
+}
+
+export interface WashMapping {
+  id: string;
+  matterId: string;
+  entityType: WashEntityType;
+  originalValue: string;
+  replacement: string;
+  createdAt: string;
+}
+
+export interface WashPiiReport {
+  totalEntities: number;
+  byType: Record<string, number>;
+  byDetector: Record<string, number>;
+  highRiskCount: number;
+  entities: Array<{
+    type: WashEntityType;
+    original: string;
+    replacement: string;
+    confidence: number;
+    detector: string;
+  }>;
+}
+
+export const insertWashJobSchema = z.object({
+  title: z.string().min(1, "Title is required").max(255),
+  originalText: z.string().min(1, "Document text is required").max(500000),
+  matterId: z.string().nullable().optional(),
+  policy: z.enum(["strict", "medium", "minimal"]).default("strict"),
+  reversible: z.boolean().default(true),
+});
+
+export type InsertWashJob = z.infer<typeof insertWashJobSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

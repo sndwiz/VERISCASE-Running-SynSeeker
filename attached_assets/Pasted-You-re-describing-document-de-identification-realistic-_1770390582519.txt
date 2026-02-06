@@ -1,0 +1,160 @@
+You’re describing document de-identification + realistic pseudonymization: remove (or replace) personally identifying info while keeping the meaning, tone, argument structure, and emotional flavor intact. Totally doable — but you need to design it like a lab instrument, not like a “find/replace” party trick.
+
+Here’s the clean way to build it.
+
+The core idea
+
+Do it in two passes:
+	1.	Detect & extract sensitive entities (high recall)
+	2.	Replace with consistent, believable surrogates (high precision + consistency)
+
+Then verify you didn’t miss anything.
+
+⸻
+
+What counts as “critical/private data”
+
+At minimum (for legal docs), you want detectors for:
+	•	People: client, opposing party, witnesses, minors (extra strict)
+	•	Contact: phone, email, address, DOB
+	•	Government IDs: SSN, driver’s license, passport
+	•	Case identifiers: case number, docket, filing IDs
+	•	Financial: account numbers, routing, card numbers, invoices, settlement figures (sometimes you do want to keep amounts—policy choice)
+	•	Medical info (HIPAA-adjacent risk)
+	•	Employer/school identifiers
+	•	Unique story fingerprints (sometimes a “non-PII” detail is still identifying)
+
+You’ll want a policy layer that defines what to remove vs keep vs generalize.
+
+⸻
+
+Replacement strategy: keep integrity, avoid re-identification
+
+Instead of redacting to ████, you replace with structured placeholders that preserve context:
+	•	Names → Person_A, Person_B (or realistic names, but consistent)
+	•	Firms → LawFirm_X
+	•	Addresses → plausible format in same state/area, but not real
+	•	Dates → shift by a consistent offset (e.g., +137 days), preserving timelines
+	•	SSNs → format-preserving fake: XXX-XX-1234 or full fake with checksum rules (policy)
+	•	Phone → format-preserving fake (keep area code or not, depending)
+	•	Case numbers → same pattern/length, different digits
+
+Key trick: consistency across the entire doc set. “John Smith” must map to the same surrogate everywhere, including possessives (“John’s”), initials (“J.S.”), and references (“Mr. Smith,” “the client”).
+
+You accomplish that with a mapping dictionary created once per matter:
+
+{
+  "John A. Smith": "Michael R. Carter",
+  "Smith": "Carter",
+  "JS": "MC",
+  "SLC-2025-CV-01331": "SLC-2025-CV-88420"
+}
+
+Store this mapping securely. Optionally make it reversible (for internal work) or irreversible (for sharing).
+
+⸻
+
+Pipeline architecture (practical)
+
+Step 0 — Ingestion
+	•	PDF/DOCX/email → convert to structured text with layout hints
+	•	Preserve sections, headings, paragraph boundaries (tone lives here)
+
+Step 1 — Entity detection (high recall)
+
+Use a hybrid approach:
+	•	Regex for obvious patterns: SSNs, phones, emails, case numbers, dates
+	•	NER (Named Entity Recognition) for names, orgs, locations
+	•	LLM pass for “soft identifiers” and context-based IDs (e.g., “my daughter Emma at East Ridge Montessori”)
+
+Step 2 — Replacement (deterministic)
+	•	Replace using mapping dict
+	•	Format-preserving generation for IDs
+	•	Date shifting with consistent offset
+	•	Keep grammatical agreement (he/she/they), titles (Dr., Sgt.), and capitalization
+
+Step 3 — Verification (catch misses)
+
+Run a “PII lint” pass:
+	•	Scan output again with detectors
+	•	Flag any leftover patterns or suspicious spans
+	•	Produce a PII report: what was changed, where, confidence, and what needs human review
+
+Step 4 — Human review (for high-stakes docs)
+
+Give the user a side-by-side diff with highlights.
+Law + privacy = you want a “trust but verify” UI.
+
+⸻
+
+How to keep “emotion/tone/ideas” intact
+
+Tone gets lost when people paraphrase. So don’t paraphrase.
+
+Your system should be surgical: only replace spans that are PII or risky identifiers, and leave everything else untouched. That means:
+	•	Preserve punctuation and whitespace as much as possible
+	•	Don’t rewrite sentences, just swap tokens/spans
+	•	Don’t “summarize” anything
+	•	Keep quoted speech exactly, except swapped entities
+
+The only time you’d rewrite is when the identifier is embedded in a way that breaks grammar. Even then, rewrite minimally.
+
+⸻
+
+Edge cases you must handle
+	•	Possessives: “John’s” → “Michael’s”
+	•	Initials: “J.A.S.” → surrogate initials
+	•	Family roles: “my sister Rachel” → consistent mapping with role tag (optional)
+	•	Repeated references: “the client,” “Mr. Smith,” “the defendant”
+	•	Tables and headers/footers in PDFs (PII loves hiding there)
+	•	Exhibits with scans/images (harder; you need OCR + redaction)
+	•	Email threads (signatures, phone blocks)
+	•	Metadata (DOCX author, PDF producer fields)
+
+⸻
+
+Safe defaults for a law-firm product
+	•	Don’t allow irreversible processing unless the user picks it explicitly
+	•	Encrypt mappings at rest
+	•	Matter-scoped keys: a mapping from one case cannot “bleed” into another
+	•	Keep raw docs in a separate locked bucket; process in memory if possible
+	•	Provide a “no external calls” mode if they’re on a private server
+
+⸻
+
+How this fits into your Replit/Cloudflare app
+
+Add a “Document Wash” module:
+	•	Upload → queue job
+	•	Choose policy preset:
+	•	“Court filing public version”
+	•	“Internal vendor share”
+	•	“Training/demo data”
+	•	Output:
+	•	washed DOCX/PDF
+	•	PII report JSON
+	•	diff view
+
+Behind the scenes:
+	•	Worker process does extraction + replacement
+	•	Results stored with versioning + audit trail (“who washed what, when”)
+
+⸻
+
+What I can give you next (without asking you 10 questions)
+
+A solid v1 spec looks like this:
+
+Inputs: PDF/DOCX/TXT
+Outputs: Washed TXT/DOCX + PII report + mapping file (optional)
+Modes: reversible vs irreversible
+Policies: strict / medium / minimal
+Detectors: regex + NER + LLM verifier
+QA: second-pass lint + human review UI
+
+If you want, I can also draft:
+	•	the replacement rules (format-preserving fakers),
+	•	the mapping schema,
+	•	and the PII report format (so your n8n / database can store it cleanly),
+
+…and then you’ve got an implementation blueprint your dev (or Claude) can build fast without turning it into a compliance nightmare.

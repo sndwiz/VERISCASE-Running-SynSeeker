@@ -50,6 +50,7 @@ import IntakeFormsPage from "@/pages/intake-forms";
 import CommunicationsPage from "@/pages/communications";
 import UploadOrganizerPage from "@/pages/upload-organizer";
 import MasterChatPage from "@/pages/master-chat";
+import DocumentWashPage from "@/pages/document-wash";
 
 import type { Board } from "@shared/schema";
 
@@ -85,6 +86,7 @@ function Router() {
       <Route path="/intake-forms" component={IntakeFormsPage} />
       <Route path="/upload-organizer" component={UploadOrganizerPage} />
       <Route path="/master-chat" component={MasterChatPage} />
+      <Route path="/document-wash" component={DocumentWashPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
