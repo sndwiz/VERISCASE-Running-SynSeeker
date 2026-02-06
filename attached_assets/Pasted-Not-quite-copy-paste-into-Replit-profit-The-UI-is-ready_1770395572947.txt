@@ -1,0 +1,119 @@
+Not quite “copy → paste into Replit → profit.” The UI is ready to drop in as a prototype, but to make it functional inside VERICASE you still need a few real-world pieces wired up (and one bugfix in the Python side).
+
+Here’s the honest readiness check based on what’s inside your DETECTIVE BOARD.zip.
+
+What’s already “ready”
+
+✅ Front-end prototype(s)
+	•	investigation-board-v2.html is a solid interactive investigator-board mock.
+	•	You can ship it to Replit today as either:
+	•	a static page under /public and iframe it, or
+	•	port it into your app UI.
+
+✅ Backend building blocks (Python)
+
+You’ve got the pipeline modules right in the zip:
+	•	ocr_processor.py, tone_analyzer.py, chunk_processor.py, embedding_generator.py, qdrant_loader.py, qdrant_query.py, etc.
+	•	docker-compose.yml for Qdrant
+	•	config.yaml, logging utils, file handler, etc.
+
+So the parts exist.
+
+What’s missing / needs fixing before it “runs”
+
+1) ❌ main.py won’t run as-is
+
+main.py imports src.document_pipeline etc., but your zip has no src/ folder—the files are in the root. So you need one of these:
+	•	Option A: Create a /src directory and move the Python files into it (and adjust imports), or
+	•	Option B: Edit main.py imports to use the root modules (e.g., from document_pipeline import DocumentPipeline), and update the other imports accordingly.
+
+Right now, it will crash on import.
+
+2) ⚠️ Replit + OCR dependencies will hurt (Paddle + Torch)
+
+Your requirements.txt includes:
+	•	paddlepaddle, paddleocr
+	•	torch
+	•	sentence-transformers
+These are heavy, and on Replit they can be slow, fail to install, or run out of memory—especially if you scale to “hundreds of files.”
+
+What to do (practical):
+	•	Keep the pipeline, but run it as a separate worker/service (even if it’s just another Replit repl), or
+	•	Swap OCR to a lighter path for MVP (Tesseract) and keep PaddleOCR as “upgrade later,” or
+	•	Treat OCR/embedding as “job queue → external worker” and keep Replit as the web app only.
+
+3) ✅/⚠️ Qdrant needs an actual hosting plan
+
+Your docker-compose.yml is great for local dev.
+On Replit, Docker support is not always clean depending on workspace type. You’ll likely need:
+	•	Qdrant hosted elsewhere (VM, managed, or separate service), OR
+	•	a Replit deployment that can run it reliably.
+
+4) ❌ No actual API bridge between board UI and case data yet
+
+The HTML board is currently a prototype. To make it “see everything in the case,” you need:
+	•	a VERICASE API endpoint like:
+	•	GET /api/matters/:id/detective-board/model
+	•	plus data models in your app DB:
+	•	entities, relationships, evidence anchors, timeline events
+
+Without that, it stays a pretty corkboard with mock data.
+
+5) ⚠️ Security + permissions layer
+
+If this can “see everything,” you must enforce:
+	•	board membership / matter access
+	•	role-based visibility (privilege/sensitive tags)
+	•	audit logs for inferred relationships and scoring outputs
+
+This isn’t optional if you want legal-grade.
+
+⸻
+
+Minimal “Ready for Replit” checklist (MVP)
+
+If you do just these, it becomes functional (not perfect, but real):
+	1.	Drop the UI into Replit
+
+	•	Put investigation-board-v2.html in /public/detective-board.html
+	•	Add a “Detective Board” tab that iframes it
+
+	2.	Add one API endpoint returning real case data
+
+	•	/api/matters/:matterId/detective-board/model
+	•	Start with: people + documents + basic timeline + a few edges
+
+	3.	Fix the Python entry point
+
+	•	Make main.py import correctly (src vs root)
+
+	4.	Stand up Qdrant
+
+	•	Either external Qdrant or separate service you can reach
+
+	5.	Wire ingestion
+
+	•	When a file is added to a matter:
+	•	OCR/extract → chunk → embed → push to Qdrant
+	•	store anchors/citations in your DB
+
+	6.	“Null vs Alternative” v1
+
+	•	Add incident/baseline window selection
+	•	Compute simple deltas:
+	•	contact frequency change
+	•	new entities introduced
+	•	location/event anomalies (if you have that data)
+
+That gets you to “functional.”
+
+⸻
+
+My blunt verdict
+	•	UI prototype: ready ✅
+	•	Pipeline code: close, but not runnable without import + infra fixes ⚠️
+	•	Full integration (“see everything in the case”): needs API + DB graph layer ❌
+
+So: it’s ready to go to Replit as a prototype + scaffold, but not ready as a fully integrated feature until you add the bridge + hosting decisions.
+
+If you want, I can write a Replit plain-English “Implementation Sprint Plan” (3 phases: Prototype → Functional MVP → Production-ready) with exact tasks and acceptance checks, so you can hand it to your Replit builder without ambiguity.
