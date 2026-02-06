@@ -206,44 +206,7 @@ async function getOrCreateMapping(
     );
   const count = countResult.length;
 
-  let replacement: string;
-  switch (entityType) {
-    case "person":
-      replacement = SURROGATE_NAMES[count % SURROGATE_NAMES.length];
-      break;
-    case "organization":
-      replacement = SURROGATE_ORGS[count % SURROGATE_ORGS.length];
-      break;
-    case "email":
-      replacement = `person${count + 1}@example.com`;
-      break;
-    case "phone":
-      replacement = `(801) 555-${String(1000 + count).slice(-4)}`;
-      break;
-    case "address":
-      replacement = SURROGATE_ADDRESSES[count % SURROGATE_ADDRESSES.length];
-      break;
-    case "ssn":
-      replacement = `XXX-XX-${String(1000 + count).slice(-4)}`;
-      break;
-    case "case_number":
-      replacement = `2026-XX-${String(10000 + count).slice(-5)}`;
-      break;
-    case "financial":
-      replacement = `$[AMOUNT_${count + 1}]`;
-      break;
-    case "government_id":
-      replacement = `[ID-${String(10000 + count).slice(-5)}]`;
-      break;
-    case "date":
-      replacement = `[DATE_${count + 1}]`;
-      break;
-    case "medical":
-      replacement = `[MEDICAL_INFO_${count + 1}]`;
-      break;
-    default:
-      replacement = `[REDACTED_${count + 1}]`;
-  }
+  const replacement = generateSurrogate(entityType, count);
 
   await db.insert(washMappings).values({
     matterId,
@@ -255,7 +218,7 @@ async function getOrCreateMapping(
   return replacement;
 }
 
-function generateInlineSurrogate(entityType: WashEntityType, index: number): string {
+function generateSurrogate(entityType: WashEntityType, index: number): string {
   switch (entityType) {
     case "person": return SURROGATE_NAMES[index % SURROGATE_NAMES.length];
     case "organization": return SURROGATE_ORGS[index % SURROGATE_ORGS.length];
@@ -297,7 +260,7 @@ export async function runDocumentWash(jobId: string): Promise<void> {
         replacementMap.set(entity.value, replacement);
       } else {
         const count = typeCounters.get(entity.type) || 0;
-        const replacement = generateInlineSurrogate(entity.type, count);
+        const replacement = generateSurrogate(entity.type, count);
         replacementMap.set(entity.value, replacement);
         typeCounters.set(entity.type, count + 1);
       }

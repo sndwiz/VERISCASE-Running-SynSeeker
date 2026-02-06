@@ -17,14 +17,9 @@ import {
   undoFileChange,
 } from "../services/upload-organizer";
 import crypto from "crypto";
+import { getUserId } from "../utils/auth";
 
 const router = Router();
-
-function getUserId(req: Request): string | null {
-  const user = (req as any).user;
-  if (!user) return null;
-  return user.id || user.claims?.sub || null;
-}
 
 function getFileType(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase() || "";

@@ -12,25 +12,9 @@ import { sendChatMessageSchema, approveProposalSchema } from "../../shared/schem
 import { broadcastMessage, broadcastProposal, broadcastProposalUpdate } from "../socket";
 import { parseMessageEntities } from "../services/chat-parser";
 import { detectActionProposals } from "../services/chat-actions";
+import { getUserId, getUserInfo } from "../utils/auth";
 
 const router = Router();
-
-function getUserId(req: Request): string | null {
-  const user = (req as any).user;
-  if (!user) return null;
-  return user.id || user.claims?.sub || null;
-}
-
-function getUserInfo(req: Request) {
-  const user = (req as any).user;
-  if (!user) return null;
-  return {
-    id: (user.id || user.claims?.sub || "") as string,
-    firstName: (user.firstName || user.claims?.first_name) as string | undefined,
-    lastName: (user.lastName || user.claims?.last_name) as string | undefined,
-    profileImageUrl: (user.profileImageUrl || user.claims?.profile_image_url) as string | undefined,
-  };
-}
 
 async function getOrCreateChat(scopeType: string, scopeField: string, scopeValue: string) {
   const rows = await db.execute(

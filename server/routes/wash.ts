@@ -1,17 +1,12 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { washJobs, washEntities, washMappings } from "@shared/models/tables";
+import { washJobs, washEntities } from "@shared/models/tables";
 import { insertWashJobSchema } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { runDocumentWash } from "../services/document-wash";
+import { getUserId } from "../utils/auth";
 
 const router = Router();
-
-function getUserId(req: Request): string | null {
-  const user = (req as any).user;
-  if (!user) return null;
-  return user.id || user.claims?.sub || null;
-}
 
 router.post("/api/wash/jobs", async (req: Request, res: Response) => {
   try {
@@ -79,17 +74,17 @@ router.get("/api/wash/jobs", async (req: Request, res: Response) => {
   }
 });
 
+async function findJobById(jobId: string) {
+  const [job] = await db.select().from(washJobs).where(eq(washJobs.id, jobId)).limit(1);
+  return job || null;
+}
+
 router.get("/api/wash/jobs/:id", async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const [job] = await db
-      .select()
-      .from(washJobs)
-      .where(eq(washJobs.id, req.params.id))
-      .limit(1);
-
+    const job = await findJobById(req.params.id as string);
     if (!job) return res.status(404).json({ error: "Job not found" });
     if (job.userId !== userId) return res.status(403).json({ error: "Forbidden" });
 
@@ -105,19 +100,14 @@ router.get("/api/wash/jobs/:id/entities", async (req: Request, res: Response) =>
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const [job] = await db
-      .select()
-      .from(washJobs)
-      .where(eq(washJobs.id, req.params.id))
-      .limit(1);
-
+    const job = await findJobById(req.params.id as string);
     if (!job) return res.status(404).json({ error: "Job not found" });
     if (job.userId !== userId) return res.status(403).json({ error: "Forbidden" });
 
     const entities = await db
       .select()
       .from(washEntities)
-      .where(eq(washEntities.jobId, req.params.id));
+      .where(eq(washEntities.jobId, job.id));
 
     res.json(entities);
   } catch (error) {
@@ -131,16 +121,11 @@ router.delete("/api/wash/jobs/:id", async (req: Request, res: Response) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const [job] = await db
-      .select()
-      .from(washJobs)
-      .where(eq(washJobs.id, req.params.id))
-      .limit(1);
-
+    const job = await findJobById(req.params.id as string);
     if (!job) return res.status(404).json({ error: "Job not found" });
     if (job.userId !== userId) return res.status(403).json({ error: "Forbidden" });
 
-    await db.delete(washJobs).where(eq(washJobs.id, req.params.id));
+    await db.delete(washJobs).where(eq(washJobs.id, job.id));
     res.json({ success: true });
   } catch (error) {
     console.error("Delete wash job error:", error);
