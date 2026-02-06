@@ -3,6 +3,11 @@ import { storage } from "../storage";
 import { insertTaskSchema, updateTaskSchema } from "@shared/schema";
 import { z } from "zod";
 
+const mirrorMoveSchema = z.object({
+  targetBoardId: z.string().min(1),
+  targetGroupId: z.string().min(1),
+});
+
 export function registerTaskRoutes(app: Express): void {
   app.get("/api/boards/:boardId/tasks", async (req, res) => {
     try {
@@ -75,6 +80,69 @@ export function registerTaskRoutes(app: Express): void {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  app.post("/api/tasks/:id/mirror", async (req, res) => {
+    try {
+      const { targetBoardId, targetGroupId } = mirrorMoveSchema.parse(req.body);
+      const originalTask = await storage.getTask(req.params.id);
+      if (!originalTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const mirroredTask = await storage.createTask({
+        title: `[Mirror] ${originalTask.title}`,
+        description: originalTask.description || "",
+        status: originalTask.status as any,
+        priority: originalTask.priority as any,
+        dueDate: originalTask.dueDate,
+        startDate: originalTask.startDate,
+        assignees: originalTask.assignees as any,
+        owner: originalTask.owner as any,
+        progress: originalTask.progress,
+        timeEstimate: originalTask.timeEstimate,
+        boardId: targetBoardId,
+        groupId: targetGroupId,
+        parentTaskId: originalTask.id,
+        tags: originalTask.tags as any,
+        notes: originalTask.notes || "",
+        customFields: originalTask.customFields as any,
+        subtasks: originalTask.subtasks as any,
+      });
+
+      res.status(201).json(mirroredTask);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to mirror task" });
+    }
+  });
+
+  app.post("/api/tasks/:id/move-to-board", async (req, res) => {
+    try {
+      const { targetBoardId, targetGroupId } = mirrorMoveSchema.parse(req.body);
+      const task = await storage.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const updatedTask = await storage.updateTask(req.params.id, {
+        boardId: targetBoardId,
+        groupId: targetGroupId,
+      });
+
+      if (!updatedTask) {
+        return res.status(500).json({ error: "Failed to move task" });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to move task to board" });
     }
   });
 }

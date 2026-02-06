@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   X,
   Calendar,
@@ -32,8 +40,14 @@ import {
   Star,
   Edit3,
   Check,
+  ArrowRightLeft,
+  Copy,
+  MoveRight,
+  Loader2,
 } from "lucide-react";
-import type { Task, ColumnDef, CustomStatusLabel, Priority } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Task, ColumnDef, CustomStatusLabel, Priority, Board, Group } from "@shared/schema";
 import { statusConfig, priorityConfig, defaultStatusLabels } from "@shared/schema";
 
 interface TaskDetailModalProps {
@@ -44,6 +58,8 @@ interface TaskDetailModalProps {
   statusLabels?: CustomStatusLabel[];
   onUpdate: (taskId: string, updates: Partial<Task>) => void;
   onEditStatusLabels?: () => void;
+  groups?: Group[];
+  boardId?: string;
 }
 
 const COLUMN_ICONS: Record<string, any> = {
@@ -71,11 +87,73 @@ export function TaskDetailModal({
   statusLabels = defaultStatusLabels,
   onUpdate,
   onEditStatusLabels,
+  groups = [],
+  boardId,
 }: TaskDetailModalProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState("");
+  const [showMirrorSection, setShowMirrorSection] = useState(false);
+  const [showMoveSection, setShowMoveSection] = useState(false);
+  const [mirrorTargetBoardId, setMirrorTargetBoardId] = useState("");
+  const [mirrorTargetGroupId, setMirrorTargetGroupId] = useState("");
+  const [moveTargetBoardId, setMoveTargetBoardId] = useState("");
+  const [moveTargetGroupId, setMoveTargetGroupId] = useState("");
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: allBoards = [] } = useQuery<Board[]>({
+    queryKey: ["/api/boards"],
+    enabled: open && (showMirrorSection || showMoveSection),
+  });
+
+  const { data: mirrorTargetGroups = [] } = useQuery<Group[]>({
+    queryKey: ["/api/boards", mirrorTargetBoardId, "groups"],
+    enabled: !!mirrorTargetBoardId && showMirrorSection,
+  });
+
+  const { data: moveTargetGroups = [] } = useQuery<Group[]>({
+    queryKey: ["/api/boards", moveTargetBoardId, "groups"],
+    enabled: !!moveTargetBoardId && showMoveSection,
+  });
+
+  const mirrorMutation = useMutation({
+    mutationFn: (data: { targetBoardId: string; targetGroupId: string }) =>
+      apiRequest("POST", `/api/tasks/${task?.id}/mirror`, data),
+    onSuccess: () => {
+      toast({ title: "Task mirrored successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards", mirrorTargetBoardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      setShowMirrorSection(false);
+      setMirrorTargetBoardId("");
+      setMirrorTargetGroupId("");
+    },
+    onError: () => {
+      toast({ title: "Failed to mirror task", variant: "destructive" });
+    },
+  });
+
+  const moveToBoardMutation = useMutation({
+    mutationFn: (data: { targetBoardId: string; targetGroupId: string }) =>
+      apiRequest("POST", `/api/tasks/${task?.id}/move-to-board`, data),
+    onSuccess: () => {
+      toast({ title: "Task moved to board successfully" });
+      if (boardId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/boards", moveTargetBoardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      setShowMoveSection(false);
+      setMoveTargetBoardId("");
+      setMoveTargetGroupId("");
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to move task", variant: "destructive" });
+    },
+  });
 
   if (!task) return null;
 
@@ -106,6 +184,27 @@ export function TaskDetailModal({
 
   const statusDisplay = getStatusDisplay();
   const priorityDisplay = getPriorityDisplay();
+
+  const handleMoveToGroup = (groupId: string) => {
+    onUpdate(task.id, { groupId });
+    toast({ title: "Task moved to group" });
+  };
+
+  const handleMirror = () => {
+    if (!mirrorTargetBoardId || !mirrorTargetGroupId) return;
+    mirrorMutation.mutate({
+      targetBoardId: mirrorTargetBoardId,
+      targetGroupId: mirrorTargetGroupId,
+    });
+  };
+
+  const handleMoveToBoard = () => {
+    if (!moveTargetBoardId || !moveTargetGroupId) return;
+    moveToBoardMutation.mutate({
+      targetBoardId: moveTargetBoardId,
+      targetGroupId: moveTargetGroupId,
+    });
+  };
 
   const renderFieldValue = (column: ColumnDef) => {
     const value = task.customFields?.[column.id];
@@ -218,6 +317,50 @@ export function TaskDetailModal({
         );
     }
   };
+
+  const renderBoardGroupPicker = (
+    prefix: string,
+    selectedBoardId: string,
+    selectedGroupId: string,
+    targetGroups: Group[],
+    onBoardChange: (id: string) => void,
+    onGroupChange: (id: string) => void,
+  ) => (
+    <div className="space-y-2">
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Target Board</label>
+        <Select value={selectedBoardId} onValueChange={(val) => { onBoardChange(val); onGroupChange(""); }}>
+          <SelectTrigger data-testid={`select-${prefix}-board`}>
+            <SelectValue placeholder="Select a board" />
+          </SelectTrigger>
+          <SelectContent>
+            {allBoards.map((b) => (
+              <SelectItem key={b.id} value={b.id} data-testid={`select-${prefix}-board-option-${b.id}`}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {selectedBoardId && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Target Group</label>
+          <Select value={selectedGroupId} onValueChange={onGroupChange}>
+            <SelectTrigger data-testid={`select-${prefix}-group`}>
+              <SelectValue placeholder="Select a group" />
+            </SelectTrigger>
+            <SelectContent>
+              {targetGroups.map((g) => (
+                <SelectItem key={g.id} value={g.id} data-testid={`select-${prefix}-group-option-${g.id}`}>
+                  {g.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -362,6 +505,27 @@ export function TaskDetailModal({
               </div>
             </div>
 
+            {groups.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  Move to Group
+                </label>
+                <Select value={task.groupId} onValueChange={handleMoveToGroup}>
+                  <SelectTrigger data-testid="select-move-to-group">
+                    <SelectValue placeholder="Select group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups.map((g) => (
+                      <SelectItem key={g.id} value={g.id} data-testid={`select-group-option-${g.id}`}>
+                        {g.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Separator />
 
             <div className="space-y-1.5">
@@ -486,6 +650,121 @@ export function TaskDetailModal({
                 </div>
               </>
             )}
+
+            <Separator />
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-1.5">
+                <MoveRight className="h-4 w-4" />
+                Task Actions
+              </h4>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowMirrorSection(!showMirrorSection);
+                    setShowMoveSection(false);
+                  }}
+                  data-testid="button-mirror-to-board"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Mirror to Board
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowMoveSection(!showMoveSection);
+                    setShowMirrorSection(false);
+                  }}
+                  data-testid="button-move-to-board"
+                >
+                  <MoveRight className="h-3.5 w-3.5 mr-1.5" />
+                  Move to Board
+                </Button>
+              </div>
+
+              {showMirrorSection && (
+                <div className="space-y-3 p-3 rounded-md border bg-muted/30">
+                  <p className="text-xs text-muted-foreground">
+                    Create a mirror copy of this task on another board.
+                  </p>
+                  {renderBoardGroupPicker(
+                    "mirror",
+                    mirrorTargetBoardId,
+                    mirrorTargetGroupId,
+                    mirrorTargetGroups,
+                    setMirrorTargetBoardId,
+                    setMirrorTargetGroupId,
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleMirror}
+                      disabled={!mirrorTargetBoardId || !mirrorTargetGroupId || mirrorMutation.isPending}
+                      data-testid="button-confirm-mirror"
+                    >
+                      {mirrorMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                      Mirror Task
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowMirrorSection(false);
+                        setMirrorTargetBoardId("");
+                        setMirrorTargetGroupId("");
+                      }}
+                      data-testid="button-cancel-mirror"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {showMoveSection && (
+                <div className="space-y-3 p-3 rounded-md border bg-muted/30">
+                  <p className="text-xs text-muted-foreground">
+                    Move this task to a different board. It will be removed from the current board.
+                  </p>
+                  {renderBoardGroupPicker(
+                    "move",
+                    moveTargetBoardId,
+                    moveTargetGroupId,
+                    moveTargetGroups,
+                    setMoveTargetBoardId,
+                    setMoveTargetGroupId,
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleMoveToBoard}
+                      disabled={!moveTargetBoardId || !moveTargetGroupId || moveToBoardMutation.isPending}
+                      data-testid="button-confirm-move"
+                    >
+                      {moveToBoardMutation.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                      Move Task
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowMoveSection(false);
+                        setMoveTargetBoardId("");
+                        setMoveTargetGroupId("");
+                      }}
+                      data-testid="button-cancel-move"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Separator />
 

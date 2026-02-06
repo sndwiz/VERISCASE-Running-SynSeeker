@@ -80,6 +80,7 @@ export default function BoardPage() {
       apiRequest("PATCH", `/api/tasks/${taskId}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
     },
     onError: () => {
       toast({ title: "Failed to update task", variant: "destructive" });
@@ -535,6 +536,8 @@ export default function BoardPage() {
         onUpdate={handleTaskUpdate}
         onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
         statusLabels={statusLabels}
+        groups={groups}
+        boardId={boardId}
       />
 
       <EditStatusLabelsDialog

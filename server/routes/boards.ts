@@ -49,7 +49,7 @@ export function registerBoardRoutes(app: Express): void {
   app.patch("/api/boards/:id", async (req, res) => {
     try {
       const data = updateBoardSchema.parse(req.body);
-      const board = await storage.updateBoard(req.params.id, data);
+      const board = await storage.updateBoard(req.params.id, data as any);
       if (!board) {
         return res.status(404).json({ error: "Board not found" });
       }
