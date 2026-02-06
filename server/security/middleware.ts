@@ -4,17 +4,167 @@ import cors from "cors";
 import type { Express, Request, Response, NextFunction } from "express";
 import { getClientIp, logSecurityEvent } from "./audit";
 
+const SCANNER_TRAP_PATHS = [
+  "/wp-admin",
+  "/wp-login.php",
+  "/wp-content",
+  "/wp-includes",
+  "/wp-json",
+  "/xmlrpc.php",
+  "/.env",
+  "/.git",
+  "/.svn",
+  "/.htaccess",
+  "/.htpasswd",
+  "/phpmyadmin",
+  "/pma",
+  "/myadmin",
+  "/vendor/phpunit",
+  "/vendor/composer",
+  "/config.php",
+  "/wp-config.php",
+  "/administrator",
+  "/admin.php",
+  "/shell",
+  "/cmd",
+  "/cgi-bin",
+  "/etc/passwd",
+  "/etc/shadow",
+  "/proc/self",
+  "/.aws",
+  "/.docker",
+  "/actuator",
+  "/debug",
+  "/telescope",
+  "/elmah.axd",
+  "/server-status",
+  "/server-info",
+  "/phpinfo.php",
+  "/info.php",
+  "/test.php",
+  "/backup",
+  "/.backup",
+  "/db.sql",
+  "/dump.sql",
+  "/.DS_Store",
+  "/Thumbs.db",
+];
+
+function scannerTrapMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const path = req.path.toLowerCase();
+
+  const isScanner = SCANNER_TRAP_PATHS.some((trap) => path.startsWith(trap));
+
+  if (isScanner) {
+    logSecurityEvent("scanner_tripwire", req, {
+      path: req.path,
+      method: req.method,
+      ip: getClientIp(req),
+      userAgent: req.headers["user-agent"] || "",
+    }, "warning");
+
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  next();
+}
+
+export const formSubmissionLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many form submissions, please try again later." },
+  keyGenerator: (req) => getClientIp(req),
+  handler: (req, res) => {
+    logSecurityEvent("rate_limit_form_submission", req, {
+      path: req.path,
+      limit: 10,
+      window: "10 minutes",
+      ip: getClientIp(req),
+    }, "warning");
+    res.status(429).json({ error: "Too many form submissions, please try again later." });
+  },
+});
+
+export const contactFormLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many contact requests, please try again later." },
+  keyGenerator: (req) => getClientIp(req),
+  handler: (req, res) => {
+    logSecurityEvent("rate_limit_contact_form", req, {
+      path: req.path,
+      limit: 5,
+      window: "10 minutes",
+      ip: getClientIp(req),
+    }, "warning");
+    res.status(429).json({ error: "Too many contact requests, please try again later." });
+  },
+});
+
+export async function verifyTurnstileToken(token: string, ip: string): Promise<{ success: boolean; error?: string }> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    return { success: true };
+  }
+
+  if (!token) {
+    return { success: false, error: "Missing verification token" };
+  }
+
+  try {
+    const formData = new URLSearchParams();
+    formData.append("secret", secret);
+    formData.append("response", token);
+    formData.append("remoteip", ip);
+
+    const resp = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData.toString(),
+    });
+
+    const data = await resp.json() as { success: boolean; "error-codes"?: string[] };
+    if (!data.success) {
+      return { success: false, error: `Turnstile verification failed: ${(data["error-codes"] || []).join(", ")}` };
+    }
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Verification service unavailable" };
+  }
+}
+
 export function setupSecurityMiddleware(app: Express): void {
+  app.set("trust proxy", 1);
+
+  app.use(scannerTrapMiddleware);
+
+  const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY || "";
+  const cspScriptSrc: string[] = ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
+  const cspConnectSrc: string[] = ["'self'", "https:", "wss:"];
+  const cspFrameSrc: string[] = ["'none'"];
+
+  if (turnstileSiteKey) {
+    cspScriptSrc.push("https://challenges.cloudflare.com");
+    cspConnectSrc.push("https://challenges.cloudflare.com");
+    cspFrameSrc.push("https://challenges.cloudflare.com");
+  }
+
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        scriptSrc: cspScriptSrc,
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "https:", "wss:"],
-        frameSrc: ["'none'"],
+        connectSrc: cspConnectSrc,
+        frameSrc: cspFrameSrc,
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -38,7 +188,7 @@ export function setupSecurityMiddleware(app: Express): void {
     xXssProtection: true,
   }));
 
-  const allowedOrigins = [
+  const allowedOrigins: (RegExp | string)[] = [
     /\.replit\.dev$/,
     /\.repl\.co$/,
     /\.replit\.app$/,
@@ -46,10 +196,17 @@ export function setupSecurityMiddleware(app: Express): void {
     /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
   ];
 
+  if (process.env.APP_DOMAIN) {
+    const domain = process.env.APP_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    allowedOrigins.push(new RegExp(`^https?://(www\\.)?${domain.replace(/\./g, "\\.")}$`));
+  }
+
   app.use(cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.some((pattern) => pattern.test(origin))) {
+      if (allowedOrigins.some((pattern) =>
+        typeof pattern === "string" ? pattern === origin : pattern.test(origin)
+      )) {
         return callback(null, true);
       }
       callback(new Error("Not allowed by CORS"));

@@ -38,6 +38,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Role-Based Access Control (RBAC):** A three-tier role system (admin, member, viewer) is implemented, granting route-level permissions. The first registered user becomes an admin, with subsequent users defaulting to "member."
 - **Data Storage:** PostgreSQL with Drizzle ORM for relational data, and an in-memory store (MemStorage) for non-authentication related temporary data. Sessions are managed using connect-pg-simple in PostgreSQL.
 - **API Design:** A RESTful JSON API with a modular route architecture using Express.
+- **Cloudflare Security Hardening:** Comprehensive security layer designed for Cloudflare + Replit deployment. Features: 40+ scanner tripwire traps (blocks /wp-admin, /.env, /.git, /phpmyadmin, etc.), Cloudflare Turnstile server-side verification on public form submissions (requires TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY env vars), dedicated form rate limiters (10/10min for forms, 5/10min for contact), trust proxy enabled for Cloudflare IP forwarding, custom domain CORS support (via APP_DOMAIN env var), and CSP directives updated for Turnstile widget. Security telemetry via /api/security/threat-summary endpoint with IP analytics, scanned path tracking, and Cloudflare integration status. Security Dashboard "Threat Intel" tab shows real-time threat intelligence. Scanner traps and rate limits log to security_events table for analysis.
 
 ## External Dependencies
 - **Replit Auth:** For multi-user authentication (Google, GitHub, Apple, email login).

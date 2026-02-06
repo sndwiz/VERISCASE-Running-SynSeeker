@@ -4,6 +4,78 @@ import { getSessionInfo } from "../security/session";
 import { getClientIp } from "../security/audit";
 
 export function registerSecurityRoutes(app: Express): void {
+  app.get("/api/security/threat-summary", async (_req, res) => {
+    try {
+      const [allEvents, scannerEvents, rateLimitEvents, turnstileEvents] = await Promise.all([
+        storage.getSecurityEvents({ limit: 500 }),
+        storage.getSecurityEvents({ eventType: "scanner_tripwire", limit: 200 }),
+        storage.getSecurityEvents({ eventType: "rate_limit_exceeded", limit: 200 }),
+        storage.getSecurityEvents({ eventType: "turnstile_failed", limit: 200 }),
+      ]);
+
+      const formRateLimitEvents = allEvents.filter(
+        (e) => e.eventType === "rate_limit_form_submission" || e.eventType === "rate_limit_contact_form"
+      );
+
+      const now = new Date();
+      const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const eventsLast24h = allEvents.filter((e) => e.createdAt && new Date(e.createdAt) >= last24h);
+      const eventsLast7d = allEvents.filter((e) => e.createdAt && new Date(e.createdAt) >= last7d);
+
+      const uniqueIPs = new Set(allEvents.map((e) => e.ipAddress).filter(Boolean));
+      const topIPs: Record<string, number> = {};
+      allEvents.forEach((e) => {
+        if (e.ipAddress) {
+          topIPs[e.ipAddress] = (topIPs[e.ipAddress] || 0) + 1;
+        }
+      });
+      const sortedIPs = Object.entries(topIPs)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([ip, count]) => ({ ip, count }));
+
+      const topPaths: Record<string, number> = {};
+      scannerEvents.forEach((e) => {
+        const details = e.details as Record<string, any>;
+        const path = details?.path || "unknown";
+        topPaths[path] = (topPaths[path] || 0) + 1;
+      });
+      const sortedPaths = Object.entries(topPaths)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 15)
+        .map(([path, count]) => ({ path, count }));
+
+      res.json({
+        summary: {
+          totalEvents: allEvents.length,
+          eventsLast24h: eventsLast24h.length,
+          eventsLast7d: eventsLast7d.length,
+          uniqueAttackerIPs: uniqueIPs.size,
+          unresolvedEvents: allEvents.filter((e) => !e.resolved).length,
+        },
+        breakdown: {
+          scannerTrips: scannerEvents.length,
+          rateLimitHits: rateLimitEvents.length,
+          formRateLimits: formRateLimitEvents.length,
+          turnstileFailures: turnstileEvents.length,
+        },
+        topOffendingIPs: sortedIPs,
+        topScannedPaths: sortedPaths,
+        recentEvents: allEvents.slice(0, 20),
+        cloudflareIntegration: {
+          turnstileEnabled: !!process.env.TURNSTILE_SECRET_KEY,
+          customDomainConfigured: !!process.env.APP_DOMAIN,
+          trustProxyEnabled: true,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to fetch threat summary:", error);
+      res.status(500).json({ error: "Failed to fetch threat summary" });
+    }
+  });
+
   app.get("/api/security/audit-logs", async (req, res) => {
     try {
       const { userId, action, resourceType, limit, offset } = req.query;
@@ -92,6 +164,12 @@ export function registerSecurityRoutes(app: Express): void {
         inputValidation: true,
         ssrfProtection: true,
         evidenceChainOfCustody: true,
+        scannerTripwires: true,
+        cloudflareProxy: true,
+        turnstileVerification: !!process.env.TURNSTILE_SECRET_KEY,
+        formRateLimiting: true,
+        contactFormRateLimiting: true,
+        customDomainCors: !!process.env.APP_DOMAIN,
       };
 
       res.json({

@@ -36,6 +36,9 @@ import {
   Fingerprint,
   Network,
   Gauge,
+  Crosshair,
+  Zap,
+  Ban,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -138,6 +141,32 @@ export default function SecurityDashboardPage() {
     queryKey: ["/api/security/session-info"],
   });
 
+  const { data: threatSummary, isLoading: threatLoading } = useQuery<{
+    summary: {
+      totalEvents: number;
+      eventsLast24h: number;
+      eventsLast7d: number;
+      uniqueAttackerIPs: number;
+      unresolvedEvents: number;
+    };
+    breakdown: {
+      scannerTrips: number;
+      rateLimitHits: number;
+      formRateLimits: number;
+      turnstileFailures: number;
+    };
+    topOffendingIPs: Array<{ ip: string; count: number }>;
+    topScannedPaths: Array<{ path: string; count: number }>;
+    recentEvents: any[];
+    cloudflareIntegration: {
+      turnstileEnabled: boolean;
+      customDomainConfigured: boolean;
+      trustProxyEnabled: boolean;
+    };
+  }>({
+    queryKey: ["/api/security/threat-summary"],
+  });
+
   const resolveEventMutation = useMutation({
     mutationFn: async (eventId: string) => {
       await apiRequest("PATCH", `/api/security/events/${eventId}/resolve`);
@@ -161,6 +190,18 @@ export default function SecurityDashboardPage() {
         { name: "Rate Limiting", key: "rateLimiting", description: "Global API rate limits + stricter auth limits" },
         { name: "CORS Protection", key: "corsProtection", description: "Origin whitelist for cross-origin requests" },
         { name: "SSRF Protection", key: "ssrfProtection", description: "Gateway URL validation for external connections" },
+        { name: "Cloudflare Proxy Trust", key: "cloudflareProxy", description: "Correctly identifies client IPs behind Cloudflare" },
+        { name: "Custom Domain CORS", key: "customDomainCors", description: "CORS support for your custom domain via APP_DOMAIN" },
+      ],
+    },
+    {
+      title: "Threat Protection",
+      icon: Crosshair,
+      items: [
+        { name: "Scanner Tripwires", key: "scannerTripwires", description: "Blocks probes to /wp-admin, /.env, /phpmyadmin, /.git, and 40+ trap paths" },
+        { name: "Cloudflare Turnstile", key: "turnstileVerification", description: "Bot verification on public form submissions" },
+        { name: "Form Rate Limiting", key: "formRateLimiting", description: "10 form submissions per 10 min per IP" },
+        { name: "Contact Form Rate Limiting", key: "contactFormRateLimiting", description: "5 contact requests per 10 min per IP" },
       ],
     },
     {
@@ -293,6 +334,10 @@ export default function SecurityDashboardPage() {
               <TabsTrigger value="session" data-testid="tab-session">
                 <Network className="h-4 w-4 mr-1" />
                 Session Info
+              </TabsTrigger>
+              <TabsTrigger value="threats" data-testid="tab-threats">
+                <Crosshair className="h-4 w-4 mr-1" />
+                Threat Intel
               </TabsTrigger>
             </TabsList>
 
@@ -596,6 +641,10 @@ export default function SecurityDashboardPage() {
                       { label: "CORS origin whitelist", status: true, note: "Only authorized domains allowed" },
                       { label: "Evidence chain of custody", status: true, note: "SHA-256 hash verification" },
                       { label: "Clickjacking protection", status: true, note: "X-Frame-Options: DENY" },
+                      { label: "Scanner tripwire traps", status: true, note: "40+ known attack paths blocked instantly" },
+                      { label: "Cloudflare proxy trust", status: true, note: "Real client IP extraction through CDN" },
+                      { label: "Form submission rate limiting", status: true, note: "10 submissions per 10 min per IP" },
+                      { label: "Bot verification (Turnstile)", status: true, note: "Cloudflare Turnstile on public forms" },
                     ].map((item) => (
                       <div key={item.label} className="flex items-center gap-3">
                         <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
@@ -608,6 +657,270 @@ export default function SecurityDashboardPage() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="threats" className="space-y-4 mt-4">
+              {threatLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Scanner Blocks</p>
+                            <p className="text-2xl font-bold" data-testid="text-scanner-count">
+                              {threatSummary?.breakdown.scannerTrips ?? 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Probes blocked</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                            <Ban className="h-5 w-5 text-red-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Rate Limit Hits</p>
+                            <p className="text-2xl font-bold" data-testid="text-ratelimit-count">
+                              {threatSummary?.breakdown.rateLimitHits ?? 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Requests throttled</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                            <Zap className="h-5 w-5 text-orange-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Events (24h)</p>
+                            <p className="text-2xl font-bold" data-testid="text-events-24h">
+                              {threatSummary?.summary.eventsLast24h ?? 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Last 24 hours</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Unique IPs</p>
+                            <p className="text-2xl font-bold" data-testid="text-unique-ips">
+                              {threatSummary?.summary.uniqueAttackerIPs ?? 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Distinct sources</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                            <Globe className="h-5 w-5 text-purple-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Crosshair className="h-4 w-4" />
+                        Cloudflare Integration Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-3">
+                          {threatSummary?.cloudflareIntegration.turnstileEnabled ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">Turnstile Verification</p>
+                            <p className="text-xs text-muted-foreground">
+                              {threatSummary?.cloudflareIntegration.turnstileEnabled
+                                ? "Active - bot verification on forms"
+                                : "Not configured - set TURNSTILE_SECRET_KEY"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {threatSummary?.cloudflareIntegration.customDomainConfigured ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">Custom Domain</p>
+                            <p className="text-xs text-muted-foreground">
+                              {threatSummary?.cloudflareIntegration.customDomainConfigured
+                                ? "Configured via APP_DOMAIN"
+                                : "Not configured - set APP_DOMAIN"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium">Proxy Trust</p>
+                            <p className="text-xs text-muted-foreground">Active - Cloudflare IP forwarding trusted</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Network className="h-4 w-4" />
+                          Top Offending IPs
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(threatSummary?.topOffendingIPs || []).length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <ShieldCheck className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No threats detected yet</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {(threatSummary?.topOffendingIPs || []).map((entry, idx) => (
+                              <div key={entry.ip} className="flex items-center justify-between gap-3 p-2 rounded-md border" data-testid={`ip-entry-${idx}`}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}.</span>
+                                  <span className="text-sm font-mono">{entry.ip}</span>
+                                </div>
+                                <Badge variant="secondary">{entry.count} events</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          Top Scanned Paths
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(threatSummary?.topScannedPaths || []).length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <ShieldCheck className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No scanner probes detected</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {(threatSummary?.topScannedPaths || []).map((entry, idx) => (
+                              <div key={entry.path} className="flex items-center justify-between gap-3 p-2 rounded-md border" data-testid={`path-entry-${idx}`}>
+                                <span className="text-sm font-mono truncate">{entry.path}</span>
+                                <Badge variant="destructive">{entry.count} hits</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Activity className="h-4 w-4" />
+                          Recent Threat Events
+                        </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/security/threat-summary"] })}
+                          data-testid="button-refresh-threats"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {(threatSummary?.recentEvents || []).length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <ShieldCheck className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No recent threat activity</p>
+                          <p className="text-xs">Scanner blocks, rate limits, and verification failures will appear here</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {(threatSummary?.recentEvents || []).map((event: any) => {
+                            const eventTypeIcons: Record<string, typeof Shield> = {
+                              scanner_tripwire: Ban,
+                              rate_limit_exceeded: Zap,
+                              rate_limit_form_submission: Zap,
+                              rate_limit_contact_form: Zap,
+                              turnstile_failed: ShieldAlert,
+                            };
+                            const EventIcon = eventTypeIcons[event.eventType] || ShieldAlert;
+                            return (
+                              <div
+                                key={event.id}
+                                className="flex items-start gap-3 p-3 rounded-md border"
+                                data-testid={`threat-event-${event.id}`}
+                              >
+                                <div className={`p-1.5 rounded-md ${SEVERITY_COLORS[event.severity] || SEVERITY_COLORS.warning}`}>
+                                  <EventIcon className="h-3 w-3" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium">{event.eventType.replace(/_/g, " ")}</span>
+                                    <Badge variant={event.resolved ? "secondary" : "destructive"} className="text-xs">
+                                      {event.resolved ? "Resolved" : "Active"}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                                    <span className="font-mono">{event.ipAddress || "Unknown"}</span>
+                                    <span>{formatTimeAgo(event.createdAt)}</span>
+                                    {event.details?.path && (
+                                      <span className="font-mono">{(event.details as any).path}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!event.resolved && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => resolveEventMutation.mutate(event.id)}
+                                    disabled={resolveEventMutation.isPending}
+                                  >
+                                    Resolve
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </div>

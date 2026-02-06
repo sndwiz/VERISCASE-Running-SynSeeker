@@ -12,6 +12,8 @@ import {
   utahBilingualNotice,
 } from "@shared/schema";
 import Anthropic from "@anthropic-ai/sdk";
+import { formSubmissionLimiter, verifyTurnstileToken } from "../security/middleware";
+import { getClientIp, logSecurityEvent } from "../security/audit";
 
 const router = Router();
 
@@ -483,7 +485,7 @@ router.get("/forms/:id/submissions", isAuthenticated, async (req: Request, res: 
   }
 });
 
-router.post("/forms/:id/submit", async (req: Request, res: Response) => {
+router.post("/forms/:id/submit", formSubmissionLimiter, async (req: Request, res: Response) => {
   try {
     const form = await storage.getClientForm(req.params.id as string);
     if (!form) {
@@ -493,8 +495,21 @@ router.post("/forms/:id/submit", async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Form is not public" });
     }
 
+    const { turnstileToken, ...formData } = req.body || {};
+    const clientIp = getClientIp(req);
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken || "", clientIp);
+    if (!turnstileResult.success) {
+      logSecurityEvent("turnstile_failed", req, {
+        formId: req.params.id,
+        ip: clientIp,
+        error: turnstileResult.error,
+      }, "warning");
+      return res.status(403).json({ error: "Verification failed. Please try again." });
+    }
+
     const parsed = insertClientFormSubmissionSchema.safeParse({
-      ...req.body,
+      ...formData,
       formId: req.params.id,
     });
     if (!parsed.success) {
