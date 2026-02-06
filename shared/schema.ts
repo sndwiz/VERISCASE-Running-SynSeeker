@@ -1572,6 +1572,7 @@ export type DocumentCategory =
   | "family-law"
   | "criminal"
   | "civil"
+  | "torts"
   | "probate"
   | "real-estate"
   | "business"

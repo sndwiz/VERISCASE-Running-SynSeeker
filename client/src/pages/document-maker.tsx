@@ -39,6 +39,7 @@ const TEMPLATE_CATEGORIES = [
   { value: "motions", label: "Motions" },
   { value: "pleadings", label: "Pleadings" },
   { value: "discovery", label: "Discovery" },
+  { value: "torts", label: "Torts" },
   { value: "court-filings", label: "Court Filings" },
   { value: "client-forms", label: "Client Forms" },
   { value: "correspondence", label: "Correspondence" },

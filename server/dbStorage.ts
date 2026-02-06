@@ -2848,11 +2848,11 @@ FIRST CAUSE OF ACTION: NEGLIGENCE
 14. As a direct and proximate result of Defendant's negligence, Plaintiff suffered:
     a. Bodily injuries including: {{injuries}}
     b. Past and future pain and suffering;
-    c. Past medical expenses in the amount of ${{pastMedical}};
-    d. Future medical expenses estimated at ${{futureMedical}};
-    e. Lost wages in the amount of ${{lostWages}};
+    c. Past medical expenses in the amount of \${{pastMedical}};
+    d. Future medical expenses estimated at \${{futureMedical}};
+    e. Lost wages in the amount of \${{lostWages}};
     f. Loss of future earning capacity;
-    g. Property damage to Plaintiff's vehicle in the amount of ${{propertyDamage}};
+    g. Property damage to Plaintiff's vehicle in the amount of \${{propertyDamage}};
     h. Emotional distress;
     i. Loss of enjoyment of life.
 
@@ -2966,8 +2966,8 @@ FIRST CAUSE OF ACTION: NEGLIGENCE (PREMISES LIABILITY)
 13. As a direct and proximate result of Defendant's negligence, Plaintiff suffered:
     a. Physical injuries including: {{injuries}}
     b. Pain and suffering;
-    c. Medical expenses: ${{medicalExpenses}};
-    d. Lost wages: ${{lostWages}};
+    c. Medical expenses: \${{medicalExpenses}};
+    d. Lost wages: \${{lostWages}};
     e. Emotional distress;
     f. Permanent impairment and disfigurement;
     g. Loss of enjoyment of life.
@@ -3080,8 +3080,8 @@ FIRST CAUSE OF ACTION: WRONGFUL DEATH (Utah Code § 78B-3-106)
     a. Loss of financial support Decedent would have provided;
     b. Loss of love, companionship, comfort, care, and consortium;
     c. Loss of Decedent's services in the home;
-    d. Funeral and burial expenses in the amount of ${{funeralExpenses}};
-    e. Medical expenses incurred prior to death in the amount of ${{medicalExpenses}};
+    d. Funeral and burial expenses in the amount of \${{funeralExpenses}};
+    e. Medical expenses incurred prior to death in the amount of \${{medicalExpenses}};
     f. Pain and suffering of Decedent prior to death;
     g. Loss of inheritance.
 
@@ -3203,8 +3203,8 @@ FIRST CAUSE OF ACTION: MEDICAL MALPRACTICE/PROFESSIONAL NEGLIGENCE
     a. Physical injuries including: {{injuries}}
     b. The need for additional medical treatment;
     c. Pain and suffering;
-    d. Medical expenses of ${{medicalExpenses}};
-    e. Lost wages of ${{lostWages}};
+    d. Medical expenses of \${{medicalExpenses}};
+    e. Lost wages of \${{lostWages}};
     f. Permanent impairment;
     g. Emotional distress.
 
@@ -3366,8 +3366,8 @@ DAMAGES
 
 33. As a result of Defendants' conduct, Plaintiff suffered:
     a. Physical injuries: {{injuries}}
-    b. Medical expenses: ${{medicalExpenses}}
-    c. Lost wages: ${{lostWages}}
+    b. Medical expenses: \${{medicalExpenses}}
+    c. Lost wages: \${{lostWages}}
     d. Pain and suffering
     e. Permanent impairment
     f. Property damage
@@ -3765,13 +3765,13 @@ Our client has incurred the following damages:
 
 Medical Expenses:
 {{medicalExpensesList}}
-TOTAL MEDICAL EXPENSES: ${{totalMedical}}
+TOTAL MEDICAL EXPENSES: \${{totalMedical}}
 
-Lost Wages: ${{lostWages}}
+Lost Wages: \${{lostWages}}
 
 DEMAND
 
-Based on the foregoing, we hereby demand the sum of ${{demandAmount}} in full settlement of all claims arising from this incident.
+Based on the foregoing, we hereby demand the sum of \${{demandAmount}} in full settlement of all claims arising from this incident.
 
 This demand will remain open for {{responseDeadline}} days from the date of this letter. If we do not receive a satisfactory response, we are prepared to pursue all available legal remedies on behalf of our client.
 
