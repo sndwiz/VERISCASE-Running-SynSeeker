@@ -680,6 +680,95 @@ export const insightOutputs = pgTable("insight_outputs", {
   index("IDX_insight_outputs_run_id").on(table.insightRunId),
 ]);
 
+// ============ UPLOAD ORGANIZER: INCOMING FILES ============
+export const incomingFiles = pgTable("incoming_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  matterId: varchar("matter_id"),
+  originalFilename: varchar("original_filename", { length: 500 }).notNull(),
+  currentPath: text("current_path").notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(),
+  subtype: varchar("subtype", { length: 50 }).default("unknown"),
+  sizeBytes: integer("size_bytes").default(0),
+  hashSha256: varchar("hash_sha256", { length: 128 }),
+  mimeType: varchar("mime_type", { length: 100 }),
+  ocrText: text("ocr_text"),
+  ocrConfidence: real("ocr_confidence"),
+  metadataJson: jsonb("metadata_json"),
+  status: varchar("status", { length: 50 }).default("new").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_incoming_files_user_id").on(table.userId),
+  index("IDX_incoming_files_status").on(table.status),
+  index("IDX_incoming_files_uploaded_at").on(table.uploadedAt),
+]);
+
+// ============ UPLOAD ORGANIZER: RUNS ============
+export const organizeRuns = pgTable("organize_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  scope: varchar("scope", { length: 50 }).default("incoming").notNull(),
+  matterId: varchar("matter_id"),
+  daysFilter: integer("days_filter").default(14),
+  totalFiles: integer("total_files").default(0),
+  filesToMove: integer("files_to_move").default(0),
+  filesToKeep: integer("files_to_keep").default(0),
+  filesToTrash: integer("files_to_trash").default(0),
+  executedCount: integer("executed_count").default(0),
+  status: varchar("status", { length: 50 }).default("draft_plan").notNull(),
+  aiProvider: varchar("ai_provider", { length: 50 }),
+  aiModel: varchar("ai_model", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_organize_runs_user_id").on(table.userId),
+  index("IDX_organize_runs_status").on(table.status),
+]);
+
+// ============ UPLOAD ORGANIZER: PLAN ITEMS ============
+export const organizePlanItems = pgTable("organize_plan_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id").notNull().references(() => organizeRuns.id, { onDelete: "cascade" }),
+  incomingFileId: varchar("incoming_file_id").notNull().references(() => incomingFiles.id, { onDelete: "cascade" }),
+  detectedSummary: text("detected_summary"),
+  suggestedFilename: varchar("suggested_filename", { length: 500 }),
+  suggestedFolder: text("suggested_folder"),
+  suggestedAction: varchar("suggested_action", { length: 50 }).default("rename_move").notNull(),
+  confidence: varchar("confidence", { length: 20 }).default("medium"),
+  rationale: text("rationale"),
+  groupLabel: varchar("group_label", { length: 200 }),
+  approvedAction: varchar("approved_action", { length: 50 }),
+  approvedFilename: varchar("approved_filename", { length: 500 }),
+  approvedFolder: text("approved_folder"),
+  executionStatus: varchar("execution_status", { length: 50 }).default("pending").notNull(),
+  executedAt: timestamp("executed_at"),
+  errorMessage: text("error_message"),
+}, (table) => [
+  index("IDX_plan_items_run_id").on(table.runId),
+  index("IDX_plan_items_file_id").on(table.incomingFileId),
+]);
+
+// ============ UPLOAD ORGANIZER: CHANGE LOG ============
+export const fileChangeLog = pgTable("file_change_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  incomingFileId: varchar("incoming_file_id").notNull().references(() => incomingFiles.id, { onDelete: "cascade" }),
+  planItemId: varchar("plan_item_id").references(() => organizePlanItems.id, { onDelete: "set null" }),
+  runId: varchar("run_id").references(() => organizeRuns.id, { onDelete: "set null" }),
+  changedByUserId: varchar("changed_by_user_id").notNull(),
+  action: varchar("action", { length: 50 }).notNull(),
+  oldFilename: varchar("old_filename", { length: 500 }),
+  newFilename: varchar("new_filename", { length: 500 }),
+  oldPath: text("old_path"),
+  newPath: text("new_path"),
+  reversible: boolean("reversible").default(true),
+  reversedAt: timestamp("reversed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_change_log_file_id").on(table.incomingFileId),
+  index("IDX_change_log_run_id").on(table.runId),
+]);
+
 // Type exports
 export type MatterAssetRecord = typeof matterAssets.$inferSelect;
 export type InsertMatterAssetRecord = typeof matterAssets.$inferInsert;
@@ -720,3 +809,11 @@ export type CalendarEventRecord = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEventRecord = typeof calendarEvents.$inferInsert;
 export type ApprovalRequestRecord = typeof approvalRequests.$inferSelect;
 export type InsertApprovalRequestRecord = typeof approvalRequests.$inferInsert;
+export type IncomingFileRecord = typeof incomingFiles.$inferSelect;
+export type InsertIncomingFileRecord = typeof incomingFiles.$inferInsert;
+export type OrganizeRunRecord = typeof organizeRuns.$inferSelect;
+export type InsertOrganizeRunRecord = typeof organizeRuns.$inferInsert;
+export type OrganizePlanItemRecord = typeof organizePlanItems.$inferSelect;
+export type InsertOrganizePlanItemRecord = typeof organizePlanItems.$inferInsert;
+export type FileChangeLogRecord = typeof fileChangeLog.$inferSelect;
+export type InsertFileChangeLogRecord = typeof fileChangeLog.$inferInsert;

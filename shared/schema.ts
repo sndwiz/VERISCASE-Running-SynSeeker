@@ -2195,6 +2195,77 @@ export type InsertSecurityEvent = {
   severity?: string;
 };
 
+// ============ UPLOAD ORGANIZER TYPES ============
+
+export type IncomingFileStatus = "new" | "planned" | "approved" | "executed" | "reverted" | "failed";
+export type OrganizeRunStatus = "draft_plan" | "awaiting_approval" | "approved" | "executing_preview" | "paused" | "complete" | "failed";
+export type OrganizeAction = "rename_move" | "keep" | "trash_candidate";
+export type ConfidenceLevel = "high" | "medium" | "low";
+export type PlanItemExecStatus = "pending" | "approved" | "rejected" | "executed" | "failed" | "reverted";
+
+export const insertIncomingFileSchema = z.object({
+  originalFilename: z.string().min(1),
+  currentPath: z.string().min(1),
+  fileType: z.string().min(1),
+  subtype: z.string().optional().default("unknown"),
+  sizeBytes: z.number().optional().default(0),
+  hashSha256: z.string().optional(),
+  mimeType: z.string().optional(),
+  matterId: z.string().optional(),
+  ocrText: z.string().optional(),
+  ocrConfidence: z.number().optional(),
+  metadataJson: z.any().optional(),
+});
+export type InsertIncomingFile = z.infer<typeof insertIncomingFileSchema>;
+
+export const createOrganizeRunSchema = z.object({
+  scope: z.enum(["incoming", "matter"]).optional().default("incoming"),
+  matterId: z.string().optional(),
+  daysFilter: z.number().optional().default(14),
+});
+export type CreateOrganizeRun = z.infer<typeof createOrganizeRunSchema>;
+
+export const approvePlanSchema = z.object({
+  approvals: z.array(z.object({
+    planItemId: z.string(),
+    action: z.enum(["rename_move", "keep", "trash_candidate"]),
+    filename: z.string().optional(),
+    folder: z.string().optional(),
+  })),
+});
+export type ApprovePlan = z.infer<typeof approvePlanSchema>;
+
+export interface ScanSummary {
+  totalCount: number;
+  dateRangeOldest: string | null;
+  dateRangeNewest: string | null;
+  countsByType: Record<string, number>;
+  countsBySubtype: Record<string, number>;
+  derivedTextCount: number;
+  last14DaysCount: number;
+}
+
+export interface OrganizePlanGroup {
+  label: string;
+  items: Array<{
+    id: string;
+    fileId: string;
+    originalFilename: string;
+    fileType: string;
+    sizeBytes: number;
+    detectedSummary: string;
+    suggestedFilename: string;
+    suggestedFolder: string;
+    suggestedAction: OrganizeAction;
+    confidence: ConfidenceLevel;
+    rationale: string;
+    approvedAction?: OrganizeAction | null;
+    approvedFilename?: string | null;
+    approvedFolder?: string | null;
+    executionStatus: PlanItemExecStatus;
+  }>;
+}
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

@@ -1,0 +1,337 @@
+VERICASE Module: “Recent Upload Organizer” (Inbox Triage + Rename + Route)
+
+Goal
+
+Organize recently uploaded files in VERICASE without manual chaos. The system scans the user’s “New Incoming” area, summarizes what’s there, then proposes a rename + folder routing + delete plan for the last 14 days. It must show the plan first, require approval, then execute a 10-file preview before continuing.
+
+This module follows the same legal-grade rules as Matter Insights: traceable, reversible, auditable.
+
+⸻
+
+Where this lives in the app
+
+Add a new view in the Files area and a shortcut inside each Matter:
+	1.	Global: Files → New Incoming → Organize
+	2.	Matter-specific (optional): Matter → Documents → Incoming → Organize
+
+“New Incoming” is a staging area for uploads that are not yet categorized.
+
+⸻
+
+UX Flow (what the user sees)
+
+Step 1 — Scan Summary (no changes made)
+
+User clicks Scan New Incoming.
+
+Show:
+	•	Total count of files
+	•	Date range (oldest → newest)
+	•	Counts by type:
+	•	screenshots
+	•	PDFs
+	•	docs (doc/docx/txt)
+	•	sheets (xls/xlsx/csv)
+	•	images (png/jpg/heic/webp)
+	•	“OCR outputs” (derived text records if you store them)
+	•	pictures (same as images but tag “photo-like” if detected)
+
+Notes:
+	•	“screenshot” is detected by filename patterns + typical screen resolutions (optional).
+	•	“picture/photo” is detected by EXIF camera metadata or image heuristics (optional).
+	•	OCR is not a filetype; it’s a derived artifact. Show it separately as “derived text available” count.
+
+Step 2 — 14-day Focus List (proposal only)
+
+Then the module automatically filters to files from the last 14 days (based on upload time, not file metadata).
+
+For each file in the 14-day set:
+	•	Identify what it likely shows (1–2 sentences)
+	•	Suggest a descriptive filename (safe, consistent conventions)
+	•	Propose folder destination OR mark “Delete candidate”
+	•	Assign a “confidence” (High/Med/Low)
+	•	Always show a reason for folder choice or delete suggestion
+
+Step 3 — Group Similar Files
+
+Group into sections like:
+	•	“Screenshots: UI / App / Settings”
+	•	“PDFs: Contracts / Legal docs”
+	•	“Images: Photos / Receipts / IDs”
+	•	“Spreadsheets: Billing / Lists”
+	•	“Duplicates / Near-duplicates”
+	•	“Low value / likely deletable”
+
+Step 4 — Show the plan before changes
+
+Display the full proposal as a checklist and summary totals:
+	•	X files to rename+move
+	•	Y files to leave in place
+	•	Z delete candidates
+
+Buttons:
+	•	Approve Plan
+	•	Edit Plan (allow manual override per file)
+	•	Cancel
+
+Step 5 — Execute Preview (10 files max)
+
+After approval:
+	•	Execute only 10 files first as a preview batch:
+	•	Apply rename
+	•	Move to folder
+	•	Apply tags
+	•	Soft-delete (never hard delete in MVP)
+	•	Show results with success/failure per file
+	•	If more than 10 remain, stop and ask before continuing.
+
+⸻
+
+“No surprises” rules (non-negotiable)
+	1.	No automatic deletes. Only “soft delete” to a Trash/Archive folder after explicit approval.
+	2.	Everything is reversible. Store old name, new name, old folder, new folder.
+	3.	Show plan first, then execute preview of 10.
+	4.	Audit trail: who approved, what changed, when, and why.
+
+⸻
+
+File Naming Convention (standardize)
+
+Use a single consistent format:
+
+YYYY-MM-DD__<category>__<short-description>__<source>.<ext>
+
+Examples:
+	•	2026-02-04__screenshot__ios-settings-vpn-toggle__incoming.png
+	•	2026-01-29__pdf__lease-agreement-signed__client-upload.pdf
+	•	2026-02-02__image__receipt-hotel-pool-view__camera.jpg
+
+Rules:
+	•	lowercase
+	•	hyphens not spaces
+	•	remove weird characters
+	•	keep under 80–100 chars
+	•	if uncertain: include unknown category and keep original hint
+
+⸻
+
+Folder Routing Rules (default folder map)
+
+These should align with your “Clio x Monday x CRM” structure.
+
+Global folders (top-level)
+	•	/Incoming (staging)
+	•	/Matters/<matterId>/Documents
+	•	/Matters/<matterId>/Evidence
+	•	/Matters/<matterId>/Client-Provided
+	•	/Operations/Billing
+	•	/Operations/Receipts
+	•	/Operations/Marketing
+	•	/Trash (soft delete)
+	•	/Unsorted (low confidence)
+
+Routing logic (MVP)
+	•	If file is already linked to a Matter → propose matter folder first
+	•	If not linked:
+	•	if it looks like invoice/receipt → /Operations/Receipts
+	•	if it looks like a legal doc/contract → /Unsorted unless a Matter match is found
+	•	if it looks like app screenshot/tech → /Operations/Systems (create if needed) or /Unsorted
+	•	duplicates → keep newest, soft-delete older (but only after approval)
+
+Matter matching (optional v1.5):
+	•	Match against Matter name/client name in filename or extracted text
+	•	If match confidence high → route into that Matter
+	•	Else → /Unsorted with recommendation “link to matter”
+
+⸻
+
+Data Model (minimum)
+
+1) files
+
+Represents uploaded originals.
+Fields:
+	•	id
+	•	owner_user_id
+	•	matter_id (nullable)
+	•	original_filename
+	•	current_filename
+	•	storage_path
+	•	file_type (pdf/image/doc/sheet/other)
+	•	subtype (screenshot/photo/unknown)
+	•	uploaded_at
+	•	created_at
+	•	size_bytes
+	•	hash_sha256
+	•	status (active/trashed)
+	•	metadata_json (width/height/exif/page_count/etc)
+
+2) file_derived_text (optional but recommended)
+
+Fields:
+	•	id
+	•	file_id
+	•	method (extract/ocr)
+	•	text
+	•	confidence
+	•	created_at
+
+3) organize_runs
+
+One “scan + plan + approve + execute” session.
+Fields:
+	•	id
+	•	owner_user_id
+	•	scope (incoming | matter)
+	•	matter_id (nullable)
+	•	scan_started_at
+	•	scan_completed_at
+	•	last14_filter_applied_at
+	•	status (draft_plan | awaiting_approval | approved | executing_preview | paused | complete | failed)
+
+4) organize_plan_items
+
+One per file inside a run.
+Fields:
+	•	id
+	•	organize_run_id
+	•	file_id
+	•	detected_summary (what it shows)
+	•	suggested_filename
+	•	suggested_folder
+	•	suggested_action (rename_move | keep | trash_candidate)
+	•	confidence (high/med/low)
+	•	rationale
+	•	approved_action (nullable until approval)
+	•	approved_filename (nullable)
+	•	approved_folder (nullable)
+
+5) file_change_log
+
+Tracks reversibility.
+Fields:
+	•	id
+	•	file_id
+	•	organize_run_id
+	•	changed_by_user_id
+	•	old_filename
+	•	new_filename
+	•	old_path
+	•	new_path
+	•	action (rename | move | trash)
+	•	created_at
+
+⸻
+
+API Endpoints (minimum)
+
+Scan summary
+	•	GET /api/incoming/scan-summary
+Returns:
+	•	total_count
+	•	date_range_oldest
+	•	date_range_newest
+	•	counts_by_type (pdf/doc/sheet/image/other)
+	•	counts_by_subtype (screenshot/photo)
+	•	derived_text_count (how many have OCR/text)
+
+Create a run + build plan (proposal only)
+	•	POST /api/incoming/organize/run
+Body:
+	•	scope: “incoming”
+	•	days: 14 (fixed default)
+Returns:
+	•	organize_run_id
+
+This endpoint:
+	•	collects files from last 14 days
+	•	creates organize_plan_items
+	•	groups them
+	•	generates suggested name/folder/action
+
+Get plan
+	•	GET /api/organize/:runId/plan
+Returns:
+	•	summary totals
+	•	grouped plan sections
+	•	per-file proposal entries
+
+Approve plan (with optional per-file edits)
+	•	POST /api/organize/:runId/approve
+Body:
+	•	approvals: [{file_id, action, filename, folder}] (allow overrides)
+Sets run status to approved
+
+Execute preview batch (10 files only)
+	•	POST /api/organize/:runId/execute-preview
+Executes up to 10 approved items not yet executed.
+	•	rename/move actions
+	•	trash actions → move to /Trash and mark status=trashed
+Log everything in file_change_log
+Sets status to paused after 10 if more remain.
+
+Continue after preview (explicit check-in)
+	•	POST /api/organize/:runId/continue
+Executes next batch of 10.
+Only allowed if user confirms.
+
+Undo (reversal)
+	•	POST /api/files/:fileId/undo-last-change
+Uses file_change_log to revert last action.
+
+⸻
+
+“Identify what it shows” (how to do it without being dumb)
+
+For each file:
+	•	If image/screenshot:
+	•	Generate a short description using:
+	•	filename hints
+	•	optional lightweight vision captioning step (if available)
+	•	optional OCR on the image to capture visible text (good for screenshots)
+	•	If PDF:
+	•	Extract text if present; otherwise OCR first page
+	•	Use first-page text to classify (“contract”, “invoice”, “letter”, etc.)
+	•	If sheet:
+	•	Read first row/headers and first few lines to classify
+	•	Keep it short, no deep analysis here; this module is triage.
+
+All “identification” outputs should be treated as suggestions and must display confidence.
+
+⸻
+
+Background jobs (required)
+
+Do scanning + plan generation async, because last-14-days could still be many files.
+
+Minimum job runner behavior:
+	•	create run
+	•	enqueue plan build
+	•	update run status/progress
+UI polls status.
+
+⸻
+
+MVP Build Order
+	1.	Scan summary endpoint + UI card
+	2.	Organize run creation + plan generation for last 14 days
+	3.	Plan display grouped + per-file proposal
+	4.	Approve plan (with edits)
+	5.	Execute preview of 10 (rename/move/trash) + logs
+	6.	Continue batches + undo
+
+⸻
+
+Definition of “done”
+
+From New Incoming, user can:
+	•	scan and see totals + date range + type breakdown
+	•	see a grouped plan for last 14 days with file-by-file rename/folder/delete suggestions
+	•	approve it
+	•	apply changes to 10 files as a preview
+	•	confirm to continue
+	•	undo any change
+
+⸻
+
+If you paste this into Replit as the spec, your build agent/dev can implement it without guessing. This module also pairs perfectly with the Matter Insights module: once files are organized into Matters, Insights can run cleaner and faster.

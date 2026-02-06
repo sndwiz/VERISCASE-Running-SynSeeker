@@ -79,6 +79,7 @@ const navigationItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Billing", url: "/billing", icon: DollarSign },
   { title: "Documents", url: "/documents", icon: FileText },
+  { title: "Upload Organizer", url: "/upload-organizer", icon: FolderOpen },
   { title: "Document Builder", url: "/document-maker", icon: FilePlus2 },
   { title: "Legal AI", url: "/legal-ai", icon: Wand2 },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },

@@ -48,6 +48,7 @@ import MatterBillingPage from "@/pages/matter-billing";
 import LegalAIPage from "@/pages/legal-ai";
 import IntakeFormsPage from "@/pages/intake-forms";
 import CommunicationsPage from "@/pages/communications";
+import UploadOrganizerPage from "@/pages/upload-organizer";
 
 import type { Board } from "@shared/schema";
 
@@ -81,6 +82,7 @@ function Router() {
       <Route path="/communications" component={CommunicationsPage} />
       <Route path="/security" component={SecurityDashboardPage} />
       <Route path="/intake-forms" component={IntakeFormsPage} />
+      <Route path="/upload-organizer" component={UploadOrganizerPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

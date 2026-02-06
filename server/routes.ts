@@ -102,6 +102,9 @@ export async function registerRoutes(
   // Vibe Code app builder - member or above
   app.use("/api/vibe", isAuthenticated, viewerReadOnly);
   
+  // Upload organizer - member or above
+  app.use("/api/organizer", isAuthenticated, requireMemberOrAbove);
+
   // Security dashboard - admin only
   app.use("/api/security", isAuthenticated, requireAdmin);
   

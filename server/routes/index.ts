@@ -22,6 +22,7 @@ import { registerVibeCodeRoutes } from "./vibe-code";
 import { registerSecurityRoutes } from "./security";
 import { registerBillingRoutes } from "./billing";
 import insightsRouter from "./insights";
+import organizerRouter from "./organizer";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -30,6 +31,8 @@ export function registerAllRoutes(app: Express): void {
   app.use('/api/documents', documentsRouter);
   // SynSeekr server gateway
   app.use('/api/synseekr', synseekrRouter);
+  // Upload Organizer
+  app.use('/api/organizer', organizerRouter);
   registerBoardRoutes(app);
   registerGroupRoutes(app);
   registerTaskRoutes(app);
