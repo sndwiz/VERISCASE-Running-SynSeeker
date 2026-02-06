@@ -188,6 +188,7 @@ interface TaskGroupProps {
   onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
   onColumnUpdateDescription?: (columnId: string, description: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
+  onOpenColumnCenter?: () => void;
 }
 
 export function TaskGroup({
@@ -214,6 +215,7 @@ export function TaskGroup({
   onColumnChangeType,
   onColumnUpdateDescription,
   currentSort,
+  onOpenColumnCenter,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
@@ -314,7 +316,21 @@ export function TaskGroup({
                   />
                 </div>
               ))}
-              <div className="w-8 flex-shrink-0" />
+              {onOpenColumnCenter && (
+                <div className="flex-shrink-0 w-10 flex items-center justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground"
+                    onClick={onOpenColumnCenter}
+                    data-testid="button-add-column-inline"
+                    title="Add column"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {!onOpenColumnCenter && <div className="w-8 flex-shrink-0" />}
             </div>
 
             {/* Task Rows */}

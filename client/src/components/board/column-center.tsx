@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, X, Sparkles, Users, Zap, LayoutGrid, Hash, Type, Calendar, Flag, CheckSquare, Clock, Paperclip, BarChart3, TrendingUp, CalendarRange, Star, ThumbsUp, Mail, Phone, Link, MapPin, Globe, Tag, ChevronDown, Palette, Timer, GitBranch, AlertCircle, AlignLeft, Layers, ListOrdered, RefreshCw, Calculator, FileText, Languages, FolderTree, Wand2, Scan, Smile } from "lucide-react";
+import { Search, X, Sparkles, Users, Zap, LayoutGrid, Hash, Type, Calendar, Flag, CheckSquare, Clock, Paperclip, BarChart3, TrendingUp, CalendarRange, Star, ThumbsUp, Mail, Phone, Link, MapPin, Globe, Tag, ChevronDown, Palette, Timer, GitBranch, AlignLeft, Layers, ListOrdered, RefreshCw, Calculator, FileText, Languages, FolderTree, Wand2, Scan, Smile, Plus, CheckCircle, MousePointerClick } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -34,13 +35,14 @@ const COLUMN_ICON_MAP: Record<string, any> = {
   "star": Star,
   "link": Link,
   "thumbs-up": ThumbsUp,
+  "check-circle": CheckCircle,
   "map-pin": MapPin,
   "globe": Globe,
   "user-plus": Users,
   "refresh-cw": RefreshCw,
   "list-ordered": ListOrdered,
   "bar-chart-2": BarChart3,
-  "square": LayoutGrid,
+  "square": MousePointerClick,
   "git-branch": GitBranch,
   "calendar-days": Calendar,
   "function-square": Calculator,
@@ -62,122 +64,268 @@ interface ColumnTypeOption {
   label: string;
   icon: string;
   category: ColumnCategory;
-  description?: string;
-  color?: string; // Individual column color
+  description: string;
 }
 
-// Individual column colors matching Monday.com style
 const COLUMN_COLORS: Record<string, string> = {
-  "status": "bg-emerald-500",
-  "priority": "bg-red-500",
-  "label": "bg-green-500",
-  "person": "bg-yellow-400",
-  "date": "bg-green-600",
-  "timeline": "bg-green-500",
-  "text": "bg-green-500",
-  "long-text": "bg-pink-500",
-  "number": "bg-yellow-500",
-  "numbers": "bg-yellow-500",
-  "files": "bg-blue-500",
-  "time": "bg-blue-500",
-  "progress": "bg-blue-600",
-  "checkbox": "bg-purple-500",
-  "link": "bg-teal-500",
-  "world-clock": "bg-green-400",
-  "item-id": "bg-blue-500",
-  "phone": "bg-blue-400",
-  "location": "bg-pink-500",
-  "tags": "bg-purple-500",
-  "vote": "bg-green-500",
-  "approval": "bg-emerald-500",
-  "rating": "bg-purple-500",
-  "dropdown": "bg-teal-500",
-  "email": "bg-amber-500",
-  "creation-log": "bg-green-500",
-  "last-updated": "bg-purple-500",
-  "auto-number": "bg-purple-500",
-  "progress-tracking": "bg-blue-600",
-  "button": "bg-purple-500",
-  "dependency": "bg-purple-500",
-  "week": "bg-yellow-500",
-  "formula": "bg-blue-500",
-  "country": "bg-green-400",
-  "color-picker": "bg-blue-500",
-  "time-tracking": "bg-amber-500",
-  "hour": "bg-blue-400",
-  "ai-improve": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-write": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-extract": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-summarize": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-translate": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-sentiment": "bg-gradient-to-br from-purple-500 to-pink-500",
-  "ai-categorize": "bg-gradient-to-br from-purple-500 to-pink-500",
+  "status": "#22c55e",
+  "priority": "#eab308",
+  "label": "#a855f7",
+  "person": "#3b82f6",
+  "date": "#22c55e",
+  "timeline": "#a855f7",
+  "text": "#f43f5e",
+  "long-text": "#ec4899",
+  "number": "#eab308",
+  "numbers": "#eab308",
+  "files": "#06b6d4",
+  "time": "#3b82f6",
+  "progress": "#6366f1",
+  "checkbox": "#eab308",
+  "link": "#06b6d4",
+  "world-clock": "#22c55e",
+  "item-id": "#3b82f6",
+  "phone": "#6366f1",
+  "location": "#f43f5e",
+  "tags": "#a855f7",
+  "vote": "#22c55e",
+  "approval": "#22c55e",
+  "rating": "#6366f1",
+  "dropdown": "#22c55e",
+  "email": "#eab308",
+  "creation-log": "#6366f1",
+  "last-updated": "#f43f5e",
+  "auto-number": "#eab308",
+  "progress-tracking": "#a855f7",
+  "button": "#6366f1",
+  "dependency": "#6366f1",
+  "week": "#eab308",
+  "formula": "#6366f1",
+  "country": "#22c55e",
+  "color-picker": "#3b82f6",
+  "time-tracking": "#eab308",
+  "hour": "#eab308",
+  "date-status": "#22c55e",
+  "timeline-status": "#22c55e",
+  "timeline-numeric": "#a855f7",
+  "ai-improve": "#gradient",
+  "ai-write": "#gradient",
+  "ai-extract": "#gradient",
+  "ai-summarize": "#gradient",
+  "ai-translate": "#gradient",
+  "ai-sentiment": "#gradient",
+  "ai-categorize": "#gradient",
 };
 
 const COLUMN_OPTIONS: ColumnTypeOption[] = [
-  // Essentials
-  { type: "text", label: "Text", icon: "type", category: "essentials", description: "Add textual content" },
-  { type: "long-text", label: "Long Text", icon: "align-left", category: "essentials", description: "Add longer text with formatting" },
-  { type: "status", label: "Status", icon: "circle-dot", category: "essentials", description: "Track progress with statuses" },
-  { type: "date", label: "Date", icon: "calendar", category: "essentials", description: "Set and track dates" },
-  { type: "person", label: "People", icon: "users", category: "essentials", description: "Assign team members" },
-  { type: "progress", label: "Progress", icon: "trending-up", category: "essentials", description: "Track completion percentage" },
-  { type: "timeline", label: "Timeline", icon: "calendar-range", category: "essentials", description: "Set date ranges" },
-  { type: "files", label: "Files", icon: "paperclip", category: "essentials", description: "Upload and manage files" },
-  { type: "time", label: "Time", icon: "clock", category: "essentials", description: "Track time spent" },
-  { type: "priority", label: "Priority", icon: "flag", category: "essentials", description: "Set priority levels" },
-  { type: "number", label: "Numbers", icon: "hash", category: "essentials", description: "Add numeric values" },
-  { type: "label", label: "Label", icon: "tag", category: "essentials", description: "Categorize with labels" },
-  // More
-  { type: "tags", label: "Tags", icon: "tags", category: "more", description: "Add multiple tags" },
-  { type: "checkbox", label: "Checkbox", icon: "check-square", category: "more", description: "Simple yes/no toggle" },
-  { type: "dropdown", label: "Dropdown", icon: "chevron-down", category: "more", description: "Select from options" },
-  { type: "email", label: "Email", icon: "mail", category: "more", description: "Store email addresses" },
-  { type: "phone", label: "Phone", icon: "phone", category: "more", description: "Store phone numbers" },
-  { type: "rating", label: "Rating", icon: "star", category: "more", description: "Rate with stars" },
-  { type: "link", label: "Link", icon: "link", category: "more", description: "Add URLs" },
-  { type: "vote", label: "Vote", icon: "thumbs-up", category: "more", description: "Collect team votes" },
-  { type: "approval", label: "Approval", icon: "check-square", category: "more", description: "Track approval status for legal review" },
-  { type: "location", label: "Location", icon: "map-pin", category: "more", description: "Store locations" },
-  { type: "world-clock", label: "World Clock", icon: "globe", category: "more", description: "Display time zones" },
-  { type: "item-id", label: "Item ID", icon: "hash", category: "more", description: "Unique identifier" },
-  // Team Power-Ups
-  { type: "creation-log", label: "Creation Log", icon: "user-plus", category: "team-power-up", description: "Track item creator" },
-  { type: "last-updated", label: "Last Updated", icon: "refresh-cw", category: "team-power-up", description: "Track modifications" },
-  { type: "auto-number", label: "Auto Number", icon: "list-ordered", category: "team-power-up", description: "Sequential numbering" },
-  { type: "progress-tracking", label: "Progress Tracking", icon: "bar-chart-2", category: "team-power-up", description: "Visual progress" },
-  // Board Power-Ups
-  { type: "button", label: "Button", icon: "square", category: "board-power-up", description: "Trigger actions" },
-  { type: "dependency", label: "Dependency", icon: "git-branch", category: "board-power-up", description: "Link items" },
-  { type: "week", label: "Week", icon: "calendar-days", category: "board-power-up", description: "Week scheduling" },
-  { type: "formula", label: "Formula", icon: "function-square", category: "board-power-up", description: "Calculate values" },
-  { type: "country", label: "Country", icon: "flag", category: "board-power-up", description: "Select countries" },
-  { type: "color-picker", label: "Color Picker", icon: "palette", category: "board-power-up", description: "Choose colors" },
-  { type: "time-tracking", label: "Time Tracking", icon: "timer", category: "board-power-up", description: "Log time" },
-  { type: "hour", label: "Hour", icon: "clock-4", category: "board-power-up", description: "Time of day" },
-  // AI-Powered
-  { type: "ai-improve", label: "Improve Text", icon: "sparkles", category: "ai-powered", description: "AI text improvement" },
-  { type: "ai-write", label: "Write with AI", icon: "wand-2", category: "ai-powered", description: "AI-generated content" },
-  { type: "ai-extract", label: "Extract Info", icon: "scan", category: "ai-powered", description: "AI information extraction" },
-  { type: "ai-summarize", label: "Summarize", icon: "file-text", category: "ai-powered", description: "AI-generated summaries" },
-  { type: "ai-translate", label: "Translate", icon: "languages", category: "ai-powered", description: "AI translation" },
-  { type: "ai-sentiment", label: "Detect Sentiment", icon: "smile", category: "ai-powered", description: "AI sentiment analysis" },
-  { type: "ai-categorize", label: "Categorize", icon: "folder-tree", category: "ai-powered", description: "AI categorization" },
+  { type: "status", label: "Status", icon: "circle-dot", category: "essentials", description: "Get an instant overview of where things stand" },
+  { type: "priority", label: "Priority", icon: "flag", category: "essentials", description: "Prioritize tasks and focus on what's most important" },
+  { type: "label", label: "Label", icon: "tag", category: "essentials", description: "Categorize and triage work with custom labels" },
+  { type: "person", label: "People", icon: "users", category: "essentials", description: "Assign people to improve team work" },
+  { type: "text", label: "Text", icon: "type", category: "essentials", description: "Add textual information e.g. addresses, names or keywords" },
+  { type: "long-text", label: "Long text", icon: "align-left", category: "essentials", description: "Add large amounts of text without changing column width" },
+  { type: "timeline", label: "Timeline", icon: "calendar-range", category: "essentials", description: "Visualize your item's duration, with a start and end date" },
+  { type: "date", label: "Date", icon: "calendar", category: "essentials", description: "Add dates like deadlines to ensure you never drop the ball" },
+  { type: "number", label: "Numbers", icon: "hash", category: "essentials", description: "Add revenue, costs, time estimations and more" },
+  { type: "files", label: "Files", icon: "paperclip", category: "essentials", description: "Add files & docs to your item" },
+  { type: "progress", label: "Progress tracking", icon: "trending-up", category: "essentials", description: "Show progress by combining status columns in a battery" },
+  { type: "time", label: "Time", icon: "clock", category: "essentials", description: "Track time spent on tasks" },
+
+  { type: "tags", label: "Tags", icon: "tags", category: "more", description: "Add tags to categorize items across multiple boards" },
+  { type: "vote", label: "Vote", icon: "thumbs-up", category: "more", description: "Vote on an item e.g. pick a new feature or a favorite lunch place" },
+  { type: "rating", label: "Rating", icon: "star", category: "more", description: "Rate or rank anything visually" },
+  { type: "creation-log", label: "Creation log", icon: "user-plus", category: "more", description: "Add the item's creator and creation date automatically" },
+  { type: "last-updated", label: "Last updated", icon: "refresh-cw", category: "more", description: "Add the person that last updated the item and the date" },
+  { type: "auto-number", label: "Auto number", icon: "list-ordered", category: "more", description: "Number items according to their order in the group/board" },
+  { type: "checkbox", label: "Checkbox", icon: "check-square", category: "more", description: "Check off items and see what's done at a glance" },
+  { type: "link", label: "Link", icon: "link", category: "more", description: "Simply hyperlink to any website" },
+  { type: "world-clock", label: "World clock", icon: "globe", category: "more", description: "Keep track of the time anywhere in the world" },
+  { type: "item-id", label: "Item ID", icon: "hash", category: "more", description: "Show a unique ID for each item" },
+  { type: "phone", label: "Phone", icon: "phone", category: "more", description: "Call your contacts directly from the board" },
+  { type: "location", label: "Location", icon: "map-pin", category: "more", description: "Place multiple locations on a geographic map" },
+  { type: "dropdown", label: "Dropdown", icon: "chevron-down", category: "more", description: "Create a dropdown list of options" },
+  { type: "email", label: "Email", icon: "mail", category: "more", description: "Email team members and clients directly from your board" },
+  { type: "approval", label: "Approval", icon: "check-circle", category: "more", description: "Track approval status for legal review workflows" },
+  { type: "color-picker", label: "Color picker", icon: "palette", category: "more", description: "Manage a design system using a color palette" },
+  { type: "time-tracking", label: "Time tracking", icon: "timer", category: "more", description: "Easily track time spent on each item, group, and board" },
+  { type: "hour", label: "Hour", icon: "clock-4", category: "more", description: "Add times to manage and schedule tasks, shifts and more" },
+  { type: "week", label: "Week", icon: "calendar-days", category: "more", description: "Select the week on which each item should be completed" },
+  { type: "formula", label: "Formula", icon: "function-square", category: "more", description: "Use functions to manipulate data across multiple columns" },
+  { type: "country", label: "Country", icon: "flag", category: "more", description: "Choose a country" },
+
+  { type: "progress-tracking", label: "Progress tracking", icon: "bar-chart-2", category: "team-power-up", description: "Show progress by combining status columns in a battery" },
+  { type: "button", label: "Button", icon: "square", category: "board-power-up", description: "Perform actions on items by clicking a button" },
+  { type: "dependency", label: "Dependency", icon: "git-branch", category: "board-power-up", description: "Set up dependencies between items in the board" },
+
+  { type: "date-status", label: "Date + Status", icon: "calendar-check", category: "combo", description: "Use the Date combo to see urgent & overdue assignments in a single date" },
+  { type: "timeline-status", label: "Timeline + Status", icon: "calendar-range", category: "combo", description: "Use the Timeline combo to see urgent & overdue assignments in a time range" },
+  { type: "timeline-numeric", label: "Timeline + Numeric", icon: "calendar-range", category: "combo", description: "Use the Timeline and Numeric combo to reflect duration changes" },
+
+  { type: "ai-translate", label: "Translate", icon: "languages", category: "ai-powered", description: "Use AI to automatically translate a selected column" },
+  { type: "ai-summarize", label: "Summarize", icon: "file-text", category: "ai-powered", description: "Automatically get a summarized version of your chosen input" },
+  { type: "ai-categorize", label: "Assign labels", icon: "folder-tree", category: "ai-powered", description: "Use AI to automatically assign the relevant label to each item" },
+  { type: "ai-sentiment", label: "Detect Sentiment", icon: "smile", category: "ai-powered", description: "Use AI to detect the sentiment of text" },
+  { type: "ai-extract", label: "Extract from file", icon: "scan", category: "ai-powered", description: "Use AI to extract information from file" },
+  { type: "ai-improve", label: "Improve text", icon: "sparkles", category: "ai-powered", description: "Automatically get an improved version of your chosen text" },
+  { type: "ai-write", label: "Write with AI", icon: "wand-2", category: "ai-powered", description: "Automatically generate any type of output, tailored to your instructions" },
 ];
 
-const CATEGORY_CONFIG: Record<ColumnCategory, { label: string; icon: any; color: string; bgColor: string }> = {
-  "essentials": { label: "Essentials", icon: LayoutGrid, color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
-  "more": { label: "More Columns", icon: Layers, color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30" },
-  "team-power-up": { label: "Team Power-Ups", icon: Users, color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" },
-  "board-power-up": { label: "Board Power-Ups", icon: Zap, color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
-  "combo": { label: "Combo", icon: Layers, color: "text-pink-600", bgColor: "bg-pink-100 dark:bg-pink-900/30" },
-  "ai-powered": { label: "AI-Powered", icon: Sparkles, color: "text-violet-600", bgColor: "bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30" },
+const CATEGORY_CONFIG: Record<ColumnCategory, { label: string; icon: any; color: string }> = {
+  "essentials": { label: "Essentials", icon: LayoutGrid, color: "text-blue-500" },
+  "more": { label: "More Columns", icon: Layers, color: "text-green-500" },
+  "team-power-up": { label: "Team Power-Up", icon: Users, color: "text-purple-500" },
+  "board-power-up": { label: "Board Power-Up", icon: Zap, color: "text-orange-500" },
+  "combo": { label: "Combos", icon: Layers, color: "text-pink-500" },
+  "ai-powered": { label: "AI-powered", icon: Sparkles, color: "text-violet-500" },
 };
 
 interface ColumnCenterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddColumn: (type: ColumnType, title: string) => void;
+}
+
+function ColumnIcon({ type, icon, size = "md" }: { type: string; icon: string; size?: "sm" | "md" | "lg" }) {
+  const IconComponent = COLUMN_ICON_MAP[icon] || Hash;
+  const color = COLUMN_COLORS[type] || "#6366f1";
+  const isGradient = color === "#gradient";
+  const sizeClasses = size === "sm" ? "h-8 w-8" : size === "lg" ? "h-12 w-12" : "h-10 w-10";
+  const iconSizeClasses = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-5 w-5";
+
+  return (
+    <div
+      className={`${sizeClasses} rounded-lg flex items-center justify-center shrink-0`}
+      style={isGradient ? { background: "linear-gradient(135deg, #8b5cf6, #ec4899, #f97316)" } : { backgroundColor: color }}
+    >
+      <IconComponent className={`${iconSizeClasses} text-white`} />
+    </div>
+  );
+}
+
+function EssentialColumnCard({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  return (
+    <button
+      onClick={onAdd}
+      className="flex items-start gap-3 p-3 rounded-md border hover-elevate text-left transition-all group"
+      data-testid={`add-column-${column.type}`}
+    >
+      <ColumnIcon type={column.type} icon={column.icon} />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-sm">{column.label}</p>
+        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{column.description}</p>
+      </div>
+    </button>
+  );
+}
+
+function ListColumnRow({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-3 rounded-md border hover-elevate transition-all group"
+      data-testid={`add-column-${column.type}`}
+    >
+      <ColumnIcon type={column.type} icon={column.icon} />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm">{column.label}</p>
+        <p className="text-xs text-muted-foreground line-clamp-1">{column.description}</p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 text-xs"
+        onClick={(e) => { e.stopPropagation(); onAdd(); }}
+        data-testid={`button-add-column-${column.type}`}
+      >
+        Add to board
+      </Button>
+    </div>
+  );
+}
+
+function ComboColumnCard({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  const parts = column.label.split(" + ");
+  const firstType = parts[0]?.toLowerCase() === "date" ? "date" : parts[0]?.toLowerCase() === "timeline" ? "timeline" : "date";
+  const secondType = parts[1]?.toLowerCase() === "status" ? "status" : parts[1]?.toLowerCase() === "numeric" ? "number" : "status";
+  const firstIcon = firstType === "date" ? "calendar" : "calendar-range";
+  const secondIcon = secondType === "status" ? "circle-dot" : "hash";
+
+  return (
+    <div
+      className="flex flex-col rounded-md border hover-elevate transition-all overflow-visible"
+      data-testid={`add-column-${column.type}`}
+    >
+      <div className="flex items-center justify-center gap-3 py-6 px-4 bg-blue-50 dark:bg-blue-950/30 rounded-t-md">
+        <ColumnIcon type={firstType} icon={firstIcon} size="lg" />
+        <Plus className="h-5 w-5 text-muted-foreground" />
+        <ColumnIcon type={secondType} icon={secondIcon} size="lg" />
+      </div>
+      <div className="p-3">
+        <p className="font-semibold text-sm">{column.label}</p>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{column.description}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3 text-xs"
+          onClick={onAdd}
+          data-testid={`button-add-column-${column.type}`}
+        >
+          Add to board
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AIColumnRow({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-3 rounded-md border hover-elevate transition-all group"
+      data-testid={`add-column-${column.type}`}
+    >
+      <ColumnIcon type={column.type} icon={column.icon} />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm">{column.label}</p>
+        <p className="text-xs text-muted-foreground line-clamp-1">{column.description}</p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="shrink-0 text-xs"
+        onClick={(e) => { e.stopPropagation(); onAdd(); }}
+        data-testid={`button-add-column-${column.type}`}
+      >
+        Add to board
+      </Button>
+    </div>
+  );
+}
+
+function PowerUpCard({ column, onAdd }: { column: ColumnTypeOption; onAdd: () => void }) {
+  return (
+    <div
+      className="flex flex-col rounded-md border hover-elevate transition-all overflow-visible"
+      data-testid={`add-column-${column.type}`}
+    >
+      <div className="p-4 flex items-center gap-3">
+        <ColumnIcon type={column.type} icon={column.icon} />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">{column.label}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2">{column.description}</p>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full text-xs"
+          onClick={onAdd}
+          data-testid={`button-add-column-${column.type}`}
+        >
+          Add to board
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterProps) {
@@ -197,7 +345,7 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
     }
     acc[col.category].push(col);
     return acc;
-  }, {} as Record<ColumnCategory, ColumnTypeOption[]>);
+  }, {} as Record<string, ColumnTypeOption[]>);
 
   const handleAddColumn = (column: ColumnTypeOption) => {
     onAddColumn(column.type, column.label);
@@ -206,26 +354,108 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
     setSelectedCategory("all");
   };
 
-  const categories: (ColumnCategory | "all")[] = ["all", "essentials", "more", "team-power-up", "board-power-up", "ai-powered"];
+  const categories: (ColumnCategory | "all")[] = ["all", "essentials", "more", "team-power-up", "board-power-up", "combo", "ai-powered"];
+
+  const renderCategorySection = (category: ColumnCategory, columns: ColumnTypeOption[]) => {
+    const config = CATEGORY_CONFIG[category];
+
+    switch (category) {
+      case "essentials":
+        return (
+          <div key={category} className="space-y-3" data-testid={`section-${category}`}>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {config.label}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {columns.map((col) => (
+                <EssentialColumnCard key={col.type} column={col} onAdd={() => handleAddColumn(col)} />
+              ))}
+            </div>
+          </div>
+        );
+
+      case "more":
+        return (
+          <div key={category} className="space-y-3" data-testid={`section-${category}`}>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {config.label}
+            </h3>
+            <div className="space-y-2">
+              {columns.map((col) => (
+                <ListColumnRow key={col.type} column={col} onAdd={() => handleAddColumn(col)} />
+              ))}
+            </div>
+          </div>
+        );
+
+      case "combo":
+        return (
+          <div key={category} className="space-y-3" data-testid={`section-${category}`}>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {config.label}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {columns.map((col) => (
+                <ComboColumnCard key={col.type} column={col} onAdd={() => handleAddColumn(col)} />
+              ))}
+            </div>
+          </div>
+        );
+
+      case "ai-powered":
+        return (
+          <div key={category} className="space-y-3" data-testid={`section-${category}`}>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {config.label}
+            </h3>
+            <div className="space-y-2">
+              {columns.map((col) => (
+                <AIColumnRow key={col.type} column={col} onAdd={() => handleAddColumn(col)} />
+              ))}
+            </div>
+          </div>
+        );
+
+      case "team-power-up":
+      case "board-power-up":
+        return (
+          <div key={category} className="space-y-3" data-testid={`section-${category}`}>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              {config.label}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {columns.map((col) => (
+                <PowerUpCard key={col.type} column={col} onAdd={() => handleAddColumn(col)} />
+              ))}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const categoryOrder: ColumnCategory[] = ["essentials", "more", "team-power-up", "board-power-up", "combo", "ai-powered"];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] p-0 gap-0">
-        <DialogHeader className="p-4 pb-3 border-b">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-3xl max-h-[85vh] p-0 gap-0">
+        <DialogHeader className="p-5 pb-4 border-b">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <LayoutGrid className="h-5 w-5 text-primary" />
             Column Center
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add columns to customize your board
-          </p>
+          <DialogDescription>
+            Add columns to customize your board. Choose from essentials, power-ups, combos, and AI-powered columns.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="p-4 border-b">
+        <div className="px-5 pt-4 pb-3 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search columns..."
+              placeholder="Search for a column type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -237,6 +467,7 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
                 size="icon"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
                 onClick={() => setSearchQuery("")}
+                data-testid="button-clear-column-search"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -254,7 +485,7 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
                     size="sm"
                     onClick={() => setSelectedCategory(cat)}
                     className="text-xs"
-                    data-testid={`category-${cat}`}
+                    data-testid="category-all"
                   >
                     All
                   </Button>
@@ -278,56 +509,19 @@ export function ColumnCenter({ open, onOpenChange, onAddColumn }: ColumnCenterPr
           </div>
         </div>
 
-        <ScrollArea className="flex-1 max-h-[400px]">
-          <div className="p-4 space-y-6">
-            {Object.entries(groupedColumns).map(([category, columns]) => {
-              const config = CATEGORY_CONFIG[category as ColumnCategory];
-              return (
-                <div key={category} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded ${config.bgColor}`}>
-                      <config.icon className={`h-4 w-4 ${config.color}`} />
-                    </div>
-                    <h3 className="font-medium text-sm">{config.label}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {columns.length}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {columns.map((column) => {
-                      const IconComponent = COLUMN_ICON_MAP[column.icon] || Hash;
-                      const columnColor = COLUMN_COLORS[column.type] || config.bgColor;
-                      return (
-                        <button
-                          key={column.type}
-                          onClick={() => handleAddColumn(column)}
-                          className="flex items-start gap-3 p-3 rounded-lg border hover-elevate text-left transition-all group"
-                          data-testid={`add-column-${column.type}`}
-                        >
-                          <div className={`p-2 rounded-lg ${columnColor} shrink-0`}>
-                            <IconComponent className="h-4 w-4 text-white" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                              {column.label}
-                            </p>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {column.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
+        <ScrollArea className="flex-1 max-h-[500px]">
+          <div className="p-5 space-y-8">
+            {categoryOrder.map((category) => {
+              const columns = groupedColumns[category];
+              if (!columns || columns.length === 0) return null;
+              return renderCategorySection(category, columns);
             })}
 
             {filteredColumns.length === 0 && (
-              <div className="text-center py-8">
-                <Search className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No columns found matching "{searchQuery}"</p>
+              <div className="text-center py-12">
+                <Search className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-muted-foreground font-medium">No columns found</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Try a different search term</p>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
 import { WorkflowRecorder, useWorkflowRecorder } from "@/components/board/workflow-recorder";
+import { ColumnCenter } from "@/components/board/column-center";
 import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
@@ -33,6 +34,7 @@ export default function BoardPage() {
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [editStatusLabelsOpen, setEditStatusLabelsOpen] = useState(false);
   const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
+  const [columnCenterOpen, setColumnCenterOpen] = useState(false);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards", boardId],
@@ -444,6 +446,7 @@ export default function BoardPage() {
         onGroupByChange={setGroupBy}
         taskCount={tasks.length}
         onOpenAutomations={() => setAutomationsPanelOpen(true)}
+        onOpenColumnCenter={() => setColumnCenterOpen(true)}
       />
 
       <div className="flex-1 overflow-auto p-4">
@@ -493,6 +496,7 @@ export default function BoardPage() {
               onColumnChangeType={handleColumnChangeType}
               onColumnUpdateDescription={handleColumnUpdateDescription}
               currentSort={currentSort}
+              onOpenColumnCenter={() => setColumnCenterOpen(true)}
             />
           ))
         )}
@@ -538,6 +542,19 @@ export default function BoardPage() {
         onOpenChange={setEditStatusLabelsOpen}
         statusLabels={statusLabels}
         onSave={handleSaveStatusLabels}
+      />
+
+      <ColumnCenter
+        open={columnCenterOpen}
+        onOpenChange={setColumnCenterOpen}
+        onAddColumn={(type, title) => {
+          handleAddColumn({
+            title,
+            type,
+            width: 120,
+            visible: true,
+          });
+        }}
       />
 
       {boardId && (

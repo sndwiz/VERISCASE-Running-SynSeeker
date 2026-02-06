@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { FiltersPanel, type FilterGroup, type SortOption } from "./filters-panel";
-import { ColumnCenter } from "./column-center";
 import type { Board, ColumnDef, ColumnType } from "@shared/schema";
 
 export type GroupByOption = "default" | "status" | "priority" | "owner";
@@ -57,6 +56,7 @@ interface BoardHeaderProps {
   onFiltersChange?: (filters: FilterGroup[]) => void;
   sorts?: SortOption[];
   onSortsChange?: (sorts: SortOption[]) => void;
+  onOpenColumnCenter?: () => void;
 }
 
 export function BoardHeader({
@@ -79,10 +79,10 @@ export function BoardHeader({
   onFiltersChange,
   sorts = [],
   onSortsChange,
+  onOpenColumnCenter,
 }: BoardHeaderProps) {
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
   const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
-  const [columnCenterOpen, setColumnCenterOpen] = useState(false);
 
   const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
   const visibleCount = board.columns.filter(c => c.visible).length;
@@ -358,7 +358,7 @@ export function BoardHeader({
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start"
-                    onClick={() => setColumnCenterOpen(true)}
+                    onClick={() => onOpenColumnCenter?.()}
                     data-testid="button-add-column"
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -421,18 +421,6 @@ export function BoardHeader({
         onFiltersChange={(newFilters) => onFiltersChange?.(newFilters)}
       />
 
-      <ColumnCenter
-        open={columnCenterOpen}
-        onOpenChange={setColumnCenterOpen}
-        onAddColumn={(type, title) => {
-          onAddColumn?.({
-            title,
-            type,
-            width: 120,
-            visible: true,
-          });
-        }}
-      />
     </div>
   );
 }
