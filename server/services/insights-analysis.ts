@@ -1,58 +1,110 @@
+import { z } from "zod";
 import { insightsStorage } from "./insights-storage";
 import { logger } from "../utils/logger";
-import type { InsightRun, InsightOutput } from "./insights-storage";
+import { INSIGHTS_CONFIG } from "../config/insights";
+import type { InsightAnalysisResult, InsightCitation, PriorityRules } from "@shared/insights-types";
+import { INSIGHT_INTENT_TYPES, type InsightIntentType } from "@shared/insights-types";
 
-interface Citation {
-  assetId: string;
-  filename: string;
-  pageNumber?: number;
-  lineStart?: number;
-  lineEnd?: number;
-  snippet: string;
-}
+const citationSchema = z.object({
+  assetId: z.string().optional().default(""),
+  filename: z.string().optional().default(""),
+  pageNumber: z.number().optional(),
+  snippet: z.string().optional().default(""),
+});
 
-interface ThemeResult {
-  title: string;
-  explanation: string;
-  citations: Citation[];
-}
+const themeSchema = z.object({
+  title: z.string(),
+  explanation: z.string(),
+  citations: z.array(citationSchema).default([]),
+});
 
-interface TimelineEntry {
-  eventDate: string;
-  description: string;
-  involvedParties: string[];
-  citations: Citation[];
-}
+const timelineSchema = z.object({
+  eventDate: z.string(),
+  description: z.string(),
+  involvedParties: z.array(z.string()).default([]),
+  citations: z.array(citationSchema).default([]),
+});
 
-interface EntityResult {
-  name: string;
-  type: string;
-  role: string;
-  isInferred: boolean;
-  citations: Citation[];
-}
+const entitySchema = z.object({
+  name: z.string(),
+  type: z.enum(["person", "organization", "place"]).default("person"),
+  role: z.string(),
+  isInferred: z.boolean().default(false),
+  citations: z.array(citationSchema).default([]),
+});
 
-interface ContradictionResult {
-  statementA: string;
-  statementB: string;
-  conflict: string;
-  citations: Citation[];
-}
+const contradictionSchema = z.object({
+  statementA: z.string(),
+  statementB: z.string(),
+  conflict: z.string(),
+  citations: z.array(citationSchema).default([]),
+});
 
-interface ActionItem {
-  title: string;
-  suggestedOwner?: string;
-  suggestedDueDate?: string;
-  confidence: number;
-  citations: Citation[];
-}
+const actionItemSchema = z.object({
+  title: z.string(),
+  suggestedOwner: z.string().optional(),
+  suggestedDueDate: z.string().optional(),
+  confidence: z.number().default(0.5),
+  citations: z.array(citationSchema).default([]),
+});
 
-interface RiskFlag {
-  title: string;
-  severity: string;
-  description: string;
-  citations: Citation[];
-}
+const riskSchema = z.object({
+  title: z.string(),
+  severity: z.enum(["low", "medium", "high"]).default("medium"),
+  description: z.string(),
+  citations: z.array(citationSchema).default([]),
+});
+
+const analysisResultSchema = z.object({
+  themes: z.array(themeSchema).optional(),
+  timeline: z.array(timelineSchema).optional(),
+  entities: z.array(entitySchema).optional(),
+  contradictions: z.array(contradictionSchema).optional(),
+  action_items: z.array(actionItemSchema).optional(),
+  risks: z.array(riskSchema).optional(),
+}).passthrough();
+
+const INTENT_PROMPT_TEMPLATES: Record<InsightIntentType, string> = {
+  themes: `## THEMES
+Identify 3-8 major themes. For each:
+- "title": theme name
+- "explanation": 2-3 sentences
+- "citations": array of {"assetId", "filename", "snippet"} (at least 2 per theme when possible)`,
+  timeline: `## TIMELINE
+Extract key events chronologically. For each:
+- "eventDate": ISO date or "approximate: YYYY" or date range
+- "description": what happened
+- "involvedParties": people/orgs involved
+- "citations": array of {"assetId", "filename", "snippet"}`,
+  entities: `## ENTITIES
+Identify people, organizations, places. For each:
+- "name": entity name
+- "type": "person" | "organization" | "place"
+- "role": their role (witness, attorney, defendant, etc.)
+- "isInferred": true if role is guessed, false if stated
+- "citations": array of {"assetId", "filename", "snippet"}`,
+  contradictions: `## CONTRADICTIONS
+Find conflicting statements across documents. For each:
+- "statementA": first claim
+- "statementB": conflicting claim
+- "conflict": why they conflict
+- "citations": array of {"assetId", "filename", "snippet"} (one for each statement minimum)`,
+  action_items: `## ACTION ITEMS
+Suggest actionable tasks from the documents. For each:
+- "title": clear task title
+- "suggestedOwner": who should handle (if apparent)
+- "suggestedDueDate": ISO date if deadline is mentioned or inferable
+- "confidence": 0-1 how confident this is needed
+- "citations": array of {"assetId", "filename", "snippet"}`,
+  risks: `## RISKS
+Identify risks, red flags, and concerns. For each:
+- "title": risk title
+- "severity": "low" | "medium" | "high"
+- "description": what the risk is and why it matters
+- "citations": array of {"assetId", "filename", "snippet"}`,
+};
+
+const SECTION_KEYS = ["themes", "timeline", "entities", "contradictions", "action_items", "risks"] as const;
 
 async function gatherTextContext(
   matterId: string,
@@ -64,11 +116,13 @@ async function gatherTextContext(
     (b.asset.createdAt?.getTime() || 0) - (a.asset.createdAt?.getTime() || 0)
   );
 
-  if (scope === "10_most_recent" || (!scope && sorted.length > 20)) {
-    sorted = sorted.slice(0, 10);
+  const { defaultScopeThreshold, defaultScopeSize } = INSIGHTS_CONFIG.analysis;
+
+  if (scope === "10_most_recent" || (!scope && sorted.length > defaultScopeThreshold)) {
+    sorted = sorted.slice(0, defaultScopeSize);
   } else if (scope?.startsWith("next_batch_")) {
     const offset = parseInt(scope.replace("next_batch_", ""), 10) || 0;
-    sorted = sorted.slice(offset, offset + 10);
+    sorted = sorted.slice(offset, offset + defaultScopeSize);
   }
 
   return sorted.map(t => ({
@@ -82,77 +136,17 @@ async function gatherTextContext(
 function buildAnalysisPrompt(
   intentType: string,
   outputFormat: string | null,
-  priorityRules: any,
+  priorityRules: PriorityRules | null,
   documents: Array<{ assetId: string; filename: string; text: string }>,
 ): string {
+  const { maxDocumentTextLength } = INSIGHTS_CONFIG.analysis;
+
   const docContext = documents.map((d, i) =>
-    `--- DOCUMENT ${i + 1}: "${d.filename}" (ID: ${d.assetId}) ---\n${d.text.slice(0, 8000)}\n`
+    `--- DOCUMENT ${i + 1}: "${d.filename}" (ID: ${d.assetId}) ---\n${d.text.slice(0, maxDocumentTextLength)}\n`
   ).join("\n\n");
 
-  const intents = intentType.split(",").map(s => s.trim());
-
-  let sections = "";
-  if (intents.includes("themes")) {
-    sections += `
-## THEMES
-Identify 3-8 major themes. For each:
-- "title": theme name
-- "explanation": 2-3 sentences
-- "citations": array of {"assetId", "filename", "snippet"} (at least 2 per theme when possible)
-`;
-  }
-  if (intents.includes("timeline")) {
-    sections += `
-## TIMELINE
-Extract key events chronologically. For each:
-- "eventDate": ISO date or "approximate: YYYY" or date range
-- "description": what happened
-- "involvedParties": people/orgs involved
-- "citations": array of {"assetId", "filename", "snippet"}
-`;
-  }
-  if (intents.includes("entities")) {
-    sections += `
-## ENTITIES
-Identify people, organizations, places. For each:
-- "name": entity name
-- "type": "person" | "organization" | "place"
-- "role": their role (witness, attorney, defendant, etc.)
-- "isInferred": true if role is guessed, false if stated
-- "citations": array of {"assetId", "filename", "snippet"}
-`;
-  }
-  if (intents.includes("contradictions")) {
-    sections += `
-## CONTRADICTIONS
-Find conflicting statements across documents. For each:
-- "statementA": first claim
-- "statementB": conflicting claim
-- "conflict": why they conflict
-- "citations": array of {"assetId", "filename", "snippet"} (one for each statement minimum)
-`;
-  }
-  if (intents.includes("action_items")) {
-    sections += `
-## ACTION ITEMS
-Suggest actionable tasks from the documents. For each:
-- "title": clear task title
-- "suggestedOwner": who should handle (if apparent)
-- "suggestedDueDate": ISO date if deadline is mentioned or inferable
-- "confidence": 0-1 how confident this is needed
-- "citations": array of {"assetId", "filename", "snippet"}
-`;
-  }
-  if (intents.includes("risks")) {
-    sections += `
-## RISKS
-Identify risks, red flags, and concerns. For each:
-- "title": risk title
-- "severity": "low" | "medium" | "high"
-- "description": what the risk is and why it matters
-- "citations": array of {"assetId", "filename", "snippet"}
-`;
-  }
+  const intents = intentType.split(",").map(s => s.trim()).filter(s => INSIGHT_INTENT_TYPES.includes(s as any)) as InsightIntentType[];
+  const sections = intents.map(i => INTENT_PROMPT_TEMPLATES[i]).join("\n\n");
 
   let priorityInstructions = "";
   if (priorityRules) {
@@ -206,13 +200,14 @@ DOCUMENTS:
 ${docContext}`;
 }
 
-async function callAI(prompt: string): Promise<any> {
+async function callAI(prompt: string): Promise<InsightAnalysisResult> {
   try {
+    const { aiModel, maxTokens } = INSIGHTS_CONFIG.analysis;
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250514",
-      max_tokens: 8192,
+      model: aiModel,
+      max_tokens: maxTokens,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -223,7 +218,10 @@ async function callAI(prompt: string): Promise<any> {
     if (!jsonMatch) {
       throw new Error("No JSON found in AI response");
     }
-    return JSON.parse(jsonMatch[0]);
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const validated = analysisResultSchema.parse(parsed);
+    return validated as InsightAnalysisResult;
   } catch (err: any) {
     logger.error("AI analysis call failed", { error: err.message });
     throw err;
@@ -253,32 +251,15 @@ export async function runInsightAnalysis(runId: string): Promise<void> {
     const prompt = buildAnalysisPrompt(
       run.intentType,
       run.outputFormat || null,
-      run.priorityRules,
+      run.priorityRules as PriorityRules | null,
       documents,
     );
 
-    const result = await callAI(prompt);
+    const validated = await callAI(prompt);
 
-    const outputs: Array<{ insightRunId: string; section: string; contentJson: any }> = [];
-
-    if (result.themes) {
-      outputs.push({ insightRunId: runId, section: "themes", contentJson: result.themes });
-    }
-    if (result.timeline) {
-      outputs.push({ insightRunId: runId, section: "timeline", contentJson: result.timeline });
-    }
-    if (result.entities) {
-      outputs.push({ insightRunId: runId, section: "entities", contentJson: result.entities });
-    }
-    if (result.contradictions) {
-      outputs.push({ insightRunId: runId, section: "contradictions", contentJson: result.contradictions });
-    }
-    if (result.action_items) {
-      outputs.push({ insightRunId: runId, section: "action_items", contentJson: result.action_items });
-    }
-    if (result.risks) {
-      outputs.push({ insightRunId: runId, section: "risks", contentJson: result.risks });
-    }
+    const outputs = SECTION_KEYS
+      .filter(key => validated[key] && Array.isArray(validated[key]))
+      .map(key => ({ insightRunId: runId, section: key, contentJson: validated[key] }));
 
     if (outputs.length > 0) {
       await insightsStorage.createInsightOutputs(outputs);

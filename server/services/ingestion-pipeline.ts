@@ -1,9 +1,11 @@
 import * as fs from "fs";
+import { createReadStream } from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 import { insightsStorage } from "./insights-storage";
 import type { MatterAsset } from "./insights-storage";
 import { logger } from "../utils/logger";
+import { INSIGHTS_CONFIG } from "../config/insights";
 
 const UPLOAD_DIR = path.resolve("uploads/matter-assets");
 
@@ -13,9 +15,14 @@ function ensureUploadDir() {
   }
 }
 
-function computeSha256(filePath: string): string {
-  const data = fs.readFileSync(filePath);
-  return crypto.createHash("sha256").update(data).digest("hex");
+async function computeSha256(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
 }
 
 function detectFileType(ext: string, mimeType?: string): string {
@@ -33,26 +40,25 @@ function detectFileType(ext: string, mimeType?: string): string {
   return "other";
 }
 
-const CHUNK_SIZE = 1500;
-const CHUNK_OVERLAP = 200;
-
 function chunkText(text: string): string[] {
-  if (!text || text.length <= CHUNK_SIZE) return text ? [text] : [];
+  const chunkSize = INSIGHTS_CONFIG.chunking.chunkSize;
+  const chunkOverlap = INSIGHTS_CONFIG.chunking.chunkOverlap;
+  if (!text || text.length <= chunkSize) return text ? [text] : [];
   const chunks: string[] = [];
   let start = 0;
   while (start < text.length) {
-    let end = Math.min(start + CHUNK_SIZE, text.length);
+    let end = Math.min(start + chunkSize, text.length);
     if (end < text.length) {
       const lastNewline = text.lastIndexOf("\n", end);
       const lastPeriod = text.lastIndexOf(". ", end);
       const breakPoint = Math.max(lastNewline, lastPeriod);
-      if (breakPoint > start + CHUNK_SIZE / 2) {
+      if (breakPoint > start + chunkSize / 2) {
         end = breakPoint + 1;
       }
     }
     chunks.push(text.slice(start, end));
     if (end >= text.length) break;
-    const nextStart = end - CHUNK_OVERLAP;
+    const nextStart = end - chunkOverlap;
     if (nextStart <= start) {
       start = end;
     } else {
@@ -68,7 +74,7 @@ async function extractTextFromPdf(filePath: string): Promise<{ text: string; pag
   const buffer = fs.readFileSync(filePath);
   const data = await pdfParse(buffer);
   const text = data.text?.trim() || "";
-  const isScanned = text.length < 50;
+  const isScanned = text.length < INSIGHTS_CONFIG.processing.scannedPdfTextThreshold;
   return { text, pageCount: data.numpages || 1, isScanned };
 }
 
@@ -122,6 +128,27 @@ async function ocrImage(filePath: string): Promise<{ text: string; confidence: n
   } catch (err: any) {
     logger.error("OCR failed", { error: err.message });
     return { text: "", confidence: 0.0 };
+  }
+}
+
+let activeJobs = 0;
+const MAX_CONCURRENT = INSIGHTS_CONFIG.processing.maxConcurrentJobs;
+const pendingQueue: string[] = [];
+
+async function enqueueProcessing(assetId: string): Promise<void> {
+  if (activeJobs >= MAX_CONCURRENT) {
+    pendingQueue.push(assetId);
+    return;
+  }
+  activeJobs++;
+  try {
+    await processAsset(assetId);
+  } finally {
+    activeJobs--;
+    if (pendingQueue.length > 0) {
+      const next = pendingQueue.shift()!;
+      enqueueProcessing(next);
+    }
   }
 }
 
@@ -269,36 +296,86 @@ export async function handleFileUpload(
 
   const ext = path.extname(file.originalname);
   const fileType = detectFileType(ext, file.mimetype);
-  const hash = computeSha256(file.path);
-  const destFilename = `${hash}${ext}`;
   const destPath = path.join(UPLOAD_DIR, matterId);
-
-  if (!fs.existsSync(destPath)) {
-    fs.mkdirSync(destPath, { recursive: true });
-  }
-
-  const finalPath = path.join(destPath, destFilename);
-  fs.copyFileSync(file.path, finalPath);
+  let finalPath = "";
 
   try {
-    fs.unlinkSync(file.path);
-  } catch {}
+    const hash = await computeSha256(file.path);
+    const destFilename = `${hash}${ext}`;
 
-  const asset = await insightsStorage.createMatterAsset({
-    matterId,
-    originalFilename: file.originalname,
-    storageUrl: finalPath,
-    fileType,
-    sizeBytes: file.size,
-    hashSha256: hash,
-    uploadedByUserId: userId || null,
-    docType: metadata?.docType || null,
-    custodian: metadata?.custodian || null,
-    confidentiality: metadata?.confidentiality || "normal",
-    status: "queued",
-  });
+    if (!fs.existsSync(destPath)) {
+      fs.mkdirSync(destPath, { recursive: true });
+    }
 
-  setTimeout(() => processAsset(asset.id), 100);
+    finalPath = path.join(destPath, destFilename);
+    fs.copyFileSync(file.path, finalPath);
 
-  return asset;
+    try {
+      fs.unlinkSync(file.path);
+    } catch {}
+
+    const asset = await insightsStorage.createMatterAsset({
+      matterId,
+      originalFilename: file.originalname,
+      storageUrl: finalPath,
+      fileType,
+      sizeBytes: file.size,
+      hashSha256: hash,
+      uploadedByUserId: userId || null,
+      docType: metadata?.docType || null,
+      custodian: metadata?.custodian || null,
+      confidentiality: metadata?.confidentiality || "normal",
+      status: "queued",
+    });
+
+    setTimeout(() => enqueueProcessing(asset.id), INSIGHTS_CONFIG.processing.processingDelayMs);
+
+    return asset;
+  } catch (err: any) {
+    try {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    } catch (cleanupErr: any) {
+      logger.warn("Failed to clean up temp file", { path: file.path, error: cleanupErr.message });
+    }
+    try {
+      if (finalPath && fs.existsSync(finalPath)) {
+        fs.unlinkSync(finalPath);
+      }
+    } catch (cleanupErr: any) {
+      logger.warn("Failed to clean up destination file", { path: finalPath, error: cleanupErr.message });
+    }
+    throw err;
+  }
+}
+
+export function validateMimeType(ext: string, mimeType: string): boolean {
+  const normalizedExt = ext.toLowerCase().replace(".", "");
+  const expectedMimes: Record<string, string[]> = {
+    pdf: ["application/pdf"],
+    png: ["image/png"],
+    jpg: ["image/jpeg"],
+    jpeg: ["image/jpeg"],
+    gif: ["image/gif"],
+    bmp: ["image/bmp"],
+    tiff: ["image/tiff"],
+    tif: ["image/tiff"],
+    webp: ["image/webp"],
+    heic: ["image/heic"],
+    doc: ["application/msword"],
+    docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    txt: ["text/plain"],
+    rtf: ["text/rtf", "application/rtf"],
+    csv: ["text/csv", "application/csv"],
+    mp3: ["audio/mpeg"],
+    wav: ["audio/wav", "audio/wave", "audio/x-wav"],
+    ogg: ["audio/ogg"],
+    m4a: ["audio/mp4", "audio/x-m4a"],
+    eml: ["message/rfc822"],
+    msg: ["application/vnd.ms-outlook"],
+  };
+  const allowed = expectedMimes[normalizedExt];
+  if (!allowed) return false;
+  return allowed.includes(mimeType) || mimeType === "application/octet-stream";
 }
