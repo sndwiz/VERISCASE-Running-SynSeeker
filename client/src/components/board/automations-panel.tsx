@@ -40,6 +40,7 @@ interface AutomationTemplate {
 
 const AUTOMATION_CATEGORIES = [
   { id: "ai_powered", name: "AI-powered", color: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400" },
+  { id: "legal_workflows", name: "Legal Workflows", color: "bg-gradient-to-r from-amber-500 to-orange-600" },
   { id: "integrations", name: "Integrations", color: "bg-blue-500" },
   { id: "status_progress", name: "Status & Progress", color: "bg-purple-500" },
   { id: "cross_board", name: "Cross-Board", color: "bg-orange-500" },
@@ -156,6 +157,20 @@ const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   // Recurring Work
   { id: "recurring_weekly", name: "Create weekly recurring item", description: "Every Monday, create a new item in board", category: "recurring_work", triggerType: "schedule", actionType: "create_item", icon: "monday" },
   { id: "recurring_monthly", name: "Create monthly recurring item", description: "On the 1st of each month, create a new item", category: "recurring_work", triggerType: "schedule", actionType: "create_item", icon: "monday" },
+  
+  // Legal Workflows
+  { id: "lw_client_followup", name: "Client follow-up on Waiting status", description: "When status changes to Waiting on Client, create a follow-up task in 3 days", category: "legal_workflows", triggerType: "status_changed", actionType: "create_item" },
+  { id: "lw_intake_routing", name: "New intake auto-routing", description: "When a new item is created, assign intake owner and add intake tag", category: "legal_workflows", triggerType: "item_created", actionType: "assign_person" },
+  { id: "lw_deadline_reminder", name: "48-hour deadline reminder", description: "When due date is approaching, send a deadline reminder notification", category: "legal_workflows", triggerType: "due_date_approaching", actionType: "send_notification" },
+  { id: "lw_overdue_escalation", name: "Overdue item escalation", description: "When due date passes and status is still Waiting, escalate to lead attorney", category: "legal_workflows", triggerType: "due_date_passed", actionType: "send_notification" },
+  { id: "lw_filing_confirmation", name: "Filing confirmation task", description: "When status changes to Filed, create a receipt confirmation task", category: "legal_workflows", triggerType: "status_changed", actionType: "create_item" },
+  { id: "lw_evidence_ocr", name: "Evidence upload auto-OCR", description: "When a file is uploaded, automatically request OCR processing", category: "legal_workflows", triggerType: "file_uploaded", actionType: "request_ocr" },
+  { id: "lw_deadline_detection", name: "Deadline detection from OCR", description: "When OCR detects a deadline, set due date and add deadline tag", category: "legal_workflows", triggerType: "signal_deadline_detected", actionType: "set_date" },
+  { id: "lw_privilege_tagging", name: "Privilege auto-tagging", description: "When content is flagged as privileged, add privilege-review tag", category: "legal_workflows", triggerType: "signal_privilege_detected", actionType: "add_tag" },
+  { id: "lw_daily_digest", name: "Daily task digest", description: "Every day at 8 AM, send a summary of open tasks and deadlines", category: "legal_workflows", triggerType: "time_daily_at", actionType: "send_notification" },
+  { id: "lw_discovery_checklist", name: "Discovery checklist creation", description: "When status changes to Discovery, create subtasks for discovery steps", category: "legal_workflows", triggerType: "status_changed", actionType: "create_subtask" },
+  { id: "lw_contradiction_flag", name: "Contradiction flagging", description: "When analysis detects contradictions, notify assigned attorney", category: "legal_workflows", triggerType: "signal_contradiction_detected", actionType: "send_notification" },
+  { id: "lw_billing_receipt", name: "Receipt to expense entry", description: "When a file is classified as receipt, create billing expense entry", category: "legal_workflows", triggerType: "file_classified", actionType: "create_item" },
 ];
 
 // AI Icon component with gradient colors matching Monday.com

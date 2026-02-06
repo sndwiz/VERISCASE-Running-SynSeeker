@@ -114,6 +114,22 @@ export async function registerRoutes(
 
   // Document Wash - member or above
   app.use("/api/wash", isAuthenticated, requireMemberOrAbove);
+
+  // Billing - viewer can read, member+ can write
+  app.use("/api/billing", isAuthenticated, viewerReadOnly);
+  app.use("/api/expenses", isAuthenticated, viewerReadOnly);
+  app.use("/api/invoices", isAuthenticated, viewerReadOnly);
+  app.use("/api/payments", isAuthenticated, viewerReadOnly);
+  app.use("/api/trust-transactions", isAuthenticated, viewerReadOnly);
+  
+  // Billing Verifier - member or above (financial data)
+  app.use("/api/billing-verifier", isAuthenticated, requireMemberOrAbove);
+
+  // Insights - member or above (evidence analysis)
+  app.use("/api/insights", isAuthenticated, requireMemberOrAbove);
+
+  // Seed data - admin only
+  app.use("/api/seed", isAuthenticated, requireAdmin);
   
   // Register all other API routes
   registerAllRoutes(app);
