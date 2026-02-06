@@ -17,16 +17,18 @@ import type { ApprovalRequest, ApprovalStatus, Priority, FileItem, Matter } from
 
 const statusColors: Record<ApprovalStatus, string> = {
   pending: "bg-amber-500",
+  vetting: "bg-blue-500",
   approved: "bg-green-500",
+  confirmed: "bg-emerald-600",
   rejected: "bg-red-500",
-  "needs-revision": "bg-orange-500",
 };
 
 const statusIcons: Record<ApprovalStatus, any> = {
   pending: Clock,
+  vetting: AlertCircle,
   approved: CheckCircle2,
+  confirmed: CheckCircle2,
   rejected: XCircle,
-  "needs-revision": AlertCircle,
 };
 
 const priorityColors: Record<Priority, string> = {
@@ -75,7 +77,7 @@ export default function ApprovalsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/approvals", "POST", data);
+      return apiRequest("POST", "/api/approvals", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
@@ -90,9 +92,7 @@ export default function ApprovalsPage() {
 
   const commentMutation = useMutation({
     mutationFn: async ({ approvalId, content, decision }: { approvalId: string; content: string; decision?: string }) => {
-      return apiRequest(`/api/approvals/${approvalId}/comments`, "POST", {
-        userId: "current-user",
-        userName: "Current User",
+      return apiRequest("POST", `/api/approvals/${approvalId}/comments`, {
         content,
         decision,
       });
@@ -454,7 +454,7 @@ export default function ApprovalsPage() {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{comment.userName}</span>
                               {comment.decision && (
-                                <Badge className={`${statusColors[comment.decision === "approved" ? "approved" : comment.decision === "rejected" ? "rejected" : "needs-revision"]} text-white text-xs`}>
+                                <Badge className={`${statusColors[comment.decision as ApprovalStatus] || "bg-orange-500"} text-white text-xs`}>
                                   {comment.decision}
                                 </Badge>
                               )}

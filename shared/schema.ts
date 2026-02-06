@@ -455,7 +455,7 @@ export interface Matter {
   name: string;
   caseNumber?: string;
   matterType: string;
-  status: "active" | "pending" | "closed" | "on-hold";
+  status: "active" | "pending" | "closed" | "on_hold" | "on-hold" | "archived";
   description: string;
   openedDate: string;
   closedDate?: string;
@@ -999,7 +999,7 @@ export const insertMatterSchema = z.object({
   name: z.string(),
   caseNumber: z.string().optional(),
   matterType: z.string(),
-  status: z.enum(["active", "pending", "closed", "on-hold"]).optional().default("active"),
+  status: z.enum(["active", "pending", "closed", "on_hold", "on-hold", "archived"]).optional().default("active"),
   description: z.string().optional().default(""),
   openedDate: z.string(),
   practiceArea: z.string(),
@@ -1525,7 +1525,7 @@ export const insertApprovalRequestSchema = z.object({
 });
 
 export const updateApprovalRequestSchema = z.object({
-  status: z.enum(["pending", "approved", "rejected", "needs-revision"]).optional(),
+  status: z.enum(["pending", "vetting", "approved", "confirmed", "rejected"]).optional(),
   assignedTo: z.array(z.string()).optional(),
   dueDate: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
@@ -1536,7 +1536,7 @@ export const insertApprovalCommentSchema = z.object({
   userId: z.string(),
   userName: z.string(),
   content: z.string().min(1),
-  decision: z.enum(["approved", "rejected", "needs-revision"]).optional(),
+  decision: z.enum(["approved", "rejected", "vetting"]).optional(),
 });
 
 // Type exports

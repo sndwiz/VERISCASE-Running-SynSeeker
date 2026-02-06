@@ -28,7 +28,12 @@ export function registerCalendarRoutes(app: Express): void {
 
   app.post("/api/calendar-events", async (req, res) => {
     try {
-      const data = insertCalendarEventSchema.parse(req.body);
+      const dbUser = (req as any).dbUser;
+      const body = {
+        ...req.body,
+        createdBy: req.body.createdBy || (dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User"),
+      };
+      const data = insertCalendarEventSchema.parse(body);
       const event = await storage.createCalendarEvent(data);
       res.status(201).json(event);
     } catch (error) {

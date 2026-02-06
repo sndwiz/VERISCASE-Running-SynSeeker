@@ -46,6 +46,33 @@ export async function registerRoutes(
   // Meeting notes - viewer can read, member+ can write
   app.use("/api/meetings", isAuthenticated, viewerReadOnly);
   
+  // Time tracking - viewer can read, member+ can write
+  app.use("/api/time-entries", isAuthenticated, viewerReadOnly);
+  
+  // Calendar events - viewer can read, member+ can write
+  app.use("/api/calendar-events", isAuthenticated, viewerReadOnly);
+  
+  // Approvals - member or above only
+  app.use("/api/approvals", isAuthenticated, viewerReadOnly);
+  
+  // Filing cabinet - viewer can read, member+ can write
+  app.use("/api/files", isAuthenticated, viewerReadOnly);
+  
+  // Documents - member or above
+  app.use("/api/documents", isAuthenticated, viewerReadOnly);
+  
+  // Conversations (AI chat) - any authenticated role
+  app.use("/api/conversations", isAuthenticated, requireAnyRole);
+  
+  // OCR jobs - member or above
+  app.use("/api/ocr-jobs", isAuthenticated, requireMemberOrAbove);
+  
+  // Clawbot - member or above
+  app.use("/api/clawbot", isAuthenticated, requireMemberOrAbove);
+
+  // Daily briefing - any authenticated role
+  app.use("/api/briefing", isAuthenticated, requireAnyRole);
+  
   // Register all other API routes
   registerAllRoutes(app);
   

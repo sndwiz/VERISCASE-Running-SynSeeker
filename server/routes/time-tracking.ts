@@ -28,7 +28,13 @@ export function registerTimeTrackingRoutes(app: Express): void {
 
   app.post("/api/time-entries", async (req, res) => {
     try {
-      const data = insertTimeEntrySchema.parse(req.body);
+      const dbUser = (req as any).dbUser;
+      const body = {
+        ...req.body,
+        userId: dbUser?.id || req.body.userId || "unknown",
+        userName: dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : req.body.userName || "Unknown User",
+      };
+      const data = insertTimeEntrySchema.parse(body);
       const entry = await storage.createTimeEntry(data);
       res.status(201).json(entry);
     } catch (error) {

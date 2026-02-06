@@ -64,7 +64,7 @@ export default function CalendarPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/calendar-events", "POST", data);
+      return apiRequest("POST", "/api/calendar-events", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar-events"] });
@@ -79,7 +79,7 @@ export default function CalendarPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/calendar-events/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/calendar-events/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar-events"] });
@@ -109,7 +109,6 @@ export default function CalendarPage() {
       endDate: formData.endDate || undefined,
       location: formData.location || undefined,
       attendees: formData.attendees ? formData.attendees.split(",").map(a => a.trim()) : [],
-      createdBy: "Current User",
     });
   };
 

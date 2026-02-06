@@ -28,7 +28,14 @@ export function registerApprovalRoutes(app: Express): void {
 
   app.post("/api/approvals", async (req, res) => {
     try {
-      const data = insertApprovalRequestSchema.parse(req.body);
+      const dbUser = (req as any).dbUser;
+      const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User";
+      const body = {
+        ...req.body,
+        requestedBy: req.body.requestedBy || dbUser?.id || "unknown",
+        requestedByName: req.body.requestedByName || userName,
+      };
+      const data = insertApprovalRequestSchema.parse(body);
       const request = await storage.createApprovalRequest(data);
       res.status(201).json(request);
     } catch (error) {
@@ -66,10 +73,14 @@ export function registerApprovalRoutes(app: Express): void {
 
   app.post("/api/approvals/:id/comments", async (req, res) => {
     try {
-      const data = insertApprovalCommentSchema.parse({
+      const dbUser = (req as any).dbUser;
+      const body = {
         ...req.body,
         approvalId: req.params.id,
-      });
+        userId: req.body.userId || dbUser?.id || "unknown",
+        userName: req.body.userName || (dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User"),
+      };
+      const data = insertApprovalCommentSchema.parse(body);
       const comment = await storage.addApprovalComment(data);
       res.status(201).json(comment);
     } catch (error) {

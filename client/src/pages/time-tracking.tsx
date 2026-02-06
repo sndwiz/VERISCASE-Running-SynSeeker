@@ -44,7 +44,7 @@ export default function TimeTrackingPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/time-entries", "POST", data);
+      return apiRequest("POST", "/api/time-entries", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
@@ -59,7 +59,7 @@ export default function TimeTrackingPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/time-entries/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/time-entries/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
@@ -85,8 +85,6 @@ export default function TimeTrackingPage() {
       ...formData,
       hours: parseFloat(formData.hours),
       hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined,
-      userId: "current-user",
-      userName: "Current User",
     });
   };
 
