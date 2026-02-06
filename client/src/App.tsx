@@ -15,8 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Bot, Calendar, Terminal } from "lucide-react";
 import { Link } from "wouter";
+import { HelpGuide } from "@/components/help-guide";
 
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
@@ -164,24 +166,40 @@ function AppLayout() {
           <header className="flex items-center justify-between gap-2 px-4 py-2 border-b shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
-              <Link href="/ai-chat">
-                <Button variant="default" size="sm" className="gap-2" data-testid="button-veribot">
-                  <Bot className="h-4 w-4" />
-                  VeriBot
-                </Button>
-              </Link>
-              <Link href="/briefing">
-                <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
-                  <Calendar className="h-4 w-4" />
-                  Daily Briefing
-                </Button>
-              </Link>
-              <Link href="/clawbot">
-                <Button variant="outline" size="sm" className="gap-2" data-testid="button-clawbot-gateway">
-                  <Terminal className="h-4 w-4" />
-                  Clawbot
-                </Button>
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/ai-chat">
+                    <Button variant="default" size="sm" className="gap-2" data-testid="button-veribot">
+                      <Bot className="h-4 w-4" />
+                      VeriBot
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>AI legal assistant for research, analysis, and case strategy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/briefing">
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
+                      <Calendar className="h-4 w-4" />
+                      Daily Briefing
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Your personalized daily summary of tasks and deadlines</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/clawbot">
+                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-clawbot-gateway">
+                      <Terminal className="h-4 w-4" />
+                      Clawbot
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Autonomous computer control via natural language</TooltipContent>
+              </Tooltip>
+              <HelpGuide />
               <ThemeToggle />
               <UserMenu />
             </div>

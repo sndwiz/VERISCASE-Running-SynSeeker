@@ -28,6 +28,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   LayoutGrid,
   Briefcase,
   Users,
@@ -60,9 +65,11 @@ import {
   MessageSquare,
   Wand2,
   ClipboardCheck,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
+import { FEATURE_METADATA } from "@/lib/feature-metadata";
 
 const workspaces = [
   { id: "default", name: "Main Workspace", icon: Building2 },
@@ -73,7 +80,17 @@ interface AppSidebarProps {
   onCreateBoard: () => void;
 }
 
-import { LayoutDashboard } from "lucide-react";
+function getTooltipForRoute(route: string): string {
+  const feature = FEATURE_METADATA.find((f) => f.route === route);
+  return feature?.tooltip || "";
+}
+
+function getTooltipForTitle(title: string): string {
+  const feature = FEATURE_METADATA.find(
+    (f) => f.title === title || f.title.toLowerCase() === title.toLowerCase()
+  );
+  return feature?.tooltip || "";
+}
 
 const navigationItems = [
   { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
@@ -213,20 +230,34 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location === "/"}>
-                <Link href="/" data-testid="link-dashboard">
-                  <Home className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarMenuButton asChild isActive={location === "/"} tooltip={getTooltipForRoute("/")}>
+                    <Link href="/" data-testid="link-dashboard">
+                      <Home className="h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[220px]">
+                  {getTooltipForRoute("/")}
+                </TooltipContent>
+              </Tooltip>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location === "/vibe-code"}>
-                <Link href="/vibe-code" data-testid="link-vibe-code">
-                  <Sparkles className="h-4 w-4" />
-                  <span>Vibe Code</span>
-                </Link>
-              </SidebarMenuButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarMenuButton asChild isActive={location === "/vibe-code"} tooltip={getTooltipForRoute("/vibe-code")}>
+                    <Link href="/vibe-code" data-testid="link-vibe-code">
+                      <Sparkles className="h-4 w-4" />
+                      <span>Vibe Code</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[220px]">
+                  {getTooltipForRoute("/vibe-code")}
+                </TooltipContent>
+              </Tooltip>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
@@ -242,33 +273,46 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
               <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${casesOpen ? "" : "-rotate-90"}`} />
               <span>Case Boards</span>
             </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5"
-              onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
-              data-testid="button-create-board"
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
+                  data-testid="button-create-board"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Create a new case board</TooltipContent>
+            </Tooltip>
           </SidebarGroupLabel>
           {casesOpen && (
             <SidebarGroupContent>
               <SidebarMenu>
                 {generalBoards.map((board) => (
                   <SidebarMenuItem key={board.id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === `/boards/${board.id}`}
-                    >
-                      <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
-                        <LayoutGrid
-                          className="h-4 w-4"
-                          style={{ color: board.color }}
-                        />
-                        <span>{board.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location === `/boards/${board.id}`}
+                          tooltip={board.description || `Open ${board.name} board`}
+                        >
+                          <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
+                            <LayoutGrid
+                              className="h-4 w-4"
+                              style={{ color: board.color }}
+                            />
+                            <span>{board.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[220px]">
+                        {board.description || `Open ${board.name} board`}
+                      </TooltipContent>
+                    </Tooltip>
                   </SidebarMenuItem>
                 ))}
 
@@ -280,14 +324,21 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                   >
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton
-                          data-testid={`toggle-client-${client.id}`}
-                          className="w-full"
-                        >
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate font-medium">{client.name}</span>
-                          <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${expandedClients.has(client.id) ? "rotate-90" : ""}`} />
-                        </SidebarMenuButton>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <SidebarMenuButton
+                              data-testid={`toggle-client-${client.id}`}
+                              className="w-full"
+                            >
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="truncate font-medium">{client.name}</span>
+                              <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${expandedClients.has(client.id) ? "rotate-90" : ""}`} />
+                            </SidebarMenuButton>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-[220px]">
+                            {`View matters and billing for ${client.name}`}
+                          </TooltipContent>
+                        </Tooltip>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
@@ -369,15 +420,23 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
               <SidebarMenu>
                 {aiInvestigationItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                    >
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location === item.url}
+                          tooltip={getTooltipForTitle(item.title)}
+                        >
+                          <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[220px]">
+                        {getTooltipForTitle(item.title)}
+                      </TooltipContent>
+                    </Tooltip>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -402,15 +461,23 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
               <SidebarMenu>
                 {navigationItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url || location.startsWith(item.url + "/")}
-                    >
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location === item.url || location.startsWith(item.url + "/")}
+                          tooltip={getTooltipForTitle(item.title)}
+                        >
+                          <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[220px]">
+                        {getTooltipForTitle(item.title)}
+                      </TooltipContent>
+                    </Tooltip>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -423,20 +490,34 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
         <SynSeekrStatusIndicator />
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location === "/security"}>
-              <Link href="/security" data-testid="link-security">
-                <Shield className="h-4 w-4" />
-                <span>Security</span>
-              </Link>
-            </SidebarMenuButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuButton asChild isActive={location === "/security"} tooltip={getTooltipForTitle("Security")}>
+                  <Link href="/security" data-testid="link-security">
+                    <Shield className="h-4 w-4" />
+                    <span>Security</span>
+                  </Link>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[220px]">
+                {getTooltipForTitle("Security")}
+              </TooltipContent>
+            </Tooltip>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={location === "/settings"}>
-              <Link href="/settings" data-testid="link-settings">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuButton asChild isActive={location === "/settings"} tooltip={getTooltipForTitle("Settings")}>
+                  <Link href="/settings" data-testid="link-settings">
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[220px]">
+                {getTooltipForTitle("Settings")}
+              </TooltipContent>
+            </Tooltip>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

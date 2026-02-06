@@ -130,6 +130,9 @@ export async function registerRoutes(
 
   // Seed data - admin only
   app.use("/api/seed", isAuthenticated, requireAdmin);
+
+  // AI Ops - admin only (cost/performance monitoring)
+  app.use("/api/ai-ops", isAuthenticated, requireAdmin);
   
   // Register all other API routes
   registerAllRoutes(app);

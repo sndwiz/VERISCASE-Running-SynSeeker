@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
+import { startAIOp, completeAIOp } from "./ai-ops";
 
 export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private";
 
@@ -280,21 +281,44 @@ export async function* streamGeminiResponse(
 
 export async function* streamResponse(
   messages: ChatMessage[],
-  config: AIConfig
+  config: AIConfig,
+  caller: string = "unknown"
 ): AsyncGenerator<StreamChunk> {
-  switch (config.provider) {
-    case "anthropic":
-      yield* streamAnthropicResponse(messages, config);
-      break;
-    case "openai":
-      yield* streamOpenAIResponse(messages, config);
-      break;
-    case "gemini":
-      yield* streamGeminiResponse(messages, config);
-      break;
-    default:
-      yield { error: `Provider ${config.provider} not supported` };
-      yield { done: true };
+  const inputSummary = messages.map((m) => typeof m.content === "string" ? m.content : "[multimodal]").join("\n");
+  const { id, startTime } = startAIOp(config.provider, config.model, "stream_chat", inputSummary, caller);
+  let fullOutput = "";
+  let hadError = false;
+
+  try {
+    let innerGen: AsyncGenerator<StreamChunk>;
+    switch (config.provider) {
+      case "anthropic":
+        innerGen = streamAnthropicResponse(messages, config);
+        break;
+      case "openai":
+        innerGen = streamOpenAIResponse(messages, config);
+        break;
+      case "gemini":
+        innerGen = streamGeminiResponse(messages, config);
+        break;
+      default:
+        completeAIOp(id, startTime, "", "error", `Provider ${config.provider} not supported`);
+        yield { error: `Provider ${config.provider} not supported` };
+        yield { done: true };
+        return;
+    }
+
+    for await (const chunk of innerGen) {
+      if (chunk.content) fullOutput += chunk.content;
+      if (chunk.error) hadError = true;
+      yield chunk;
+    }
+
+    completeAIOp(id, startTime, fullOutput, hadError ? "error" : "success", hadError ? "Stream contained error" : undefined);
+  } catch (err: any) {
+    completeAIOp(id, startTime, fullOutput, "error", err.message || "Unknown error");
+    yield { error: err.message || "AI request failed" };
+    yield { done: true };
   }
 }
 
@@ -304,40 +328,51 @@ export async function analyzeImageWithVision(
   imageBase64: string,
   mediaType: string,
   prompt: string,
-  config: AIConfig
+  config: AIConfig,
+  caller: string = "vision_analysis"
 ): Promise<string> {
-  if (config.provider !== "anthropic") {
-    throw new Error(`Vision analysis with ${config.provider} not yet implemented`);
-  }
+  const { id, startTime } = startAIOp(config.provider, config.model, "vision_analysis", prompt, caller);
 
-  const validMediaType = (mediaType as ImageMediaType) || "image/png";
+  try {
+    if (config.provider !== "anthropic") {
+      completeAIOp(id, startTime, "", "error", `Vision analysis with ${config.provider} not yet implemented`);
+      throw new Error(`Vision analysis with ${config.provider} not yet implemented`);
+    }
 
-  const response = await anthropic.messages.create({
-    model: config.model,
-    max_tokens: config.maxTokens || 4096,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: validMediaType,
-              data: imageBase64,
+    const validMediaType = (mediaType as ImageMediaType) || "image/png";
+
+    const response = await anthropic.messages.create({
+      model: config.model,
+      max_tokens: config.maxTokens || 4096,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: validMediaType,
+                data: imageBase64,
+              },
             },
-          },
-          {
-            type: "text",
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  });
+            {
+              type: "text",
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  return textBlock?.type === "text" ? textBlock.text : "";
+    const textBlock = response.content.find((block) => block.type === "text");
+    const result = textBlock?.type === "text" ? textBlock.text : "";
+    completeAIOp(id, startTime, result, "success");
+    return result;
+  } catch (err: any) {
+    completeAIOp(id, startTime, "", "error", err.message || "Vision analysis failed");
+    throw err;
+  }
 }
 
 export async function analyzeEvidenceImage(
@@ -435,7 +470,7 @@ Return your analysis in this JSON format:
   };
 
   const prompt = prompts[evidenceType] || prompts.photo;
-  const responseText = await analyzeImageWithVision(imageBase64, mediaType, prompt, config);
+  const responseText = await analyzeImageWithVision(imageBase64, mediaType, prompt, config, `evidence_${evidenceType}`);
 
   try {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);

@@ -492,7 +492,7 @@ export function registerChatRoutes(app: Express): void {
 
       let fullResponse = "";
 
-      for await (const chunk of streamResponse(chatMessages, config)) {
+      for await (const chunk of streamResponse(chatMessages, config, "veribot_chat")) {
         if (chunk.content) {
           fullResponse += chunk.content;
           res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);

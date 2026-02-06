@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw, Cpu, DollarSign, Zap, AlertTriangle, Activity } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,6 +173,12 @@ export default function SettingsPage() {
             <TabsTrigger value="synseekr" data-testid="tab-synseekr">
               <Server className="h-4 w-4 mr-2" />
               SynSeekr
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="ai-ops" data-testid="tab-ai-ops">
+              <Cpu className="h-4 w-4 mr-2" />
+              AI Ops
             </TabsTrigger>
           )}
         </TabsList>
@@ -579,6 +585,12 @@ export default function SettingsPage() {
             <SynSeekrSettings />
           </TabsContent>
         )}
+
+        {isAdmin && (
+          <TabsContent value="ai-ops">
+            <AIOpsDashboard />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -849,6 +861,253 @@ function SynSeekrSettings() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface AIOpsRecord {
+  id: string;
+  timestamp: string;
+  provider: string;
+  model: string;
+  operation: string;
+  inputTokensEst: number;
+  outputTokensEst: number;
+  costEstUsd: number;
+  latencyMs: number;
+  status: "success" | "error";
+  errorMessage?: string;
+  caller: string;
+}
+
+interface AIOpsSum {
+  totalCalls: number;
+  totalCostUsd: number;
+  avgLatencyMs: number;
+  successRate: number;
+  byModel: Record<string, { calls: number; costUsd: number; avgLatencyMs: number; errorCount: number }>;
+  byOperation: Record<string, { calls: number; costUsd: number; avgLatencyMs: number }>;
+  recentErrors: Array<{ timestamp: string; model: string; operation: string; error: string }>;
+  last24hCalls: number;
+  last24hCostUsd: number;
+}
+
+function AIOpsDashboard() {
+  const { data: summary, isLoading: summaryLoading } = useQuery<AIOpsSum>({
+    queryKey: ["/api/ai-ops/summary"],
+    refetchInterval: 15000,
+  });
+
+  const { data: recordsData, isLoading: recordsLoading } = useQuery<{ records: AIOpsRecord[] }>({
+    queryKey: ["/api/ai-ops/records"],
+    refetchInterval: 15000,
+  });
+
+  const records = recordsData?.records || [];
+
+  if (summaryLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const s = summary || {
+    totalCalls: 0, totalCostUsd: 0, avgLatencyMs: 0, successRate: 100,
+    byModel: {}, byOperation: {}, recentErrors: [], last24hCalls: 0, last24hCostUsd: 0,
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card data-testid="card-ai-total-calls">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Total AI Calls</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold" data-testid="text-ai-total-calls">{s.totalCalls}</p>
+            <p className="text-xs text-muted-foreground">{s.last24hCalls} in last 24h</p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-ai-total-cost">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Estimated Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold" data-testid="text-ai-total-cost">${s.totalCostUsd.toFixed(4)}</p>
+            <p className="text-xs text-muted-foreground">${s.last24hCostUsd.toFixed(4)} in last 24h</p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-ai-avg-latency">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Avg Latency</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold" data-testid="text-ai-avg-latency">
+              {s.avgLatencyMs > 1000 ? `${(s.avgLatencyMs / 1000).toFixed(1)}s` : `${s.avgLatencyMs}ms`}
+            </p>
+            <p className="text-xs text-muted-foreground">across all models</p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-ai-success-rate">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold" data-testid="text-ai-success-rate">{s.successRate.toFixed(1)}%</p>
+            <p className="text-xs text-muted-foreground">{s.totalCalls - Math.round(s.totalCalls * s.successRate / 100)} errors</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Usage by Model</CardTitle>
+            <CardDescription>Call count, cost, and latency per model</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(s.byModel).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No AI calls recorded yet</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(s.byModel)
+                  .sort(([, a], [, b]) => b.calls - a.calls)
+                  .map(([model, data]) => (
+                    <div key={model} className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30" data-testid={`row-model-${model}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{model}</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant="secondary">{data.calls} calls</Badge>
+                          <Badge variant="outline">${data.costUsd.toFixed(4)}</Badge>
+                          <Badge variant="outline">{data.avgLatencyMs}ms avg</Badge>
+                          {data.errorCount > 0 && (
+                            <Badge variant="destructive">{data.errorCount} errors</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Usage by Operation</CardTitle>
+            <CardDescription>Breakdown by AI operation type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(s.byOperation).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No AI calls recorded yet</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(s.byOperation)
+                  .sort(([, a], [, b]) => b.calls - a.calls)
+                  .map(([op, data]) => (
+                    <div key={op} className="flex items-center justify-between gap-3 p-2 rounded-md bg-muted/30" data-testid={`row-op-${op}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium capitalize">{op.replace(/_/g, " ")}</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant="secondary">{data.calls} calls</Badge>
+                          <Badge variant="outline">${data.costUsd.toFixed(4)}</Badge>
+                          <Badge variant="outline">{data.avgLatencyMs}ms avg</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {s.recentErrors.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Recent Errors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {s.recentErrors.map((err, i) => (
+                <div key={i} className="flex flex-wrap items-start gap-2 p-2 rounded-md bg-destructive/5 text-sm" data-testid={`row-error-${i}`}>
+                  <Badge variant="destructive">{err.model}</Badge>
+                  <Badge variant="outline">{err.operation}</Badge>
+                  <span className="text-xs text-muted-foreground">{new Date(err.timestamp).toLocaleString()}</span>
+                  <p className="w-full text-xs text-destructive">{err.error}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent AI Operations</CardTitle>
+          <CardDescription>Last {records.length} tracked AI calls</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recordsLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : records.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No AI operations recorded yet. Use VeriBot or other AI features to see tracking data.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-2 font-medium">Time</th>
+                    <th className="pb-2 font-medium">Model</th>
+                    <th className="pb-2 font-medium">Operation</th>
+                    <th className="pb-2 font-medium">Caller</th>
+                    <th className="pb-2 font-medium text-right">Tokens</th>
+                    <th className="pb-2 font-medium text-right">Cost</th>
+                    <th className="pb-2 font-medium text-right">Latency</th>
+                    <th className="pb-2 font-medium text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.slice(0, 20).map((r) => (
+                    <tr key={r.id} className="border-b last:border-0" data-testid={`row-record-${r.id}`}>
+                      <td className="py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(r.timestamp).toLocaleTimeString()}</td>
+                      <td className="py-2 text-xs font-mono truncate max-w-[120px]">{r.model}</td>
+                      <td className="py-2 text-xs capitalize">{r.operation.replace(/_/g, " ")}</td>
+                      <td className="py-2 text-xs capitalize">{r.caller.replace(/_/g, " ")}</td>
+                      <td className="py-2 text-xs text-right">{(r.inputTokensEst + r.outputTokensEst).toLocaleString()}</td>
+                      <td className="py-2 text-xs text-right">${r.costEstUsd.toFixed(5)}</td>
+                      <td className="py-2 text-xs text-right">
+                        {r.latencyMs > 1000 ? `${(r.latencyMs / 1000).toFixed(1)}s` : `${r.latencyMs}ms`}
+                      </td>
+                      <td className="py-2 text-center">
+                        {r.status === "success" ? (
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500 inline" />
+                        ) : (
+                          <AlertTriangle className="h-3 w-3 text-destructive inline" />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
