@@ -303,7 +303,7 @@ export function RecentActivityWidget({ tasks, limit = 5 }: RecentActivityProps) 
 
   return (
     <Widget title="Recent Activity">
-      <ScrollArea className="h-48">
+      <ScrollArea className="h-[280px]">
         <div className="space-y-3">
           {sortedTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
