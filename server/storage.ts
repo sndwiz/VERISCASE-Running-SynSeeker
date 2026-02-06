@@ -69,6 +69,10 @@ import type {
   InsertClientFormSubmission,
   Meeting,
   InsertMeeting,
+  AuditLog,
+  InsertAuditLog,
+  SecurityEvent,
+  InsertSecurityEvent,
 } from "@shared/schema";
 
 // Default columns for new boards
@@ -267,6 +271,16 @@ export interface IStorage {
   createMeeting(data: InsertMeeting): Promise<Meeting>;
   updateMeeting(id: string, data: Partial<Meeting>): Promise<Meeting | undefined>;
   deleteMeeting(id: string): Promise<boolean>;
+
+  // Audit Logs
+  createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(options?: { userId?: string; action?: string; resourceType?: string; limit?: number; offset?: number }): Promise<AuditLog[]>;
+  getAuditLogCount(options?: { userId?: string; action?: string; resourceType?: string }): Promise<number>;
+
+  // Security Events
+  createSecurityEvent(data: InsertSecurityEvent): Promise<SecurityEvent>;
+  getSecurityEvents(options?: { eventType?: string; severity?: string; resolved?: boolean; limit?: number }): Promise<SecurityEvent[]>;
+  resolveSecurityEvent(id: string): Promise<SecurityEvent | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -2412,6 +2426,19 @@ Attorney for Plaintiff                  Attorney for Defendant`,
   async deleteMeeting(id: string): Promise<boolean> {
     return this.meetingsMap.delete(id);
   }
+
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const log: AuditLog = { id: randomUUID(), ...data, metadata: data.metadata || {}, severity: data.severity || "info", createdAt: new Date(), userId: data.userId || null, userEmail: data.userEmail || null, resourceType: data.resourceType || null, resourceId: data.resourceId || null, method: data.method || null, path: data.path || null, ipAddress: data.ipAddress || null, userAgent: data.userAgent || null, statusCode: data.statusCode || null };
+    return log;
+  }
+  async getAuditLogs(_options?: { userId?: string; action?: string; resourceType?: string; limit?: number; offset?: number }): Promise<AuditLog[]> { return []; }
+  async getAuditLogCount(_options?: { userId?: string; action?: string; resourceType?: string }): Promise<number> { return 0; }
+  async createSecurityEvent(data: InsertSecurityEvent): Promise<SecurityEvent> {
+    const event: SecurityEvent = { id: randomUUID(), ...data, details: data.details || {}, severity: data.severity || "warning", resolved: false, createdAt: new Date(), userId: data.userId || null, ipAddress: data.ipAddress || null, userAgent: data.userAgent || null };
+    return event;
+  }
+  async getSecurityEvents(_options?: { eventType?: string; severity?: string; resolved?: boolean; limit?: number }): Promise<SecurityEvent[]> { return []; }
+  async resolveSecurityEvent(_id: string): Promise<SecurityEvent | undefined> { return undefined; }
 }
 
 // Use database storage for persistence

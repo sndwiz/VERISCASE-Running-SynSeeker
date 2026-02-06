@@ -397,6 +397,14 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
         <SynSeekrStatusIndicator />
         <SidebarMenu>
           <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location === "/security"}>
+              <Link href="/security" data-testid="link-security">
+                <Shield className="h-4 w-4" />
+                <span>Security</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={location === "/settings"}>
               <Link href="/settings" data-testid="link-settings">
                 <Settings className="h-4 w-4" />

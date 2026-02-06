@@ -1962,6 +1962,60 @@ export type UpdateDocumentApproval = z.infer<typeof updateDocumentApprovalSchema
 export type InsertClientForm = z.infer<typeof insertClientFormSchema>;
 export type InsertClientFormSubmission = z.infer<typeof insertClientFormSubmissionSchema>;
 
+// Audit Log types
+export type AuditLog = {
+  id: string;
+  userId: string | null;
+  userEmail: string | null;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  method: string | null;
+  path: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  statusCode: number | null;
+  metadata: Record<string, any>;
+  severity: string | null;
+  createdAt: Date | null;
+};
+
+export type InsertAuditLog = {
+  userId?: string | null;
+  userEmail?: string | null;
+  action: string;
+  resourceType?: string | null;
+  resourceId?: string | null;
+  method?: string | null;
+  path?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  statusCode?: number | null;
+  metadata?: Record<string, any>;
+  severity?: string;
+};
+
+export type SecurityEvent = {
+  id: string;
+  eventType: string;
+  userId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  details: Record<string, any>;
+  severity: string | null;
+  resolved: boolean | null;
+  createdAt: Date | null;
+};
+
+export type InsertSecurityEvent = {
+  eventType: string;
+  userId?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  details?: Record<string, any>;
+  severity?: string;
+};
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

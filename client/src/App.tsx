@@ -40,6 +40,7 @@ import MeetingNotesPage from "@/pages/meeting-notes";
 import ClientDashboardPage from "@/pages/client-dashboard";
 import ClientDetailDashboard from "@/pages/client-detail-dashboard";
 import VibeCodePage from "@/pages/vibe-code";
+import SecurityDashboardPage from "@/pages/security-dashboard";
 
 import type { Board } from "@shared/schema";
 
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/briefing" component={DailyBriefingPage} />
       <Route path="/meetings" component={MeetingNotesPage} />
       <Route path="/vibe-code" component={VibeCodePage} />
+      <Route path="/security" component={SecurityDashboardPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

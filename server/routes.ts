@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { registerAllRoutes } from "./routes/index";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import { registerAuthRoutes, bootstrapFirstAdmin } from "./replit_integrations/auth/routes";
-import { viewerReadOnly, requireMemberOrAbove, requireAnyRole } from "./replit_integrations/auth/middleware";
+import { viewerReadOnly, requireMemberOrAbove, requireAnyRole, requireAdmin } from "./replit_integrations/auth/middleware";
+import { auditMiddleware } from "./security/audit";
+import { sessionIpTracking } from "./security/session";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -12,6 +14,9 @@ export async function registerRoutes(
   // Initialize authentication first (before other routes)
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  app.use(sessionIpTracking);
+  app.use(auditMiddleware);
   
   // Apply RBAC middleware to all /api/* routes except auth routes
   // Role tiers:
@@ -75,6 +80,9 @@ export async function registerRoutes(
   
   // Vibe Code app builder - member or above
   app.use("/api/vibe", isAuthenticated, viewerReadOnly);
+  
+  // Security dashboard - admin only
+  app.use("/api/security", isAuthenticated, requireAdmin);
   
   // Register all other API routes
   registerAllRoutes(app);

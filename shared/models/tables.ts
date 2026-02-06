@@ -438,7 +438,51 @@ export const meetings = pgTable("meetings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ============ AUDIT LOGS ============
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }),
+  userEmail: varchar("user_email", { length: 255 }),
+  action: varchar("action", { length: 100 }).notNull(),
+  resourceType: varchar("resource_type", { length: 100 }),
+  resourceId: varchar("resource_id", { length: 255 }),
+  method: varchar("method", { length: 10 }),
+  path: varchar("path", { length: 500 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  statusCode: integer("status_code"),
+  metadata: jsonb("metadata").default({}),
+  severity: varchar("severity", { length: 20 }).default("info"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_audit_user").on(table.userId),
+  index("IDX_audit_action").on(table.action),
+  index("IDX_audit_created").on(table.createdAt),
+  index("IDX_audit_resource").on(table.resourceType, table.resourceId),
+]);
+
+// ============ SECURITY EVENTS ============
+export const securityEvents = pgTable("security_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  userId: varchar("user_id", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  details: jsonb("details").default({}),
+  severity: varchar("severity", { length: 20 }).default("warning"),
+  resolved: boolean("resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_security_event_type").on(table.eventType),
+  index("IDX_security_severity").on(table.severity),
+  index("IDX_security_created").on(table.createdAt),
+]);
+
 // Type exports
+export type AuditLogRecord = typeof auditLogs.$inferSelect;
+export type InsertAuditLogRecord = typeof auditLogs.$inferInsert;
+export type SecurityEventRecord = typeof securityEvents.$inferSelect;
+export type InsertSecurityEventRecord = typeof securityEvents.$inferInsert;
 export type MeetingRecord = typeof meetings.$inferSelect;
 export type InsertMeetingRecord = typeof meetings.$inferInsert;
 export type BoardRecord = typeof boards.$inferSelect;
