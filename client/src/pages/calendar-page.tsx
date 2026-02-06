@@ -365,11 +365,11 @@ export default function CalendarPage() {
                     </div>
                     <div className="space-y-1">
                       {dayEvents.slice(0, 2).map(event => {
-                        const Icon = eventTypeIcons[event.eventType];
+                        const Icon = eventTypeIcons[event.eventType] || Calendar;
                         return (
                           <div
                             key={event.id}
-                            className={`text-xs truncate rounded px-1 py-0.5 text-white ${eventTypeColors[event.eventType]}`}
+                            className={`text-xs truncate rounded px-1 py-0.5 text-white ${eventTypeColors[event.eventType] || "bg-gray-500"}`}
                           >
                             {event.title}
                           </div>
@@ -397,10 +397,10 @@ export default function CalendarPage() {
               <CardContent>
                 <div className="space-y-3">
                   {selectedDateEvents.map(event => {
-                    const Icon = eventTypeIcons[event.eventType];
+                    const Icon = eventTypeIcons[event.eventType] || Calendar;
                     return (
                       <div key={event.id} className="flex items-start gap-3 p-2 border rounded" data-testid={`event-${event.id}`}>
-                        <div className={`p-2 rounded ${eventTypeColors[event.eventType]}`}>
+                        <div className={`p-2 rounded ${eventTypeColors[event.eventType] || "bg-gray-500"}`}>
                           <Icon className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -453,10 +453,10 @@ export default function CalendarPage() {
               ) : (
                 <div className="space-y-3">
                   {upcomingEvents.map(event => {
-                    const Icon = eventTypeIcons[event.eventType];
+                    const Icon = eventTypeIcons[event.eventType] || Calendar;
                     return (
                       <div key={event.id} className="flex items-center gap-3 p-2 border rounded hover-elevate" data-testid={`upcoming-event-${event.id}`}>
-                        <div className={`p-1.5 rounded ${eventTypeColors[event.eventType]}`}>
+                        <div className={`p-1.5 rounded ${eventTypeColors[event.eventType] || "bg-gray-500"}`}>
                           <Icon className="h-3 w-3 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
