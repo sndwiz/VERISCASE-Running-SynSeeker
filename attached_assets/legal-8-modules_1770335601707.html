@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Legal AI System - 8 Module Overview</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1a1a2e;
+            background: #fff;
+        }
+        
+        .page {
+            width: 8.5in;
+            min-height: 10.5in;
+            padding: 0.5in;
+            page-break-after: always;
+            position: relative;
+        }
+        
+        .page-number {
+            position: absolute;
+            bottom: 0.3in;
+            right: 0.5in;
+            font-size: 9pt;
+            color: #888;
+        }
+        
+        /* Module Header */
+        .module-header {
+            background: linear-gradient(135deg, #1a1a2e, #2d3561);
+            color: #fff;
+            padding: 20px 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .module-number {
+            font-size: 12pt;
+            color: #00d9ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+        .module-title {
+            font-size: 22pt;
+            font-weight: 700;
+        }
+        .module-subtitle {
+            font-size: 10pt;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        
+        /* Content */
+        h3 {
+            font-size: 13pt;
+            color: #1a1a2e;
+            margin: 20px 0 12px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #00d9ff;
+        }
+        
+        p { margin-bottom: 12px; }
+        
+        ul { margin: 10px 0 15px 20px; }
+        li { margin-bottom: 6px; }
+        
+        /* Grids */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 15px 0; }
+        
+        /* Cards */
+        .card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #00d9ff;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .card.green { border-left-color: #00c853; }
+        .card.yellow { border-left-color: #ffc107; }
+        .card.red { border-left-color: #ff5252; }
+        .card.purple { border-left-color: #9c27b0; }
+        .card-title { font-weight: 700; margin-bottom: 6px; color: #1a1a2e; }
+        .card-desc { font-size: 10pt; color: #555; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 10pt; }
+        th { background: #1a1a2e; color: #fff; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #e0e0e0; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        
+        /* Flow */
+        .flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+        .flow-box { background: #e8f4fd; border: 2px solid #00d9ff; border-radius: 8px; padding: 10px 16px; font-size: 10pt; font-weight: 600; }
+        .flow-arrow { color: #00d9ff; font-size: 16pt; }
+        
+        /* Key Point Box */
+        .key-point {
+            background: linear-gradient(90deg, #e8f4fd, #f0fff4);
+            border-left: 4px solid #00d9ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .key-point strong { color: #1a1a2e; }
+        
+        /* Zones */
+        .zones { display: flex; gap: 12px; margin: 15px 0; }
+        .zone { flex: 1; border: 2px dashed; border-radius: 10px; padding: 12px; text-align: center; }
+        .zone.red { border-color: #ff5252; background: #fff5f5; }
+        .zone.yellow { border-color: #ffc107; background: #fffef5; }
+        .zone.green { border-color: #00c853; background: #f0fff4; }
+        .zone h4 { margin-bottom: 10px; font-size: 11pt; }
+        .zone ul { text-align: left; font-size: 9pt; }
+        
+        /* Stats */
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-num { font-size: 32pt; font-weight: 800; color: #00d9ff; }
+        .stat-label { font-size: 9pt; color: #666; }
+        
+        /* Timeline */
+        .timeline { border-left: 3px solid #00d9ff; padding-left: 20px; margin: 15px 0; }
+        .timeline-item { margin-bottom: 12px; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: -26px; top: 6px; width: 10px; height: 10px; background: #00d9ff; border-radius: 50%; }
+        .timeline-title { font-weight: 700; }
+        .timeline-desc { font-size: 10pt; color: #555; }
+        
+        /* Scenario */
+        .scenario { background: #f0f4ff; border: 1px solid #d0d8ff; border-radius: 8px; padding: 15px; margin: 12px 0; }
+        .scenario-title { font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+        .scenario-result { background: #e8fff0; border-left: 3px solid #00c853; padding: 10px; margin-top: 10px; border-radius: 0 6px 6px 0; font-size: 10pt; }
+    </style>
+</head>
+<body>
+
+<!-- MODULE 1: THE BIG PICTURE -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 1</div>
+        <div class="module-title">The Big Picture</div>
+        <div class="module-subtitle">What this system does and why it matters</div>
+    </div>
+    
+    <h3>The Problem</h3>
+    <p>Legal work drowns in documents. Thousands of pages per case. Finding contradictions, spotting evasive language, connecting patterns across cases - it takes weeks of manual review. Things slip through. Time runs out. Cases suffer.</p>
+    
+    <h3>The Solution</h3>
+    <p>An AI system that reads everything, flags problems automatically, and makes your entire case history searchable in seconds. All while keeping sensitive data completely private.</p>
+    
+    <div class="stats">
+        <div class="stat"><div class="stat-num">85%</div><div class="stat-label">Less review time</div></div>
+        <div class="stat"><div class="stat-num">8+</div><div class="stat-label">Detection types</div></div>
+        <div class="stat"><div class="stat-num">0</div><div class="stat-label">Data exposure</div></div>
+    </div>
+    
+    <h3>How It Works (Simple Version)</h3>
+    <div class="flow">
+        <div class="flow-box">📄 Upload Any Doc</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">🔍 AI Analyzes</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">🚩 Flags Issues</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">💬 You Search</div>
+    </div>
+    
+    <h3>What It Detects Automatically</h3>
+    <div class="grid-2">
+        <div class="card red"><div class="card-title">⚡ Contradictions</div><div class="card-desc">Statements that conflict with each other across documents</div></div>
+        <div class="card red"><div class="card-title">🌫️ Evasive Language</div><div class="card-desc">Non-answers, hedging, suspicious vagueness</div></div>
+        <div class="card red"><div class="card-title">📅 Timeline Issues</div><div class="card-desc">Dates that don't add up, impossible sequences</div></div>
+        <div class="card red"><div class="card-title">😤 Tone Shifts</div><div class="card-desc">Sudden aggressive or defensive language</div></div>
+    </div>
+    
+    <div class="key-point">
+        <strong>The Bottom Line:</strong> Upload documents. Get instant analysis. Find what matters. Never miss a contradiction again.
+    </div>
+    <span class="page-number">1</span>
+</div>
+
+<!-- MODULE 2: SECURITY ARCHITECTURE -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 2</div>
+        <div class="module-title">Security Architecture</div>
+        <div class="module-subtitle">5 layers of defense - how your data stays protected</div>
+    </div>
+    
+    <h3>Defense in Depth</h3>
+    <p>Not one wall - five. Each layer works independently. Break through one, the others still protect you.</p>
+    
+    <table>
+        <tr><th>Layer</th><th>What It Does</th><th>Why It Matters</th></tr>
+        <tr><td><strong>1. Network</strong></td><td>Firewall, VPN, IP whitelist</td><td>No direct internet to sensitive systems</td></tr>
+        <tr><td><strong>2. Containers</strong></td><td>Each component isolated</td><td>Breach in one can't reach others</td></tr>
+        <tr><td><strong>3. Encryption</strong></td><td>AES-256 at rest, TLS 1.3 in transit</td><td>Data unreadable even if stolen</td></tr>
+        <tr><td><strong>4. Access Control</strong></td><td>Role-based permissions</td><td>People see only what they need</td></tr>
+        <tr><td><strong>5. Anonymization</strong></td><td>Strip PII before external processing</td><td>Names never leave your building</td></tr>
+    </table>
+    
+    <h3>Container Zones</h3>
+    <div class="zones">
+        <div class="zone red">
+            <h4>🔴 ISOLATED</h4>
+            <ul>
+                <li>Original documents</li>
+                <li>Encryption keys</li>
+                <li>User credentials</li>
+            </ul>
+            <p style="font-size: 9pt; margin-top: 8px;"><strong>No network. Ever.</strong></p>
+        </div>
+        <div class="zone yellow">
+            <h4>🟡 INTERNAL</h4>
+            <ul>
+                <li>OCR processing</li>
+                <li>AI analysis</li>
+                <li>Search database</li>
+            </ul>
+            <p style="font-size: 9pt; margin-top: 8px;"><strong>Internal only.</strong></p>
+        </div>
+        <div class="zone green">
+            <h4>🟢 EXTERNAL</h4>
+            <ul>
+                <li>Wash Center</li>
+                <li>Legal research</li>
+                <li>Court records</li>
+            </ul>
+            <p style="font-size: 9pt; margin-top: 8px;"><strong>Anonymous data only.</strong></p>
+        </div>
+    </div>
+    
+    <h3>What This Means in Practice</h3>
+    <div class="grid-3">
+        <div class="card"><div class="card-title">🦠 Malware Trapped</div><div class="card-desc">Malicious file exploits OCR? Contained. Can't reach your data.</div></div>
+        <div class="card"><div class="card-title">🕵️ Insider Limited</div><div class="card-desc">No single key unlocks everything. Compartmentalized by design.</div></div>
+        <div class="card"><div class="card-title">📋 Full Audit</div><div class="card-desc">Every access logged. Perfect for discovery compliance.</div></div>
+    </div>
+    
+    <div class="key-point">
+        <strong>Key Point:</strong> Your data is protected by multiple independent layers. This isn't just security - it's defensible security you can explain in court.
+    </div>
+    <span class="page-number">2</span>
+</div>
+
+<!-- MODULE 3: THE WASH CENTER -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 3</div>
+        <div class="module-title">The Wash Center</div>
+        <div class="module-subtitle">Enterprise AI power with zero data exposure</div>
+    </div>
+    
+    <h3>The Challenge</h3>
+    <p>The most powerful AI models need massive computing power you don't have in your office. But sending client data to the cloud? Unacceptable. The Wash Center solves this.</p>
+    
+    <h3>How It Works</h3>
+    <div class="timeline">
+        <div class="timeline-item">
+            <div class="timeline-title">1. Analyze Locally</div>
+            <div class="timeline-desc">Your system processes documents on your hardware. Originals never move.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-title">2. Strip Identifiers</div>
+            <div class="timeline-desc">"John Smith at 123 Main St" becomes "Party_A at Location_1". Meaning preserved, identity gone.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-title">3. Send Anonymous Patterns</div>
+            <div class="timeline-desc">Only language patterns, tone markers, timeline structures go out. Encrypted in transit.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-title">4. Heavy Processing</div>
+            <div class="timeline-desc">Wash Center runs 70B+ parameter models, compares against millions of cases.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-title">5. Insights Return</div>
+            <div class="timeline-desc">"Pattern matches deception signature with 87% confidence" - findings, not data.</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-title">6. Re-Connect Locally</div>
+            <div class="timeline-desc">Your system maps insights back to real names. Wash Center never knew who was who.</div>
+        </div>
+    </div>
+    
+    <h3>What Wash Center Enables</h3>
+    <div class="grid-2">
+        <div class="card green"><div class="card-title">🔍 Cross-Case Patterns</div><div class="card-desc">"This language matches 847 other flagged depositions"</div></div>
+        <div class="card green"><div class="card-title">📊 Outcome Prediction</div><div class="card-desc">"Similar cases settle 73% of time at 1.4x initial offer"</div></div>
+        <div class="card green"><div class="card-title">⚖️ Precedent Matching</div><div class="card-desc">"91% similar to Smith v. Jones which ruled..."</div></div>
+        <div class="card green"><div class="card-title">🎭 Deception Analysis</div><div class="card-desc">Models trained on known deceptive vs truthful statements</div></div>
+    </div>
+    
+    <div class="key-point">
+        <strong>Key Point:</strong> The Wash Center gives you intelligence, not data. Enterprise-scale analysis with zero exposure risk. Completely defensible.
+    </div>
+    <span class="page-number">3</span>
+</div>
+
+<!-- MODULE 4: REAL SCENARIOS -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 4</div>
+        <div class="module-title">Real Scenarios</div>
+        <div class="module-subtitle">How the system transforms actual legal work</div>
+    </div>
+    
+    <div class="scenario">
+        <div class="scenario-title">🕵️ Scenario 1: The Hidden Contradiction</div>
+        <p><strong>Situation:</strong> 2,000 pages from 8 witnesses. Somewhere, two contradict each other about when they knew about a defect.</p>
+        <p><strong>Traditional:</strong> 40 hours of paralegal cross-referencing. Maybe find it, maybe miss it.</p>
+        <p><strong>With System:</strong> "Find timeline contradictions about knowledge of defect."</p>
+        <div class="scenario-result"><strong>30 seconds:</strong> "Witness A (p.47): 'First learned March 2022.' Witness B (p.89): 'Told Witness A November 2021.' Confidence: 94%"</div>
+    </div>
+    
+    <div class="scenario">
+        <div class="scenario-title">🎭 Scenario 2: The Evasive Expert</div>
+        <p><strong>Situation:</strong> Opposing expert's report feels off. Can't pinpoint why.</p>
+        <p><strong>Traditional:</strong> Read multiple times. Hope experience catches it.</p>
+        <p><strong>With System:</strong> Upload report. Automatic analysis.</p>
+        <div class="scenario-result"><strong>Result:</strong> "Section 4.2 uses 47% more hedging language than other sections. Topic: causation." Now you know where to focus deposition questions.</div>
+    </div>
+    
+    <div class="scenario">
+        <div class="scenario-title">🔗 Scenario 3: Connected Cases</div>
+        <p><strong>Situation:</strong> New slip-and-fall. Defendant name sounds familiar...</p>
+        <p><strong>With System:</strong> "Show all cases involving this defendant."</p>
+        <div class="scenario-result"><strong>Discovery:</strong> "3 prior cases. All similar maintenance negligence. Pattern of willful disregard established. Punitive damages now viable."</div>
+    </div>
+    
+    <div class="scenario">
+        <div class="scenario-title">⏰ Scenario 4: Timeline Reconstruction</div>
+        <p><strong>Situation:</strong> Complex fraud - 15 defendants, 3 years of emails, 200 transactions. Who knew what when?</p>
+        <p><strong>With System:</strong> "Build timeline of when each party first had knowledge."</p>
+        <div class="scenario-result"><strong>Output:</strong> Visual timeline per defendant. Auto-flag: "Defendant C claimed no knowledge until Aug 2022, but Feb 2022 email shows direct notification."</div>
+    </div>
+    
+    <div class="key-point">
+        <strong>Key Point:</strong> These aren't hypotheticals. These are the time-killers every firm faces. The system solves them in seconds instead of days.
+    </div>
+    <span class="page-number">4</span>
+</div>
+
+<!-- MODULE 5: CAPABILITIES -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 5</div>
+        <div class="module-title">Full Capabilities</div>
+        <div class="module-subtitle">Everything the system can do</div>
+    </div>
+    
+    <h3>Input Handling</h3>
+    <div class="grid-3">
+        <div class="card"><div class="card-title">📄 Documents</div><div class="card-desc">PDF, Word, scans, faxes</div></div>
+        <div class="card"><div class="card-title">✍️ Handwriting</div><div class="card-desc">Notes, forms, signatures</div></div>
+        <div class="card"><div class="card-title">🌍 Languages</div><div class="card-desc">English, Spanish, more</div></div>
+    </div>
+    
+    <h3>Analysis Types</h3>
+    <div class="grid-2">
+        <div class="card"><div class="card-title">⚡ Contradiction Detection</div><div class="card-desc">Cross-reference statements across all documents</div></div>
+        <div class="card"><div class="card-title">📅 Timeline Analysis</div><div class="card-desc">Build chronologies, find impossibilities</div></div>
+        <div class="card"><div class="card-title">🎭 Tone/Sentiment</div><div class="card-desc">Detect evasion, aggression, defensiveness</div></div>
+        <div class="card"><div class="card-title">👥 Entity Extraction</div><div class="card-desc">People, companies, dates, amounts</div></div>
+        <div class="card"><div class="card-title">🔗 Relationship Mapping</div><div class="card-desc">Who knows who, who communicated when</div></div>
+        <div class="card"><div class="card-title">📜 Clause Identification</div><div class="card-desc">Find specific contract terms across docs</div></div>
+    </div>
+    
+    <h3>Specialized AI Models</h3>
+    <p>Different legal domains get specialized analysis:</p>
+    <div class="grid-3">
+        <div class="card purple"><div class="card-title">🏥 Medical Malpractice</div><div class="card-desc">Medical terms, standard of care</div></div>
+        <div class="card purple"><div class="card-title">💰 Financial Fraud</div><div class="card-desc">Transaction patterns, irregularities</div></div>
+        <div class="card purple"><div class="card-title">👔 Employment</div><div class="card-desc">HR patterns, discrimination indicators</div></div>
+        <div class="card purple"><div class="card-title">🏗️ Construction</div><div class="card-desc">Building codes, defect patterns</div></div>
+        <div class="card purple"><div class="card-title">🚗 Product Liability</div><div class="card-desc">Recalls, manufacturing defects</div></div>
+        <div class="card purple"><div class="card-title">📜 Contracts</div><div class="card-desc">Unusual clauses, missing provisions</div></div>
+    </div>
+    
+    <h3>Integrations</h3>
+    <div class="grid-2">
+        <div class="card yellow"><div class="card-title">📚 Legal Research</div><div class="card-desc">Westlaw, Lexis - auto-cite checking, new law alerts</div></div>
+        <div class="card yellow"><div class="card-title">🏛️ Court Records</div><div class="card-desc">PACER, state courts - judge/attorney analytics</div></div>
+        <div class="card yellow"><div class="card-title">💼 Case Management</div><div class="card-desc">Clio, MyCase, PracticePanther - sync both ways</div></div>
+        <div class="card yellow"><div class="card-title">📅 Calendar</div><div class="card-desc">Deadline-aware prioritization</div></div>
+    </div>
+    <span class="page-number">5</span>
+</div>
+
+<!-- MODULE 6: AI LEARNING -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 6</div>
+        <div class="module-title">The AI Gets Smarter</div>
+        <div class="module-subtitle">How the system learns and improves over time</div>
+    </div>
+    
+    <h3>The Learning Loop</h3>
+    <div class="flow">
+        <div class="flow-box">📄 New Case</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">🔍 Analysis</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">✅ Your Feedback</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">🧠 Model Updates</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">📈 Better Results</div>
+    </div>
+    
+    <h3>What It Learns</h3>
+    <div class="grid-2">
+        <div class="card"><div class="card-title">📋 Your Case Types</div><div class="card-desc">Personal injury? Contracts? Employment? Learns what matters for YOUR practice areas.</div></div>
+        <div class="card"><div class="card-title">🏛️ Your Jurisdiction</div><div class="card-desc">Local judges, regional precedents, state-specific laws and norms.</div></div>
+        <div class="card"><div class="card-title">👤 Your Standards</div><div class="card-desc">What YOU consider "evasive." What level of contradiction matters to YOU.</div></div>
+        <div class="card"><div class="card-title">🎯 What Wins</div><div class="card-desc">Correlates flags with outcomes. "When I flagged X and you pursued it, results improved."</div></div>
+    </div>
+    
+    <h3>Evolution Over Time</h3>
+    <table>
+        <tr><th>Capability</th><th>Month 1</th><th>Month 12</th></tr>
+        <tr><td>Contradiction Detection</td><td>Generic patterns</td><td>Knows what matters for YOUR cases</td></tr>
+        <tr><td>Relevance Ranking</td><td>Standard importance</td><td>Ranked by YOUR success patterns</td></tr>
+        <tr><td>False Positives</td><td>~20% (flags too much)</td><td>~5% (learned your threshold)</td></tr>
+        <tr><td>Suggestions</td><td>"This might be relevant"</td><td>"Cases like this won when..."</td></tr>
+    </table>
+    
+    <h3>Three Learning Sources</h3>
+    <div class="grid-3">
+        <div class="card green"><div class="card-title">Your Cases</div><div class="card-desc">Every document adds understanding</div></div>
+        <div class="card green"><div class="card-title">Your Feedback</div><div class="card-desc">Mark relevant/irrelevant, model adjusts</div></div>
+        <div class="card green"><div class="card-title">Wash Center</div><div class="card-desc">Anonymous patterns from network</div></div>
+    </div>
+    
+    <div class="key-point">
+        <strong>Key Point:</strong> This isn't a static tool. It's a system that gets better the more you use it. Your investment compounds over time.
+    </div>
+    <span class="page-number">6</span>
+</div>
+
+<!-- MODULE 7: VALUE & ROI -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 7</div>
+        <div class="module-title">Value & ROI</div>
+        <div class="module-subtitle">What this means for your practice</div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat"><div class="stat-num">85%</div><div class="stat-label">Less review time</div></div>
+        <div class="stat"><div class="stat-num">3x</div><div class="stat-label">Cases per attorney</div></div>
+        <div class="stat"><div class="stat-num">40+</div><div class="stat-label">Hours saved/case</div></div>
+    </div>
+    
+    <h3>Time Savings</h3>
+    <table>
+        <tr><th>Task</th><th>Traditional</th><th>With System</th><th>Saved</th></tr>
+        <tr><td>Review 500-page deposition</td><td>8 hours</td><td>1 hour</td><td style="color: green;"><strong>7 hrs</strong></td></tr>
+        <tr><td>Find contradictions (10 witnesses)</td><td>40 hours</td><td>10 min</td><td style="color: green;"><strong>39.8 hrs</strong></td></tr>
+        <tr><td>Build case timeline</td><td>6 hours</td><td>5 min</td><td style="color: green;"><strong>5.9 hrs</strong></td></tr>
+        <tr><td>Research opposing counsel</td><td>4 hours</td><td>Instant</td><td style="color: green;"><strong>4 hrs</strong></td></tr>
+        <tr><td>Cross-reference case law</td><td>3 hours</td><td>Auto</td><td style="color: green;"><strong>3 hrs</strong></td></tr>
+    </table>
+    
+    <h3>Competitive Advantages</h3>
+    <div class="grid-2">
+        <div class="card"><div class="card-title">🏆 Find What Others Miss</div><div class="card-desc">Contradictions surface in seconds. Nothing slips through. Stronger cases.</div></div>
+        <div class="card"><div class="card-title">⚡ Speed to Resolution</div><div class="card-desc">Faster review = faster case development. Beat opposing counsel to key insights.</div></div>
+        <div class="card"><div class="card-title">🎯 Better Case Selection</div><div class="card-desc">Data-driven evaluation. Take winners, avoid losers. Higher success rate.</div></div>
+        <div class="card"><div class="card-title">🔒 Client Trust</div><div class="card-desc">"Your data never leaves our office." Privacy is a selling point.</div></div>
+    </div>
+    
+    <h3>What You Tell Clients</h3>
+    <div class="key-point">
+        "We use advanced AI to analyze your case faster and more thoroughly than humanly possible. But unlike other firms, your sensitive information never leaves our secure systems. Enterprise technology. Zero exposure risk."
+    </div>
+    <span class="page-number">7</span>
+</div>
+
+<!-- MODULE 8: IMPLEMENTATION -->
+<div class="page">
+    <div class="module-header">
+        <div class="module-number">Module 8</div>
+        <div class="module-title">Implementation</div>
+        <div class="module-subtitle">How we get from here to there</div>
+    </div>
+    
+    <h3>Four Phases</h3>
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title">Phase 1: Foundation (Weeks 1-4)</div>
+            <div class="card-desc">
+                • Hardware setup<br>
+                • Document ingestion + OCR<br>
+                • Basic search working<br>
+                • Test with 50-100 docs<br>
+                • Initial training
+            </div>
+        </div>
+        <div class="card green">
+            <div class="card-title">Phase 2: Intelligence (Weeks 5-8)</div>
+            <div class="card-desc">
+                • Tone analysis active<br>
+                • Contradiction detection<br>
+                • Timeline analysis<br>
+                • Model training on your cases<br>
+                • Full workflow integration
+            </div>
+        </div>
+        <div class="card yellow">
+            <div class="card-title">Phase 3: Federation (Weeks 9-12)</div>
+            <div class="card-desc">
+                • Wash Center connected<br>
+                • Anonymization tested<br>
+                • Security audit complete<br>
+                • Large-scale analysis active
+            </div>
+        </div>
+        <div class="card purple">
+            <div class="card-title">Phase 4: Expansion (Ongoing)</div>
+            <div class="card-desc">
+                • Legal database integrations<br>
+                • Case management sync<br>
+                • New capabilities added<br>
+                • Continuous improvement
+            </div>
+        </div>
+    </div>
+    
+    <h3>Success Metrics</h3>
+    <table>
+        <tr><th>Metric</th><th>Phase 1</th><th>Phase 4</th></tr>
+        <tr><td>Processing time</td><td>&lt; 2 min/doc</td><td>&lt; 30 sec/doc</td></tr>
+        <tr><td>Detection accuracy</td><td>80%+</td><td>95%+</td></tr>
+        <tr><td>Adoption</td><td>Core team</td><td>Firm-wide</td></tr>
+        <tr><td>Time savings</td><td>20%</td><td>50%+</td></tr>
+    </table>
+    
+    <h3>Next Steps</h3>
+    <div class="grid-3">
+        <div class="card"><div class="card-title">📞 Deep Dive</div><div class="card-desc">Walk through your specific use cases and pain points</div></div>
+        <div class="card"><div class="card-title">🧪 Pilot</div><div class="card-desc">Limited deployment with real cases. See value first.</div></div>
+        <div class="card"><div class="card-title">📊 ROI Analysis</div><div class="card-desc">Calculate savings based on your caseload</div></div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 3px solid #00d9ff;">
+        <h3 style="color: #1a1a2e; margin-bottom: 10px;">Ready to Get Started?</h3>
+        <p style="font-size: 14pt;"><strong>Wesley Thompson</strong></p>
+        <p style="color: #666;">385-461-4164</p>
+    </div>
+    <span class="page-number">8</span>
+</div>
+
+</body>
+</html>

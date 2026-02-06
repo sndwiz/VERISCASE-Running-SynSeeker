@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Legal AI System - The Investigation Board</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #8B7355;
+            min-height: 100vh;
+        }
+        
+        .board {
+            width: 100%;
+            min-height: 200vh;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(0,0,0,0.03) 50px,
+                    rgba(0,0,0,0.03) 51px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(0,0,0,0.03) 50px,
+                    rgba(0,0,0,0.03) 51px
+                ),
+                linear-gradient(135deg, #c4a574 0%, #a08060 50%, #8B7355 100%);
+            position: relative;
+            padding: 40px;
+            overflow: hidden;
+        }
+        
+        /* Cork texture overlay */
+        .board::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.15'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        
+        /* Pins */
+        .pin {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        .pin.red { background: radial-gradient(circle at 30% 30%, #ff6b6b, #c0392b); }
+        .pin.blue { background: radial-gradient(circle at 30% 30%, #74b9ff, #2980b9); }
+        .pin.green { background: radial-gradient(circle at 30% 30%, #55efc4, #00b894); }
+        .pin.yellow { background: radial-gradient(circle at 30% 30%, #ffeaa7, #fdcb6e); }
+        .pin.white { background: radial-gradient(circle at 30% 30%, #fff, #ddd); }
+        
+        /* Cards/Notes */
+        .card {
+            position: absolute;
+            background: #fffef0;
+            padding: 20px;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+            transform: rotate(var(--rotate, 0deg));
+            z-index: 5;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.02) 100%);
+            pointer-events: none;
+        }
+        
+        .card-title {
+            font-weight: bold;
+            font-size: 14pt;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 5px;
+        }
+        
+        .card-content {
+            font-size: 11pt;
+            color: #34495e;
+            line-height: 1.4;
+        }
+        
+        /* Photo style cards */
+        .photo {
+            position: absolute;
+            background: #fff;
+            padding: 10px 10px 30px 10px;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+            transform: rotate(var(--rotate, 0deg));
+            z-index: 5;
+        }
+        
+        .photo-inner {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 20px;
+            font-size: 10pt;
+            min-width: 150px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .photo-label {
+            font-size: 9pt;
+            text-align: center;
+            margin-top: 8px;
+            color: #666;
+        }
+        
+        /* Sticky notes */
+        .sticky {
+            position: absolute;
+            width: 150px;
+            min-height: 150px;
+            padding: 15px;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.2);
+            transform: rotate(var(--rotate, 0deg));
+            z-index: 5;
+        }
+        .sticky.yellow { background: linear-gradient(135deg, #fff9c4, #fff59d); }
+        .sticky.pink { background: linear-gradient(135deg, #f8bbd9, #f48fb1); }
+        .sticky.blue { background: linear-gradient(135deg, #b3e5fc, #81d4fa); }
+        .sticky.green { background: linear-gradient(135deg, #c8e6c9, #a5d6a7); }
+        .sticky.orange { background: linear-gradient(135deg, #ffe0b2, #ffcc80); }
+        
+        .sticky-text {
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+        
+        /* Red string connections - using SVG lines */
+        .string {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .string line {
+            stroke: #c0392b;
+            stroke-width: 2;
+            opacity: 0.8;
+        }
+        
+        /* Newspaper clipping style */
+        .clipping {
+            position: absolute;
+            background: #f5f5dc;
+            padding: 15px;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            transform: rotate(var(--rotate, 0deg));
+            z-index: 5;
+            max-width: 250px;
+        }
+        
+        .clipping-headline {
+            font-family: 'Times New Roman', serif;
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #999;
+            padding-bottom: 5px;
+        }
+        
+        .clipping-text {
+            font-family: 'Times New Roman', serif;
+            font-size: 9pt;
+            color: #333;
+            line-height: 1.3;
+        }
+        
+        /* Evidence tag */
+        .evidence-tag {
+            position: absolute;
+            background: #fff;
+            border: 2px solid #c0392b;
+            padding: 8px 15px;
+            font-weight: bold;
+            font-size: 10pt;
+            transform: rotate(var(--rotate, 0deg));
+            z-index: 6;
+        }
+        
+        /* Main title banner */
+        .title-banner {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: #fff;
+            padding: 15px 40px;
+            font-size: 24pt;
+            font-weight: bold;
+            letter-spacing: 3px;
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.4);
+            z-index: 20;
+        }
+        
+        /* Handwritten style */
+        .handwritten {
+            font-family: 'Comic Sans MS', cursive;
+            font-style: italic;
+        }
+        
+        /* Marker highlight */
+        .highlight-yellow {
+            background: linear-gradient(180deg, transparent 60%, #fff176 60%);
+        }
+        .highlight-pink {
+            background: linear-gradient(180deg, transparent 60%, #f48fb1 60%);
+        }
+        
+        /* Stamp */
+        .stamp {
+            position: absolute;
+            border: 4px solid #c0392b;
+            color: #c0392b;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 18pt;
+            transform: rotate(-15deg);
+            opacity: 0.8;
+            z-index: 15;
+        }
+        
+        /* Arrow annotations */
+        .arrow-note {
+            position: absolute;
+            font-family: 'Comic Sans MS', cursive;
+            color: #c0392b;
+            font-size: 12pt;
+            z-index: 10;
+        }
+        
+        /* File folder tab */
+        .folder-tab {
+            position: absolute;
+            background: #d4a574;
+            padding: 8px 20px;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 10pt;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div class="board">
+        
+        <!-- TITLE -->
+        <div class="title-banner">⚖️ LEGAL AI SYSTEM - THE CASE ⚖️</div>
+        
+        <!-- STAMP -->
+        <div class="stamp" style="top: 100px; right: 80px;">CONFIDENTIAL</div>
+        
+        <!-- ==================== SECTION 1: THE PROBLEM ==================== -->
+        
+        <div class="folder-tab" style="top: 120px; left: 40px;">THE PROBLEM</div>
+        
+        <div class="card" style="top: 150px; left: 50px; width: 280px; --rotate: -2deg;">
+            <div class="pin red"></div>
+            <div class="card-title">📁 THE SITUATION</div>
+            <div class="card-content">
+                • Thousands of pages per case<br>
+                • Contradictions slip through<br>
+                • 40+ hours finding one lie<br>
+                • Sensitive data at risk<br><br>
+                <span class="highlight-yellow">SOMETHING HAS TO CHANGE</span>
+            </div>
+        </div>
+        
+        <div class="sticky yellow" style="top: 180px; left: 360px; --rotate: 3deg;">
+            <div class="pin yellow"></div>
+            <div class="sticky-text handwritten">
+                "We missed a contradiction that cost us the case"<br><br>
+                - Every attorney ever
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 2: THE INPUT ==================== -->
+        
+        <div class="folder-tab" style="top: 120px; left: 550px;">EVIDENCE IN</div>
+        
+        <div class="photo" style="top: 160px; left: 560px; --rotate: 2deg;">
+            <div class="pin blue"></div>
+            <div class="photo-inner">
+                📄 PDF<br>
+                📸 SCANS<br>
+                ✍️ HANDWRITTEN<br>
+                🎥 VIDEO
+            </div>
+            <div class="photo-label">ANY FORMAT ACCEPTED</div>
+        </div>
+        
+        <div class="arrow-note" style="top: 280px; left: 720px;">
+            ↓ GOES INTO THE MACHINE
+        </div>
+        
+        <!-- ==================== SECTION 3: OCR PROCESSING ==================== -->
+        
+        <div class="card" style="top: 380px; left: 500px; width: 250px; --rotate: -1deg;">
+            <div class="pin green"></div>
+            <div class="card-title">👁️ STEP 1: READ IT ALL</div>
+            <div class="card-content">
+                <strong>PaddleOCR Engine</strong><br><br>
+                • Reads typed text ✓<br>
+                • Reads handwriting ✓<br>
+                • Reads old faxes ✓<br>
+                • Multiple languages ✓<br><br>
+                <span class="highlight-pink">Confidence score on every word</span>
+            </div>
+        </div>
+        
+        <div class="sticky blue" style="top: 350px; left: 770px; --rotate: -4deg;">
+            <div class="pin white"></div>
+            <div class="sticky-text handwritten">
+                Even reads Dr's handwriting!<br><br>
+                (mostly)
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 4: ANALYSIS ==================== -->
+        
+        <div class="folder-tab" style="top: 530px; left: 40px;">ANALYSIS ENGINE</div>
+        
+        <div class="card" style="top: 570px; left: 50px; width: 300px; --rotate: 1deg;">
+            <div class="pin red"></div>
+            <div class="card-title">🔍 STEP 2: FIND THE FLAGS</div>
+            <div class="card-content">
+                <strong>What AI Detects:</strong><br><br>
+                ⚡ <span class="highlight-yellow">CONTRADICTIONS</span> - They said X, then Y<br><br>
+                🌫️ <span class="highlight-yellow">EVASION</span> - Non-answers, hedging<br><br>
+                📅 <span class="highlight-yellow">TIMELINE ISSUES</span> - Dates don't add up<br><br>
+                😤 <span class="highlight-yellow">TONE SHIFTS</span> - Suddenly defensive
+            </div>
+        </div>
+        
+        <div class="evidence-tag" style="top: 560px; left: 380px; --rotate: -8deg;">
+            EXHIBIT A: RED FLAGS
+        </div>
+        
+        <div class="sticky pink" style="top: 620px; left: 380px; width: 180px; --rotate: 5deg;">
+            <div class="pin red"></div>
+            <div class="sticky-text">
+                <strong>CONTRADICTION FOUND:</strong><br><br>
+                Witness A: "March 2022"<br>
+                Witness B: "Nov 2021"<br><br>
+                <span class="handwritten">GOTCHA!</span>
+            </div>
+        </div>
+        
+        <div class="sticky orange" style="top: 790px; left: 100px; --rotate: -3deg;">
+            <div class="pin yellow"></div>
+            <div class="sticky-text handwritten">
+                "Section 4.2 has 47% more hedging than rest of report"<br><br>
+                👀 Focus depo here!
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 5: STORAGE ==================== -->
+        
+        <div class="card" style="top: 570px; left: 600px; width: 280px; --rotate: -2deg;">
+            <div class="pin blue"></div>
+            <div class="card-title">🗄️ STEP 3: STORE SMART</div>
+            <div class="card-content">
+                <strong>Qdrant Vector Database</strong><br><br>
+                Every chunk stores:<br>
+                • Source file + page<br>
+                • Tone flags<br>
+                • Confidence score<br>
+                • Timestamp<br>
+                • The actual text<br><br>
+                <span class="highlight-pink">NOTHING GETS LOST</span>
+            </div>
+        </div>
+        
+        <div class="arrow-note" style="top: 750px; left: 650px;">
+            ↓ NOW THE MAGIC
+        </div>
+        
+        <!-- ==================== SECTION 6: SEARCH ==================== -->
+        
+        <div class="folder-tab" style="top: 870px; left: 400px;">THE PAYOFF</div>
+        
+        <div class="card" style="top: 910px; left: 350px; width: 320px; --rotate: 0deg;">
+            <div class="pin green"></div>
+            <div class="card-title">💬 STEP 4: ASK ANYTHING</div>
+            <div class="card-content">
+                <strong>"Find contradictions about the meeting"</strong><br>
+                → Instant results with source + page<br><br>
+                <strong>"Show evasive language from Smith"</strong><br>
+                → Flagged sections highlighted<br><br>
+                <strong>"Timeline of who knew what when"</strong><br>
+                → Visual reconstruction<br><br>
+                <span class="highlight-yellow">30 SECONDS vs 40 HOURS</span>
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 7: SECURITY ==================== -->
+        
+        <div class="folder-tab" style="top: 870px; left: 40px;">SECURITY</div>
+        
+        <div class="clipping" style="top: 910px; left: 50px; --rotate: 2deg;">
+            <div class="pin red"></div>
+            <div class="clipping-headline">5 LAYERS OF DEFENSE</div>
+            <div class="clipping-text">
+                <strong>1. NETWORK</strong> - Firewall, VPN<br>
+                <strong>2. CONTAINERS</strong> - Isolated boxes<br>
+                <strong>3. ENCRYPTION</strong> - AES-256<br>
+                <strong>4. ACCESS</strong> - Role-based<br>
+                <strong>5. ANONYMIZATION</strong> - Strip PII<br><br>
+                "Break one, others hold"
+            </div>
+        </div>
+        
+        <div class="sticky green" style="top: 1100px; left: 60px; --rotate: -2deg;">
+            <div class="pin white"></div>
+            <div class="sticky-text handwritten">
+                🔴 ISOLATED = No network ever<br>
+                🟡 INTERNAL = Office only<br>
+                🟢 EXTERNAL = Anonymous only
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 8: WASH CENTER ==================== -->
+        
+        <div class="folder-tab" style="top: 1130px; left: 350px;">THE WASH CENTER</div>
+        
+        <div class="card" style="top: 1170px; left: 300px; width: 350px; --rotate: -1deg;">
+            <div class="pin blue"></div>
+            <div class="card-title">🧹 THE SECRET WEAPON</div>
+            <div class="card-content">
+                <strong>How to use big AI without exposure:</strong><br><br>
+                1️⃣ Analyze locally first<br>
+                2️⃣ "John Smith" → "Party_A"<br>
+                3️⃣ Strip SSN, address, phone<br>
+                4️⃣ Send PATTERNS only (encrypted)<br>
+                5️⃣ Heavy AI processing outside<br>
+                6️⃣ Get INSIGHTS back (not data)<br>
+                7️⃣ Reconnect to real names locally<br><br>
+                <span class="highlight-yellow">WASH CENTER NEVER KNEW WHO</span>
+            </div>
+        </div>
+        
+        <div class="sticky yellow" style="top: 1200px; left: 680px; --rotate: 4deg;">
+            <div class="pin yellow"></div>
+            <div class="sticky-text handwritten">
+                "Pattern matches 847 other fraud depositions"<br><br>
+                They told us this ↑<br>
+                without knowing ANY names
+            </div>
+        </div>
+        
+        <div class="evidence-tag" style="top: 1380px; left: 500px; --rotate: 5deg;">
+            DEFENSIBLE IN DISCOVERY
+        </div>
+        
+        <!-- ==================== SECTION 9: LEARNING ==================== -->
+        
+        <div class="folder-tab" style="top: 1420px; left: 40px;">IT GETS SMARTER</div>
+        
+        <div class="card" style="top: 1460px; left: 50px; width: 280px; --rotate: 1deg;">
+            <div class="pin green"></div>
+            <div class="card-title">🧠 THE AI LEARNS</div>
+            <div class="card-content">
+                <strong>Month 1:</strong><br>
+                Generic patterns, 20% false positives<br><br>
+                <strong>Month 12:</strong><br>
+                Knows YOUR cases, YOUR standards<br>
+                5% false positives<br><br>
+                Learns from:<br>
+                • Every case you process<br>
+                • Your feedback<br>
+                • Wash Center patterns
+            </div>
+        </div>
+        
+        <div class="sticky pink" style="top: 1500px; left: 360px; --rotate: -3deg;">
+            <div class="pin red"></div>
+            <div class="sticky-text handwritten">
+                Your investment COMPOUNDS<br><br>
+                The more you use it,<br>
+                the better it gets!
+            </div>
+        </div>
+        
+        <!-- ==================== SECTION 10: THE PAYOFF ==================== -->
+        
+        <div class="folder-tab" style="top: 1420px; left: 550px;">BOTTOM LINE</div>
+        
+        <div class="card" style="top: 1460px; left: 550px; width: 300px; --rotate: -2deg;">
+            <div class="pin red"></div>
+            <div class="card-title">💰 WHAT YOU GET</div>
+            <div class="card-content">
+                <span style="font-size: 18pt; color: #27ae60;">85%</span> less review time<br><br>
+                <span style="font-size: 18pt; color: #27ae60;">40+ hrs</span> saved per case<br><br>
+                <span style="font-size: 18pt; color: #27ae60;">3x</span> more cases per attorney<br><br>
+                <span style="font-size: 18pt; color: #e74c3c;">0</span> data exposure<br><br>
+                <span class="highlight-yellow">FIND WHAT OTHERS MISS</span>
+            </div>
+        </div>
+        
+        <div class="stamp" style="top: 1700px; left: 400px; transform: rotate(-20deg);">CASE CLOSED</div>
+        
+        <!-- ==================== CONTACT ==================== -->
+        
+        <div class="card" style="top: 1750px; left: 50%; transform: translateX(-50%); width: 300px; text-align: center;">
+            <div class="pin blue"></div>
+            <div class="card-title">📞 NEXT STEPS</div>
+            <div class="card-content">
+                <strong style="font-size: 14pt;">Wesley Thompson</strong><br>
+                385-461-4164<br><br>
+                <span class="handwritten">"Let's solve your case"</span>
+            </div>
+        </div>
+        
+        <!-- ==================== SVG STRINGS ==================== -->
+        <svg class="string" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+            <!-- Problem to Input -->
+            <line x1="330" y1="220" x2="560" y2="200" />
+            
+            <!-- Input to OCR -->
+            <line x1="650" y1="320" x2="620" y2="380" />
+            
+            <!-- OCR to Analysis -->
+            <line x1="500" y1="480" x2="300" y2="570" />
+            
+            <!-- Analysis to Storage -->
+            <line x1="350" y1="650" x2="600" y2="650" />
+            
+            <!-- Storage to Search -->
+            <line x1="700" y1="800" x2="550" y2="910" />
+            
+            <!-- Security to Wash Center -->
+            <line x1="250" y1="1050" x2="350" y2="1170" />
+            
+            <!-- Wash Center to Learning -->
+            <line x1="350" y1="1400" x2="200" y2="1460" />
+            
+            <!-- Learning to Payoff -->
+            <line x1="330" y1="1550" x2="550" y2="1550" />
+            
+            <!-- Analysis flag connections -->
+            <line x1="350" y1="700" x2="380" y2="680" />
+            <line x1="350" y1="750" x2="200" y2="820" />
+        </svg>
+        
+    </div>
+</body>
+</html>
