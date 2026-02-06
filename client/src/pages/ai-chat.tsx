@@ -397,7 +397,7 @@ export default function AIChatPage() {
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mb-4 shadow-lg">
                     <Bot className="h-10 w-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">ClawdBot</h2>
+                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">VeriBot</h2>
                   <p className="text-lg text-muted-foreground mb-1">Your AI Legal Assistant</p>
                   <p className="text-muted-foreground max-w-md" data-testid="text-assistant-description">
                     Ready to help with legal research, case analysis, document drafting, and more.
@@ -487,7 +487,7 @@ export default function AIChatPage() {
                     value={landingMessage}
                     onChange={(e) => setLandingMessage(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLandingSubmit(landingMessage)}
-                    placeholder="Ask ClawdBot anything..."
+                    placeholder="Ask VeriBot anything..."
                     className="border-0 focus-visible:ring-0 shadow-none flex-1"
                     data-testid="input-landing-message"
                   />

@@ -16,7 +16,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 
 **Technical Implementations:**
 - **Board System:** Customizable boards with task groups and various column types (status, priority, date, person, progress, files, email, approval, etc.). Columns can be added, removed, reordered, and their types changed dynamically. Boards support optional `clientId` and `matterId` fields for linking to specific clients and cases. The sidebar organizes boards hierarchically: general boards (All Cases, Client Documents) at top, then client-grouped case boards underneath with collapsible client sections. New matters automatically get a linked board created.
-- **AI Integration (ClawdBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
+- **AI Integration (VeriBot):** A multi-model AI assistant (Anthropic Claude, OpenAI GPT, Google Gemini) for legal document analysis, content generation, information extraction, and summarization, with matter-specific context injection.
 - **Clawbot Gateway Integration:** Connect to OpenClaw/Clawbot for autonomous computer control, shell commands, browser automation, and file management through natural language.
 - **Document & Form Maker:** AI-powered Utah legal document generation system with 5+ templates (Motion for Continuance, Motion to Dismiss, Civil Complaint, Answer to Complaint, Subpoena). Features URCP compliance checking, bilingual notice support, and a lawyer approval workflow with initialing and audit trails. Uses Claude claude-sonnet-4-5 for intelligent document generation.
 - **Daily Briefing:** A personalized dashboard providing users with task summaries, deadlines, and active matter updates.
@@ -37,7 +37,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Replit Auth:** For multi-user authentication (Google, GitHub, Apple, email login).
 - **PostgreSQL:** Primary database for persistent data storage.
 - **Drizzle ORM:** Object-relational mapper for interacting with PostgreSQL.
-- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models integrated into the "ClawdBot" assistant.
+- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models integrated into the "VeriBot" assistant.
 - **Wouter:** For frontend routing in React.
 - **TanStack React Query:** For server state management in the frontend.
 - **shadcn/ui + Radix UI:** UI component libraries for the frontend.

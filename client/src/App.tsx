@@ -139,9 +139,9 @@ function AppLayout() {
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
               <Link href="/ai-chat">
-                <Button variant="default" size="sm" className="gap-2" data-testid="button-clawdbot">
+                <Button variant="default" size="sm" className="gap-2" data-testid="button-veribot">
                   <Bot className="h-4 w-4" />
-                  ClawdBot
+                  VeriBot
                 </Button>
               </Link>
               <Link href="/briefing">
