@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertExpenseSchema, updateExpenseSchema, insertInvoiceSchema, updateInvoiceSchema, insertPaymentSchema, insertTrustTransactionSchema } from "@shared/schema";
 import { z } from "zod";
+import { maybePageinate } from "../utils/pagination";
 
 export function registerBillingRoutes(app: Express): void {
   // ============ EXPENSES ============
@@ -12,7 +13,7 @@ export function registerBillingRoutes(app: Express): void {
         clientId: clientId as string | undefined,
         matterId: matterId as string | undefined,
       });
-      res.json(expenses);
+      res.json(maybePageinate(expenses, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch expenses" });
     }
@@ -74,7 +75,7 @@ export function registerBillingRoutes(app: Express): void {
         clientId: clientId as string | undefined,
         matterId: matterId as string | undefined,
       });
-      res.json(invoices);
+      res.json(maybePageinate(invoices, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch invoices" });
     }
@@ -136,7 +137,7 @@ export function registerBillingRoutes(app: Express): void {
         clientId: clientId as string | undefined,
         invoiceId: invoiceId as string | undefined,
       });
-      res.json(payments);
+      res.json(maybePageinate(payments, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch payments" });
     }
@@ -166,7 +167,7 @@ export function registerBillingRoutes(app: Express): void {
         clientId: clientId as string | undefined,
         matterId: matterId as string | undefined,
       });
-      res.json(transactions);
+      res.json(maybePageinate(transactions, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch trust transactions" });
     }

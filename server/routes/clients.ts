@@ -2,12 +2,13 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertClientSchema, updateClientSchema } from "@shared/schema";
 import { z } from "zod";
+import { maybePageinate } from "../utils/pagination";
 
 export function registerClientRoutes(app: Express): void {
-  app.get("/api/clients", async (_req, res) => {
+  app.get("/api/clients", async (req, res) => {
     try {
       const clients = await storage.getClients();
-      res.json(clients);
+      res.json(maybePageinate(clients, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch clients" });
     }

@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupSecurityMiddleware } from "./security/middleware";
+import { logger } from "./utils/logger";
 
 const app = express();
 const httpServer = createServer(app);
@@ -66,16 +67,16 @@ app.use((req, res, next) => {
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    logger.error("Unhandled error", { status, message, stack: err.stack });
+
+    return res.status(status).json({ error: message });
   });
 
   // importantly only setup vite in development and after
@@ -100,7 +101,30 @@ app.use((req, res, next) => {
       reusePort: true,
     },
     () => {
+      logger.info(`Server started`, { port });
       log(`serving on port ${port}`);
     },
   );
+
+  function gracefulShutdown(signal: string) {
+    logger.info(`${signal} received, shutting down gracefully...`);
+    httpServer.close(async () => {
+      try {
+        const { pool } = await import("./db");
+        await pool.end();
+        logger.info("Database pool closed");
+      } catch (err) {
+        logger.error("Error closing database pool", { error: String(err) });
+      }
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      logger.error("Forced shutdown after timeout");
+      process.exit(1);
+    }, 10000);
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 })();

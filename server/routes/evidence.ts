@@ -6,12 +6,13 @@ import {
   insertOCRJobSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { maybePageinate } from "../utils/pagination";
 
 export function registerEvidenceRoutes(app: Express): void {
   app.get("/api/matters/:matterId/evidence", async (req, res) => {
     try {
       const files = await storage.getEvidenceVaultFiles(req.params.matterId);
-      res.json(files);
+      res.json(maybePageinate(files, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch evidence files" });
     }
@@ -81,7 +82,7 @@ export function registerEvidenceRoutes(app: Express): void {
     try {
       const matterId = req.query.matterId as string | undefined;
       const jobs = await storage.getOCRJobs(matterId);
-      res.json(jobs);
+      res.json(maybePageinate(jobs, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch OCR jobs" });
     }

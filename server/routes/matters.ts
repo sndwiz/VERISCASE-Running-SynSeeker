@@ -13,13 +13,14 @@ import {
   insertResearchResultSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { maybePageinate } from "../utils/pagination";
 
 export function registerMatterRoutes(app: Express): void {
   app.get("/api/matters", async (req, res) => {
     try {
       const clientId = req.query.clientId as string | undefined;
       const matters = await storage.getMatters(clientId);
-      res.json(matters);
+      res.json(maybePageinate(matters, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch matters" });
     }
@@ -39,6 +40,10 @@ export function registerMatterRoutes(app: Express): void {
 
   app.post("/api/matters", async (req, res) => {
     try {
+      // TODO: Wrap matter + board creation in a database transaction.
+      // Currently the storage layer uses the db singleton and doesn't support
+      // passing a transaction handle. Refactor storage to accept an optional
+      // transaction parameter so both operations can be atomic.
       const data = insertMatterSchema.parse(req.body);
       const matter = await storage.createMatter(data);
 

@@ -56,11 +56,11 @@ async function buildMatterContext(matterId: string): Promise<string> {
     const files = await storage.getFileItemsWithProfiles(matterId);
 
     let context = `\n\n**CURRENT MATTER CONTEXT:**\n`;
-    context += `- Matter: ${matter.title} (${matter.matterNumber || 'No number'})\n`;
+    context += `- Matter: ${matter.name} (${matter.caseNumber || 'No number'})\n`;
     context += `- Status: ${matter.status}\n`;
     context += `- Practice Area: ${matter.practiceArea || 'Not specified'}\n`;
     if (client) {
-      context += `- Client: ${client.name} (${client.type})\n`;
+      context += `- Client: ${client.name}${client.company ? ` (${client.company})` : ''}\n`;
     }
     if (matter.description) {
       context += `- Description: ${matter.description}\n`;
@@ -83,7 +83,7 @@ async function buildMatterContext(matterId: string): Promise<string> {
     if (files.length > 0) {
       context += `\n**Filed Documents (${files.length} total):**\n`;
       files.slice(0, 10).forEach(f => {
-        context += `- ${f.name}${f.docProfile ? ` [${f.docProfile.docCategory}/${f.docProfile.docType}]` : ''}\n`;
+        context += `- ${f.fileName}${f.profile ? ` [${f.profile.docCategory}/${f.profile.docType}]` : ''}\n`;
       });
     }
 
@@ -92,6 +92,30 @@ async function buildMatterContext(matterId: string): Promise<string> {
     console.error("Error building matter context:", error);
     return "";
   }
+}
+
+function sanitizeUserInput(content: string): string {
+  const injectionPatterns = [
+    /\bignore\s+(all\s+)?previous\s+instructions?\b/i,
+    /\byou\s+are\s+now\b/i,
+    /\bforget\s+(all\s+)?previous\b/i,
+    /\bsystem\s*:\s*/i,
+    /\b(reveal|show|display|output)\s+(your\s+)?(system\s+)?(prompt|instructions?)\b/i,
+    /\bact\s+as\s+(if\s+you\s+are|a)\b/i,
+  ];
+  
+  let sanitized = content;
+  for (const pattern of injectionPatterns) {
+    if (pattern.test(sanitized)) {
+      sanitized = sanitized.replace(pattern, "[filtered]");
+    }
+  }
+  
+  if (sanitized.length > 50000) {
+    sanitized = sanitized.substring(0, 50000);
+  }
+  
+  return sanitized;
 }
 
 export function registerChatRoutes(app: Express): void {
@@ -184,7 +208,9 @@ export function registerChatRoutes(app: Express): void {
   // Get conversations by matter
   app.get("/api/matters/:matterId/conversations", async (req: Request, res: Response) => {
     try {
-      const conversations = await chatStorage.getConversationsByMatter(req.params.matterId);
+      const matterIdParam = req.params.matterId;
+      const matterId = Array.isArray(matterIdParam) ? matterIdParam[0] : matterIdParam;
+      const conversations = await chatStorage.getConversationsByMatter(matterId);
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching matter conversations:", error);
@@ -211,6 +237,7 @@ export function registerChatRoutes(app: Express): void {
       const idParam = req.params.id;
       const conversationId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam);
       const { content, model } = req.body;
+      const sanitizedContent = sanitizeUserInput(content);
 
       // Get conversation to check model preference and matter context
       const conversation = await chatStorage.getConversation(conversationId);
@@ -227,7 +254,7 @@ export function registerChatRoutes(app: Express): void {
       }
 
       // Save user message
-      await chatStorage.createMessage(conversationId, "user", content);
+      await chatStorage.createMessage(conversationId, "user", sanitizedContent);
 
       // Get conversation history for context
       const messages = await chatStorage.getMessagesByConversation(conversationId);

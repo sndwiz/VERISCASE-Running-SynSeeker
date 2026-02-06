@@ -6,11 +6,32 @@ import { registerAuthRoutes, bootstrapFirstAdmin } from "./replit_integrations/a
 import { viewerReadOnly, requireMemberOrAbove, requireAnyRole, requireAdmin } from "./replit_integrations/auth/middleware";
 import { auditMiddleware } from "./security/audit";
 import { sessionIpTracking } from "./security/session";
+import { errorHandler } from "./utils/errors";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query("SELECT 1");
+      res.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        database: result.rows.length > 0 ? "connected" : "error",
+        uptime: process.uptime(),
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        database: "disconnected",
+        error: "Database connection failed",
+      });
+    }
+  });
+
   // Initialize authentication first (before other routes)
   await setupAuth(app);
   registerAuthRoutes(app);
@@ -89,6 +110,8 @@ export async function registerRoutes(
   
   // Bootstrap first admin user after routes are set up (fallback for existing users)
   bootstrapFirstAdmin();
+
+  app.use(errorHandler);
   
   return httpServer;
 }

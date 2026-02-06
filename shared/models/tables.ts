@@ -13,7 +13,10 @@ export const boards = pgTable("boards", {
   matterId: varchar("matter_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_boards_client_id").on(table.clientId),
+  index("IDX_boards_matter_id").on(table.matterId),
+]);
 
 // ============ GROUPS ============
 export const groups = pgTable("groups", {
@@ -23,7 +26,9 @@ export const groups = pgTable("groups", {
   collapsed: boolean("collapsed").default(false),
   order: integer("order").default(0),
   boardId: varchar("board_id").notNull().references(() => boards.id, { onDelete: "cascade" }),
-});
+}, (table) => [
+  index("IDX_groups_board_id").on(table.boardId),
+]);
 
 // ============ TASKS ============
 export const tasks = pgTable("tasks", {
@@ -52,7 +57,10 @@ export const tasks = pgTable("tasks", {
   lastUpdatedBy: varchar("last_updated_by"),
   customFields: jsonb("custom_fields").default({}),
   subtasks: jsonb("subtasks").default([]),
-});
+}, (table) => [
+  index("IDX_tasks_board_id").on(table.boardId),
+  index("IDX_tasks_group_id").on(table.groupId),
+]);
 
 // ============ AI CONVERSATIONS ============
 export const aiConversations = pgTable("ai_conversations", {
@@ -108,7 +116,9 @@ export const matters = pgTable("matters", {
   opposingCounsel: varchar("opposing_counsel", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_matters_client_id").on(table.clientId),
+]);
 
 // ============ MATTER CONTACTS ============
 export const matterContacts = pgTable("matter_contacts", {
@@ -123,7 +133,9 @@ export const matterContacts = pgTable("matter_contacts", {
   notes: text("notes").default(""),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_matter_contacts_matter_id").on(table.matterId),
+]);
 
 // ============ EVIDENCE VAULT FILES ============
 export const evidenceVaultFiles = pgTable("evidence_vault_files", {
@@ -145,7 +157,9 @@ export const evidenceVaultFiles = pgTable("evidence_vault_files", {
   extractedText: text("extracted_text"),
   aiAnalysis: jsonb("ai_analysis"),
   metadata: jsonb("metadata").default({}),
-});
+}, (table) => [
+  index("IDX_evidence_vault_matter_id").on(table.matterId),
+]);
 
 // ============ OCR JOBS ============
 export const ocrJobs = pgTable("ocr_jobs", {
@@ -177,7 +191,9 @@ export const timelineEvents = pgTable("timeline_events", {
   eventDate: varchar("event_date", { length: 50 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   metadata: jsonb("metadata").default({}),
-});
+}, (table) => [
+  index("IDX_timeline_events_matter_id").on(table.matterId),
+]);
 
 // ============ THREADS ============
 export const threads = pgTable("threads", {
@@ -191,7 +207,9 @@ export const threads = pgTable("threads", {
   createdBy: varchar("created_by", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_threads_matter_id").on(table.matterId),
+]);
 
 // ============ THREAD MESSAGES ============
 export const threadMessages = pgTable("thread_messages", {
@@ -276,7 +294,9 @@ export const detectiveNodes = pgTable("detective_nodes", {
   icon: varchar("icon", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_detective_nodes_matter_id").on(table.matterId),
+]);
 
 // ============ DETECTIVE CONNECTIONS ============
 export const detectiveConnections = pgTable("detective_connections", {
@@ -307,7 +327,9 @@ export const fileItems = pgTable("file_items", {
   createdUtc: timestamp("created_utc"),
   modifiedUtc: timestamp("modified_utc"),
   ingestedUtc: timestamp("ingested_utc").defaultNow(),
-});
+}, (table) => [
+  index("IDX_file_items_matter_id").on(table.matterId),
+]);
 
 // ============ DOC PROFILES (Legal meaning of files) ============
 export const docProfiles = pgTable("doc_profiles", {
@@ -378,7 +400,9 @@ export const timeEntries = pgTable("time_entries", {
   activityCode: varchar("activity_code", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_time_entries_matter_id").on(table.matterId),
+]);
 
 // ============ CALENDAR EVENTS ============
 export const calendarEvents = pgTable("calendar_events", {
