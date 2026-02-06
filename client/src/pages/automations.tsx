@@ -58,7 +58,13 @@ import {
   Workflow,
   Send,
   BarChart3,
-  RefreshCw
+  RefreshCw,
+  Server,
+  Database,
+  Radar,
+  ScanSearch,
+  GitCompareArrows,
+  Microscope
 } from "lucide-react";
 import { SiSlack, SiGmail } from "react-icons/si";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -141,6 +147,16 @@ const ACTION_TYPES = {
   generate_confirmation: { label: "Generate Confirmation", icon: FileText, description: "Create audit confirmation record" },
   log_compliance: { label: "Log Compliance", icon: Shield, description: "Log compliance verification" },
   create_subtask: { label: "Create Subtask", icon: Plus, description: "Create a related subtask" },
+  // SynSeekr Server Actions
+  synseekr_analyze_document: { label: "Analyze Document", icon: Microscope, description: "Deep AI analysis via SynSeekr server" },
+  synseekr_extract_entities: { label: "Extract Entities", icon: ScanSearch, description: "Extract people, orgs, dates via SynSeekr" },
+  synseekr_rag_query: { label: "RAG Query", icon: Database, description: "Semantic search across case documents" },
+  synseekr_run_investigation: { label: "Run Investigation", icon: Radar, description: "Launch full case investigation on SynSeekr" },
+  synseekr_detect_contradictions: { label: "Detect Contradictions", icon: GitCompareArrows, description: "Find conflicting statements in case" },
+  synseekr_classify_document: { label: "Classify Document", icon: FolderTree, description: "Auto-classify document type via SynSeekr" },
+  synseekr_run_agent: { label: "Run AI Agent", icon: Bot, description: "Run specialized legal AI agent" },
+  synseekr_search_documents: { label: "Search Documents", icon: Search, description: "Semantic document search via SynSeekr" },
+  synseekr_timeline_events: { label: "Get Timeline", icon: Clock, description: "Extract case timeline events" },
 };
 
 interface AutomationTemplate {
@@ -158,6 +174,7 @@ interface AutomationTemplate {
 }
 
 const AUTOMATION_CATEGORIES = [
+  { id: "synseekr", name: "SynSeekr Server", color: "bg-gradient-to-r from-emerald-500 to-teal-600", icon: Server },
   { id: "ai_powered", name: "AI-powered", color: "bg-gradient-to-r from-purple-500 to-pink-500", icon: Sparkles },
   { id: "legal_compliance", name: "Legal Compliance", color: "bg-gradient-to-r from-teal-500 to-emerald-500", icon: Shield },
   { id: "integrations", name: "Integrations", color: "bg-gradient-to-r from-blue-500 to-cyan-500", icon: Globe },
@@ -1185,8 +1202,143 @@ const LEGAL_TEMPLATES: AutomationTemplate[] = [
   },
 ];
 
+const SYNSEEKR_TEMPLATES: AutomationTemplate[] = [
+  {
+    id: "synseekr_analyze_on_upload",
+    name: "When a file is uploaded, analyze document via SynSeekr",
+    description: "Run deep AI analysis including classification, summarization, fact extraction, and privilege detection on your local server",
+    category: "synseekr",
+    triggerType: "file_uploaded",
+    triggerLabel: "When a file is uploaded",
+    actionType: "synseekr_analyze_document",
+    actionLabel: "analyze document via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_classify_on_upload",
+    name: "When a file is uploaded, classify document type via SynSeekr",
+    description: "Automatically classify uploaded documents as contracts, pleadings, medical records, etc. using local AI models",
+    category: "synseekr",
+    triggerType: "file_uploaded",
+    triggerLabel: "When a file is uploaded",
+    actionType: "synseekr_classify_document",
+    actionLabel: "classify document via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_extract_entities_on_create",
+    name: "When an item is created, extract entities via SynSeekr",
+    description: "Use GLiNER/GLiREL models to extract people, organizations, locations, dates, and legal terms from case documents",
+    category: "synseekr",
+    triggerType: "item_created",
+    triggerLabel: "When an item is created",
+    actionType: "synseekr_extract_entities",
+    actionLabel: "extract entities via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_rag_on_status",
+    name: "When status changes, run RAG query via SynSeekr",
+    description: "Perform semantic search across case documents using vector embeddings and graph-enhanced retrieval",
+    category: "synseekr",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "synseekr_rag_query",
+    actionLabel: "run RAG query via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_investigate_on_status",
+    name: "When status changes to 'In Review', run investigation via SynSeekr",
+    description: "Launch a full case investigation including claims analysis, evidence review, and credibility scoring",
+    category: "synseekr",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "synseekr_run_investigation",
+    actionLabel: "run investigation via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_contradictions_on_upload",
+    name: "When a file is uploaded, detect contradictions via SynSeekr",
+    description: "Automatically scan for conflicting statements, date mismatches, and timeline inconsistencies across case documents",
+    category: "synseekr",
+    triggerType: "file_uploaded",
+    triggerLabel: "When a file is uploaded",
+    actionType: "synseekr_detect_contradictions",
+    actionLabel: "detect contradictions via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_agent_riley_deadline",
+    name: "When due date approaches, run Riley deadline agent via SynSeekr",
+    description: "Riley tracks court deadlines, filing windows, and statutory limits to ensure compliance",
+    category: "synseekr",
+    triggerType: "due_date_approaching",
+    triggerLabel: "When due date approaches",
+    actionType: "synseekr_run_agent",
+    actionLabel: "run Riley agent via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_agent_elena_elements",
+    name: "When an item is created, run Elena elements analysis via SynSeekr",
+    description: "Elena analyzes legal elements, identifies required proof points, and maps evidence to claims",
+    category: "synseekr",
+    triggerType: "item_created",
+    triggerLabel: "When an item is created",
+    actionType: "synseekr_run_agent",
+    actionLabel: "run Elena agent via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_agent_david_weaknesses",
+    name: "When status changes, run David weakness analysis via SynSeekr",
+    description: "David identifies case weaknesses, potential defenses, and stress-tests legal arguments",
+    category: "synseekr",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "synseekr_run_agent",
+    actionLabel: "run David agent via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_search_on_create",
+    name: "When an item is created, search related documents via SynSeekr",
+    description: "Semantically search across all case documents using vector embeddings and graph relationships",
+    category: "synseekr",
+    triggerType: "item_created",
+    triggerLabel: "When an item is created",
+    actionType: "synseekr_search_documents",
+    actionLabel: "search documents via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_timeline_on_upload",
+    name: "When a file is uploaded, extract timeline events via SynSeekr",
+    description: "Automatically extract dated events and build case timelines from uploaded documents",
+    category: "synseekr",
+    triggerType: "file_uploaded",
+    triggerLabel: "When a file is uploaded",
+    actionType: "synseekr_timeline_events",
+    actionLabel: "extract timeline via SynSeekr",
+    isIntegration: true,
+  },
+  {
+    id: "synseekr_analyze_on_status",
+    name: "When status changes to 'Ready for Analysis', analyze all documents via SynSeekr",
+    description: "Queue all case documents for comprehensive AI analysis including hot scoring, privilege detection, and fact extraction",
+    category: "synseekr",
+    triggerType: "status_changed",
+    triggerLabel: "When status changes",
+    actionType: "synseekr_analyze_document",
+    actionLabel: "analyze documents via SynSeekr",
+    isIntegration: true,
+  },
+];
+
 // Combine all templates
-const ALL_TEMPLATES = [...AI_AUTOMATION_TEMPLATES, ...INTEGRATION_TEMPLATES, ...AUTOMATION_TEMPLATES, ...LEGAL_TEMPLATES];
+const ALL_TEMPLATES = [...SYNSEEKR_TEMPLATES, ...AI_AUTOMATION_TEMPLATES, ...INTEGRATION_TEMPLATES, ...AUTOMATION_TEMPLATES, ...LEGAL_TEMPLATES];
 
 // AI Icon component with gradient background
 function AIIcon({ className }: { className?: string }) {

@@ -51,6 +51,7 @@ import {
   FolderOpen,
   User,
   Mic,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -384,6 +385,7 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SynSeekrStatusIndicator />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={location === "/settings"}>
@@ -396,5 +398,35 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+function SynSeekrStatusIndicator() {
+  const { data: statusData } = useQuery<{ configured: boolean; enabled: boolean; status: string; lastChecked: string; latencyMs: number }>({
+    queryKey: ["/api/synseekr/status"],
+    refetchInterval: 30000,
+  });
+
+  if (!statusData?.configured) return null;
+
+  const isOnline = statusData.status === "online";
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="SynSeekr Server">
+          <Link href="/settings" data-testid="link-synseekr-status">
+            <Server className="h-4 w-4" />
+            <span className="flex items-center gap-2">
+              SynSeekr
+              <span
+                className={`inline-block h-2 w-2 rounded-full shrink-0 ${isOnline ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                data-testid="indicator-synseekr-dot"
+              />
+            </span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }

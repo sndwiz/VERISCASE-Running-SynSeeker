@@ -23,7 +23,8 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Filing Cabinet:** A two-layer document classification system with controlled vocabulary, metadata tracking, and Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
 - **Detective Board:** A visual investigation board with draggable nodes and connections.
-- **Automations:** Event-driven automation engine with 85+ pre-built templates, including AI-powered actions, legal compliance workflows, and integrations. An AI Automation Builder allows natural language automation creation, and a Workflow Recorder suggests automations based on user actions.
+- **Automations:** Event-driven automation engine with 85+ pre-built templates, including AI-powered actions, legal compliance workflows, SynSeekr-powered actions, and integrations. An AI Automation Builder allows natural language automation creation, and a Workflow Recorder suggests automations based on user actions.
+- **SynSeekr Integration:** Hybrid AI architecture connecting to a self-hosted SynSeekr server (26 Docker containers: Ollama LLMs, Qdrant vector DB, Neo4j graph DB, Presidio PII detection, Authentik SSO). Gateway service (`server/services/synseekr-client.ts`) manages connection, health checks, and proxies requests to 10+ SynSeekr endpoints (document analysis, entity extraction, RAG queries, investigations, contradiction detection, timeline extraction, AI agents Riley/Elena/David). 12 SynSeekr automation templates available. Settings UI (admin-only) supports URL/API key configuration, connection testing, and status monitoring. Sidebar shows real-time connection status indicator. Falls back to cloud APIs (Anthropic/OpenAI/Gemini) when SynSeekr is unavailable.
 - **Matter Management:** Comprehensive lifecycle management for matters and clients, including contacts, threads, and timelines.
 
 **System Design Choices:**

@@ -548,7 +548,17 @@ export type AutomationActionType =
   | "send_email"
   | "create_contact"
   | "notify_channel"
-  | "custom";
+  | "custom"
+  // SynSeekr Server Actions
+  | "synseekr_analyze_document"
+  | "synseekr_extract_entities"
+  | "synseekr_rag_query"
+  | "synseekr_run_investigation"
+  | "synseekr_detect_contradictions"
+  | "synseekr_classify_document"
+  | "synseekr_run_agent"
+  | "synseekr_search_documents"
+  | "synseekr_timeline_events";
 
 export interface AutomationCondition {
   field: string;

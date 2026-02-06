@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -167,6 +167,12 @@ export default function SettingsPage() {
             <TabsTrigger value="dashboard" data-testid="tab-dashboard">
               <BarChart3 className="h-4 w-4 mr-2" />
               Dashboard
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="synseekr" data-testid="tab-synseekr">
+              <Server className="h-4 w-4 mr-2" />
+              SynSeekr
             </TabsTrigger>
           )}
         </TabsList>
@@ -567,7 +573,284 @@ export default function SettingsPage() {
             </div>
           </TabsContent>
         )}
+
+        {isAdmin && (
+          <TabsContent value="synseekr">
+            <SynSeekrSettings />
+          </TabsContent>
+        )}
       </Tabs>
+    </div>
+  );
+}
+
+interface SynSeekrConnectionConfig {
+  baseUrl: string;
+  apiKey: string;
+  enabled: boolean;
+  lastStatus?: string;
+  lastChecked?: string;
+  lastLatencyMs?: number;
+}
+
+interface SynSeekrHealthResult {
+  status: "online" | "offline" | "error";
+  latencyMs: number;
+  version?: string;
+  timestamp: string;
+}
+
+function SynSeekrSettings() {
+  const { toast } = useToast();
+  const [serverUrl, setServerUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<SynSeekrHealthResult | null>(null);
+
+  const { data: config, isLoading } = useQuery<SynSeekrConnectionConfig>({
+    queryKey: ["/api/synseekr/config"],
+  });
+
+  const { data: statusData } = useQuery<{ configured: boolean; enabled: boolean; status: string; lastChecked: string; latencyMs: number }>({
+    queryKey: ["/api/synseekr/status"],
+    refetchInterval: 30000,
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: (data: Partial<SynSeekrConnectionConfig>) =>
+      apiRequest("PATCH", "/api/synseekr/config", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/synseekr/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/synseekr/status"] });
+      toast({ title: "SynSeekr configuration updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update configuration", variant: "destructive" });
+    },
+  });
+
+  const handleSaveConfig = () => {
+    const update: Partial<SynSeekrConnectionConfig> = {};
+    if (serverUrl) update.baseUrl = serverUrl;
+    if (apiKey) update.apiKey = apiKey;
+    updateConfigMutation.mutate(update);
+  };
+
+  const handleToggleEnabled = (enabled: boolean) => {
+    updateConfigMutation.mutate({ enabled });
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const response = await apiRequest("POST", "/api/synseekr/test");
+      const result = await response.json();
+      setTestResult(result);
+      queryClient.invalidateQueries({ queryKey: ["/api/synseekr/status"] });
+      if (result.status === "online") {
+        toast({ title: "SynSeekr connection successful" });
+      } else {
+        toast({ title: "SynSeekr connection failed", description: `Status: ${result.status}`, variant: "destructive" });
+      }
+    } catch {
+      setTestResult({ status: "error", latencyMs: 0, timestamp: new Date().toISOString() });
+      toast({ title: "Connection test failed", variant: "destructive" });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isConnected = statusData?.status === "online";
+  const isConfigured = statusData?.configured ?? false;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+                <Server className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle>SynSeekr Server Connection</CardTitle>
+                <CardDescription>
+                  Connect to your SynSeekr AI server for advanced document analysis, entity extraction, and investigation capabilities
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isConfigured && (
+                <Badge
+                  variant={isConnected ? "default" : "secondary"}
+                  className={isConnected ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : ""}
+                  data-testid="badge-synseekr-status"
+                >
+                  {isConnected ? (
+                    <><Wifi className="h-3 w-3 mr-1" /> Online</>
+                  ) : (
+                    <><WifiOff className="h-3 w-3 mr-1" /> Offline</>
+                  )}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Enable SynSeekr Integration</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                When enabled, automations and AI features will use SynSeekr for processing
+              </p>
+            </div>
+            <Switch
+              checked={config?.enabled ?? false}
+              onCheckedChange={handleToggleEnabled}
+              data-testid="switch-synseekr-enabled"
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="synseekr-url">Server URL</Label>
+              <Input
+                id="synseekr-url"
+                placeholder="https://api.synseekr.com or http://192.168.1.50:8000"
+                defaultValue={config?.baseUrl || ""}
+                onChange={(e) => setServerUrl(e.target.value)}
+                data-testid="input-synseekr-url"
+              />
+              <p className="text-xs text-muted-foreground">
+                The URL of your SynSeekr orchestrator API. Use a Cloudflare Tunnel URL for secure remote access.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="synseekr-key">API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="synseekr-key"
+                  type={showApiKey ? "text" : "password"}
+                  placeholder="Enter your SynSeekr API key"
+                  defaultValue=""
+                  onChange={(e) => setApiKey(e.target.value)}
+                  data-testid="input-synseekr-key"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  data-testid="button-toggle-key-visibility"
+                >
+                  {showApiKey ? "Hide" : "Show"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                API key for authenticating with SynSeekr. Generated on your SynSeekr server.
+              </p>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                onClick={handleSaveConfig}
+                disabled={updateConfigMutation.isPending || (!serverUrl && !apiKey)}
+                data-testid="button-save-synseekr"
+              >
+                {updateConfigMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                ) : (
+                  "Save Configuration"
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTestConnection}
+                disabled={isTesting || !isConfigured}
+                data-testid="button-test-synseekr"
+              >
+                {isTesting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Testing...</>
+                ) : (
+                  <><RefreshCw className="h-4 w-4 mr-2" /> Test Connection</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {testResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Connection Test Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Status</p>
+                <div className="flex items-center gap-2">
+                  <div className={`h-2.5 w-2.5 rounded-full ${testResult.status === "online" ? "bg-emerald-500" : testResult.status === "error" ? "bg-red-500" : "bg-yellow-500"}`} />
+                  <span className="text-sm font-medium capitalize" data-testid="text-test-status">{testResult.status}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Latency</p>
+                <p className="text-sm font-medium" data-testid="text-test-latency">{testResult.latencyMs}ms</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Version</p>
+                <p className="text-sm font-medium" data-testid="text-test-version">{testResult.version || "N/A"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">SynSeekr Capabilities</CardTitle>
+          <CardDescription>
+            When connected, these features are powered by your local SynSeekr server
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { name: "Document Analysis", desc: "Deep AI analysis with local LLMs", active: isConnected },
+              { name: "Entity Extraction", desc: "GLiNER/GLiREL NER models", active: isConnected },
+              { name: "Vector Search (RAG)", desc: "Qdrant + BGE-M3 embeddings", active: isConnected },
+              { name: "Graph Intelligence", desc: "Neo4j knowledge graph queries", active: isConnected },
+              { name: "Contradiction Detection", desc: "Cross-document conflict analysis", active: isConnected },
+              { name: "Investigation Engine", desc: "Claims, evidence, credibility", active: isConnected },
+              { name: "AI Agents", desc: "Riley, Elena, David, Judge Chen", active: isConnected },
+              { name: "PII Protection", desc: "Presidio anonymization/redaction", active: isConnected },
+            ].map((cap) => (
+              <div key={cap.name} className="flex items-center gap-3 p-2 rounded-md">
+                <div className={`h-2 w-2 rounded-full shrink-0 ${cap.active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                <div>
+                  <p className="text-sm font-medium">{cap.name}</p>
+                  <p className="text-xs text-muted-foreground">{cap.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

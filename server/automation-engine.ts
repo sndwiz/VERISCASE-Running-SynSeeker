@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import type { AutomationRule, Task } from "@shared/schema";
+import { synseekrClient } from "./services/synseekr-client";
 
 export type AutomationEvent = {
   type: string;
@@ -165,6 +166,33 @@ class AutomationEngine {
       
       case "update_field":
         return this.actionUpdateColumn(event, actionConfig);
+      
+      case "synseekr_analyze_document":
+        return this.actionSynSeekrAnalyzeDocument(event, actionConfig);
+      
+      case "synseekr_extract_entities":
+        return this.actionSynSeekrExtractEntities(event, actionConfig);
+      
+      case "synseekr_rag_query":
+        return this.actionSynSeekrRagQuery(event, actionConfig);
+      
+      case "synseekr_run_investigation":
+        return this.actionSynSeekrRunInvestigation(event, actionConfig);
+      
+      case "synseekr_detect_contradictions":
+        return this.actionSynSeekrDetectContradictions(event, actionConfig);
+      
+      case "synseekr_classify_document":
+        return this.actionSynSeekrClassifyDocument(event, actionConfig);
+      
+      case "synseekr_run_agent":
+        return this.actionSynSeekrRunAgent(event, actionConfig);
+      
+      case "synseekr_search_documents":
+        return this.actionSynSeekrSearchDocuments(event, actionConfig);
+      
+      case "synseekr_timeline_events":
+        return this.actionSynSeekrTimelineEvents(event, actionConfig);
       
       default:
         return { message: `Action type "${rule.actionType}" executed (stub)` };
@@ -343,6 +371,145 @@ class AutomationEngine {
       return { message: `Column "${config.column}" updated to "${config.value}"` };
     }
     return { message: "Column update skipped - missing configuration" };
+  }
+
+  private async actionSynSeekrAnalyzeDocument(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — document analysis skipped (connect SynSeekr in Settings)" };
+    }
+    const documentId = config.documentId || event.metadata?.documentId;
+    if (!documentId) {
+      return { message: "Document analysis skipped — no document ID provided" };
+    }
+    const result = await synseekrClient.analyzeDocument(documentId);
+    if (result.success) {
+      return { message: `Document ${documentId} queued for deep analysis on SynSeekr` };
+    }
+    return { message: `SynSeekr analysis failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrExtractEntities(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — entity extraction skipped" };
+    }
+    const caseId = config.caseId || event.metadata?.caseId;
+    if (!caseId) {
+      return { message: "Entity extraction skipped — no case ID provided" };
+    }
+    const result = await synseekrClient.extractEntities(caseId);
+    if (result.success) {
+      const count = Array.isArray(result.data) ? result.data.length : 0;
+      return { message: `Extracted ${count} entities from case ${caseId} via SynSeekr` };
+    }
+    return { message: `SynSeekr entity extraction failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrRagQuery(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — RAG query skipped" };
+    }
+    const query = config.query || config.prompt;
+    if (!query) {
+      return { message: "RAG query skipped — no query provided" };
+    }
+    const result = await synseekrClient.ragQuery(query, config.caseId);
+    if (result.success) {
+      return { message: `RAG query completed via SynSeekr: "${query.substring(0, 50)}..."` };
+    }
+    return { message: `SynSeekr RAG query failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrRunInvestigation(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — investigation skipped" };
+    }
+    const caseId = config.caseId || event.metadata?.caseId;
+    if (!caseId) {
+      return { message: "Investigation skipped — no case ID provided" };
+    }
+    const result = await synseekrClient.runInvestigation(caseId);
+    if (result.success) {
+      return { message: `Investigation launched for case ${caseId} on SynSeekr` };
+    }
+    return { message: `SynSeekr investigation failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrDetectContradictions(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — contradiction detection skipped" };
+    }
+    const caseId = config.caseId || event.metadata?.caseId;
+    if (!caseId) {
+      return { message: "Contradiction detection skipped — no case ID provided" };
+    }
+    const result = await synseekrClient.detectContradictions(caseId);
+    if (result.success) {
+      return { message: `Contradiction detection completed for case ${caseId}` };
+    }
+    return { message: `SynSeekr contradiction detection failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrClassifyDocument(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — document classification skipped" };
+    }
+    const documentId = config.documentId || event.metadata?.documentId;
+    if (!documentId) {
+      return { message: "Document classification skipped — no document ID provided" };
+    }
+    const result = await synseekrClient.classifyDocument(documentId);
+    if (result.success) {
+      return { message: `Document ${documentId} classified via SynSeekr: ${JSON.stringify(result.data)}` };
+    }
+    return { message: `SynSeekr classification failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrRunAgent(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — agent run skipped" };
+    }
+    const agentName = config.agentName || config.agent;
+    const caseId = config.caseId || event.metadata?.caseId;
+    if (!agentName || !caseId) {
+      return { message: "Agent run skipped — missing agent name or case ID" };
+    }
+    const result = await synseekrClient.runAgent(agentName, caseId);
+    if (result.success) {
+      return { message: `Agent "${agentName}" running on case ${caseId} via SynSeekr` };
+    }
+    return { message: `SynSeekr agent run failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrSearchDocuments(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — document search skipped" };
+    }
+    const query = config.query || config.searchTerm;
+    if (!query) {
+      return { message: "Document search skipped — no query provided" };
+    }
+    const result = await synseekrClient.searchDocuments(query);
+    if (result.success) {
+      const count = Array.isArray(result.data) ? result.data.length : 0;
+      return { message: `Found ${count} documents matching "${query}" via SynSeekr` };
+    }
+    return { message: `SynSeekr search failed: ${result.error}` };
+  }
+
+  private async actionSynSeekrTimelineEvents(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!synseekrClient.isEnabled()) {
+      return { message: "SynSeekr not connected — timeline retrieval skipped" };
+    }
+    const caseId = config.caseId || event.metadata?.caseId;
+    if (!caseId) {
+      return { message: "Timeline retrieval skipped — no case ID provided" };
+    }
+    const result = await synseekrClient.getTimelineEvents(caseId);
+    if (result.success) {
+      const count = Array.isArray(result.data) ? result.data.length : 0;
+      return { message: `Retrieved ${count} timeline events for case ${caseId}` };
+    }
+    return { message: `SynSeekr timeline retrieval failed: ${result.error}` };
   }
 
   private addToLog(result: AutomationExecutionResult): void {

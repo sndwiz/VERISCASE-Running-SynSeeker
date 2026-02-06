@@ -16,6 +16,7 @@ import { registerApprovalRoutes } from "./approvals";
 import { registerBriefingRoutes } from "./briefing";
 import clawbotRouter from "./clawbot";
 import documentsRouter from "./documents";
+import synseekrRouter from "./synseekr";
 import { registerMeetingRoutes } from "./meetings";
 
 export function registerAllRoutes(app: Express): void {
@@ -23,6 +24,8 @@ export function registerAllRoutes(app: Express): void {
   app.use('/api/clawbot', clawbotRouter);
   // Document and Form Maker
   app.use('/api/documents', documentsRouter);
+  // SynSeekr server gateway
+  app.use('/api/synseekr', synseekrRouter);
   registerBoardRoutes(app);
   registerGroupRoutes(app);
   registerTaskRoutes(app);
