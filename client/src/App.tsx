@@ -58,7 +58,6 @@ import BillingVerifierPage from "@/pages/billing-verifier";
 import TemplatesPage from "@/pages/templates";
 import ProcessRecorderPage from "@/pages/process-recorder";
 
-import type { Board } from "@shared/schema";
 
 function Router() {
   return (
@@ -123,11 +122,6 @@ function AppLayout() {
     retry: false,
   });
 
-  const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["/api/boards"],
-    enabled: !!user,
-  });
-
   const createBoardMutation = useMutation({
     mutationFn: (data: { name: string; description?: string; color: string; clientId?: string | null; matterId?: string | null }) =>
       apiRequest("POST", "/api/boards", data),
@@ -165,7 +159,6 @@ function AppLayout() {
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
         <AppSidebar
-          boards={boards}
           onCreateBoard={() => setCreateBoardOpen(true)}
         />
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">

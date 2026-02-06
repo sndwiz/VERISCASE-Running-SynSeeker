@@ -29,6 +29,7 @@ import { registerBillingVerifierRoutes } from "./billing-verifier";
 import aiOpsRouter from "./ai-ops";
 import { registerTemplateRoutes } from "./templates";
 import { registerProcessRecorderRoutes } from "./process-recorder";
+import { registerWorkspaceRoutes } from "./workspaces";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -64,5 +65,6 @@ export function registerAllRoutes(app: Express): void {
   registerBillingVerifierRoutes(app);
   registerTemplateRoutes(app);
   registerProcessRecorderRoutes(app);
+  registerWorkspaceRoutes(app);
   app.use(aiOpsRouter);
 }

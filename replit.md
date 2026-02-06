@@ -45,6 +45,23 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **API Design:** RESTful JSON API with a modular Express route architecture.
 - **Cloudflare Security Hardening:** Comprehensive security layer including scanner tripwire traps, Cloudflare Turnstile verification, dedicated form rate limiters, trust proxy, custom domain CORS support, and CSP directives.
 
+## Recent Changes
+- **Workspace Architecture (Feb 2026):** Added `workspaces` table with CRUD API routes. Sidebar workspace selector now uses real DB data with create-new-workspace inline. Boards table has `workspaceId` foreign key with index. Sidebar fetches its own boards internally (removed prop dependency from App.tsx).
+- **Investigation Board Redesign (Feb 2026):** 3-column layout with cork board canvas, 4 colored zones, 5 element types, SVG connections, minimap, AI status panel.
+
+## KISS Audit Findings (Feb 2026)
+**Key Issues Identified:**
+1. **Dead MemStorage class (~1500 lines):** `server/storage.ts` contains a full `MemStorage` implementation that is never used - only `DbStorage` from `server/dbStorage.ts` is instantiated. The `IStorage` interface (366 methods) adds unnecessary abstraction for a single implementation.
+2. **Storage file sizes:** storage.ts (2642 lines) + dbStorage.ts (4758 lines) = 7400 lines of storage code. Consolidating to just DbStorage without the interface would remove ~2600 lines.
+3. **Inconsistent data access patterns:** Some routes (billing-verifier, workspaces) access DB directly via Drizzle; others go through the storage interface. The direct DB pattern is simpler and recommended.
+4. **Large page components:** automations.tsx (2923 lines), billing-verifier.tsx (2066 lines) could benefit from component extraction.
+5. **Schema size:** shared/schema.ts at 2473 lines is large but functional - mostly type definitions and Zod schemas.
+
+**Recommended Next Steps:**
+- Remove MemStorage class and IStorage interface, use DbStorage class directly
+- Migrate remaining storage-interface routes to direct DB access pattern
+- Extract sub-components from largest page files
+
 ## External Dependencies
 - **Replit Auth:** For multi-user authentication.
 - **PostgreSQL:** Primary database.

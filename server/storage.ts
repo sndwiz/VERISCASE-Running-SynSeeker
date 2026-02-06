@@ -98,6 +98,7 @@ export interface IStorage {
   getBoards(): Promise<Board[]>;
   getBoardsByClient(clientId: string): Promise<Board[]>;
   getBoardsByMatter(matterId: string): Promise<Board[]>;
+  getBoardsByWorkspace(workspaceId: string): Promise<Board[]>;
   getBoard(id: string): Promise<Board | undefined>;
   createBoard(data: InsertBoard): Promise<Board>;
   updateBoard(id: string, data: Partial<Board>): Promise<Board | undefined>;
@@ -548,6 +549,10 @@ export class MemStorage implements IStorage {
 
   async getBoardsByMatter(matterId: string): Promise<Board[]> {
     return Array.from(this.boards.values()).filter(b => b.matterId === matterId);
+  }
+
+  async getBoardsByWorkspace(workspaceId: string): Promise<Board[]> {
+    return Array.from(this.boards.values()).filter(b => b.workspaceId === workspaceId);
   }
 
   async getBoard(id: string): Promise<Board | undefined> {

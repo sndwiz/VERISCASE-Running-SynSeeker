@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Sidebar,
   SidebarContent,
@@ -69,16 +70,12 @@ import {
   Library,
   CircleDot,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { Board, Client, Matter } from "@shared/schema";
+import type { Board, Client, Matter, Workspace } from "@shared/schema";
 import { FEATURE_METADATA } from "@/lib/feature-metadata";
 
-const workspaces = [
-  { id: "default", name: "Main Workspace", icon: Building2 },
-];
-
 interface AppSidebarProps {
-  boards: Board[];
   onCreateBoard: () => void;
 }
 
@@ -123,13 +120,51 @@ const aiInvestigationItems = [
   { title: "Automations", url: "/automations", icon: Zap },
 ];
 
-export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
+export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [location] = useLocation();
   const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [practiceOpen, setPracticeOpen] = useState(true);
-  const [currentWorkspace] = useState(workspaces[0]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
+    try { return localStorage.getItem("vericase_active_workspace"); } catch { return null; }
+  });
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+
+  const { data: workspaceList = [] } = useQuery<Workspace[]>({
+    queryKey: ["/api/workspaces"],
+  });
+
+  const currentWorkspace = useMemo(() => {
+    if (activeWorkspaceId) {
+      return workspaceList.find(w => w.id === activeWorkspaceId) || workspaceList[0];
+    }
+    return workspaceList[0];
+  }, [workspaceList, activeWorkspaceId]);
+
+  const selectWorkspace = useCallback((id: string) => {
+    setActiveWorkspaceId(id);
+    try { localStorage.setItem("vericase_active_workspace", id); } catch {}
+    queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+  }, []);
+
+  const createWorkspaceMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("POST", "/api/workspaces", { name });
+      return res.json();
+    },
+    onSuccess: (newWs: Workspace) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workspaces"] });
+      selectWorkspace(newWs.id);
+      setIsCreatingWorkspace(false);
+      setNewWorkspaceName("");
+    },
+  });
+
+  const { data: boards = [] } = useQuery<Board[]>({
+    queryKey: ["/api/boards"],
+  });
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -209,23 +244,59 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-between h-9 px-2"
+              className="w-full justify-between px-2"
               data-testid="button-workspace-selector"
             >
               <div className="flex items-center gap-2">
-                <currentWorkspace.icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm truncate">{currentWorkspace.name}</span>
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm truncate">{currentWorkspace?.name || "Workspace"}</span>
               </div>
               <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            {workspaces.map((ws) => (
-              <DropdownMenuItem key={ws.id} data-testid={`menu-workspace-${ws.id}`}>
-                <ws.icon className="h-4 w-4 mr-2" />
+            {workspaceList.map((ws) => (
+              <DropdownMenuItem
+                key={ws.id}
+                onClick={() => selectWorkspace(ws.id)}
+                data-testid={`menu-workspace-${ws.id}`}
+              >
+                <Building2 className="h-4 w-4 mr-2" style={{ color: ws.color }} />
                 {ws.name}
+                {ws.id === currentWorkspace?.id && (
+                  <span className="ml-auto text-xs text-primary">Active</span>
+                )}
               </DropdownMenuItem>
             ))}
+            {isCreatingWorkspace ? (
+              <div className="p-2 flex items-center gap-1">
+                <Input
+                  value={newWorkspaceName}
+                  onChange={(e) => setNewWorkspaceName(e.target.value)}
+                  placeholder="Workspace name"
+                  className="h-7 text-xs"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newWorkspaceName.trim()) {
+                      createWorkspaceMutation.mutate(newWorkspaceName.trim());
+                    }
+                    if (e.key === "Escape") {
+                      setIsCreatingWorkspace(false);
+                      setNewWorkspaceName("");
+                    }
+                  }}
+                  data-testid="input-new-workspace-name"
+                />
+              </div>
+            ) : (
+              <DropdownMenuItem
+                onClick={(e) => { e.preventDefault(); setIsCreatingWorkspace(true); }}
+                data-testid="button-create-workspace"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Workspace
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>

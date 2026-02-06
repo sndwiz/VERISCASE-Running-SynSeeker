@@ -46,6 +46,9 @@ export async function registerRoutes(
   // - member: Full CRUD access to boards, matters, evidence, etc.
   // - viewer: Read-only access (GET requests only)
   
+  // Workspaces - viewer can read, member+ can write
+  app.use("/api/workspaces", isAuthenticated, viewerReadOnly);
+  
   // Boards, groups, tasks - viewer can read, member+ can write
   app.use("/api/boards", isAuthenticated, viewerReadOnly);
   app.use("/api/groups", isAuthenticated, viewerReadOnly);

@@ -1,6 +1,18 @@
 import { sql } from "drizzle-orm";
 import { index, jsonb, pgTable, timestamp, varchar, text, integer, boolean, real } from "drizzle-orm/pg-core";
 
+// ============ WORKSPACES ============
+export const workspaces = pgTable("workspaces", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").default(""),
+  color: varchar("color", { length: 20 }).default("#6366f1"),
+  icon: varchar("icon", { length: 50 }).default("briefcase"),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ============ BOARDS ============
 export const boards = pgTable("boards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -11,11 +23,13 @@ export const boards = pgTable("boards", {
   columns: jsonb("columns").default([]),
   clientId: varchar("client_id"),
   matterId: varchar("matter_id"),
+  workspaceId: varchar("workspace_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("IDX_boards_client_id").on(table.clientId),
   index("IDX_boards_matter_id").on(table.matterId),
+  index("IDX_boards_workspace_id").on(table.workspaceId),
 ]);
 
 // ============ GROUPS ============

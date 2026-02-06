@@ -239,6 +239,17 @@ export const defaultStatusLabels: CustomStatusLabel[] = [
 ];
 
 // Board interface
+export interface Workspace {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  icon: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Board {
   id: string;
   name: string;
@@ -249,6 +260,7 @@ export interface Board {
   statusLabels?: CustomStatusLabel[];
   clientId?: string | null;
   matterId?: string | null;
+  workspaceId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -786,6 +798,7 @@ export const insertBoardSchema = z.object({
   })).optional(),
   clientId: z.string().nullable().optional(),
   matterId: z.string().nullable().optional(),
+  workspaceId: z.string().nullable().optional(),
 });
 
 export const insertGroupSchema = z.object({

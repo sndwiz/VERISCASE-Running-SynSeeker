@@ -6,12 +6,14 @@ import { z } from "zod";
 export function registerBoardRoutes(app: Express): void {
   app.get("/api/boards", async (req, res) => {
     try {
-      const { clientId, matterId } = req.query;
+      const { clientId, matterId, workspaceId } = req.query;
       let boards;
       if (clientId && typeof clientId === "string") {
         boards = await storage.getBoardsByClient(clientId);
       } else if (matterId && typeof matterId === "string") {
         boards = await storage.getBoardsByMatter(matterId);
+      } else if (workspaceId && typeof workspaceId === "string") {
+        boards = await storage.getBoardsByWorkspace(workspaceId);
       } else {
         boards = await storage.getBoards();
       }

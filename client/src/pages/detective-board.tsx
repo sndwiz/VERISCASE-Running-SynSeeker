@@ -1,13 +1,10 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -17,24 +14,23 @@ import {
   MapPin,
   Calendar,
   Lightbulb,
-  StickyNote,
+  StickyNote as StickyNoteIcon,
   Plus,
   Trash2,
   Link2,
-  ZoomIn,
-  ZoomOut,
   ArrowRight,
   XCircle,
   Loader2,
   MousePointer2,
-  BarChart3,
-  Clock,
   AlertTriangle,
-  Network,
-  Target,
-  TrendingUp,
-  Unlink,
-  Waypoints,
+  Zap,
+  Search,
+  Download,
+  Bot,
+  Clock,
+  Eye,
+  GitCompare,
+  RotateCcw,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -77,7 +73,7 @@ const NODE_TYPES = {
   location: { icon: MapPin, label: "Location", defaultColor: "#10b981" },
   event: { icon: Calendar, label: "Event", defaultColor: "#f59e0b" },
   theory: { icon: Lightbulb, label: "Theory", defaultColor: "#ef4444" },
-  note: { icon: StickyNote, label: "Note", defaultColor: "#6b7280" },
+  note: { icon: StickyNoteIcon, label: "Note", defaultColor: "#6b7280" },
 };
 
 const CONNECTION_TYPES = {
@@ -89,35 +85,74 @@ const CONNECTION_TYPES = {
 };
 
 const PIN_COLORS: Record<string, string> = {
-  evidence: "#dc2626",
-  person: "#2563eb",
-  location: "#16a34a",
-  event: "#d97706",
-  theory: "#dc2626",
-  note: "#fbbf24",
+  evidence: "#2980b9",
+  person: "#2980b9",
+  location: "#00b894",
+  event: "#fdcb6e",
+  theory: "#c0392b",
+  note: "#fdcb6e",
 };
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 90;
+const BOARD_W = 4000;
+const BOARD_H = 3000;
+
+const ZONE_COLORS = {
+  duty: { color: "#3498db", bg: "rgba(52,152,219,0.08)", label: "Duty" },
+  breach: { color: "#e74c3c", bg: "rgba(231,76,60,0.08)", label: "Breach" },
+  causation: { color: "#f39c12", bg: "rgba(243,156,18,0.08)", label: "Causation" },
+  damages: { color: "#27ae60", bg: "rgba(39,174,96,0.08)", label: "Damages" },
+};
+
+const ZONES = [
+  { key: "duty", x: 40, y: 60, w: 420, h: 280 },
+  { key: "breach", x: 480, y: 60, w: 420, h: 280 },
+  { key: "causation", x: 920, y: 60, w: 220, h: 420 },
+  { key: "damages", x: 40, y: 560, w: 560, h: 200 },
+] as const;
+
+const CONNECTION_COLOR_MAP: Record<string, string> = {
+  related: "#78716c",
+  contradicts: "#c0392b",
+  supports: "#27ae60",
+  "leads-to": "#f39c12",
+  timeline: "#2980b9",
+};
+
+function getNodeDimensions(type: string) {
+  switch (type) {
+    case "evidence":
+    case "location":
+      return { w: 260, h: 140 };
+    case "note":
+      return { w: 170, h: 170 };
+    case "person":
+      return { w: 180, h: 160 };
+    case "theory":
+      return { w: 300, h: 200 };
+    case "event":
+      return { w: 160, h: 100 };
+    default:
+      return { w: 200, h: 100 };
+  }
+}
 
 function PushPin({ color }: { color: string }) {
   return (
     <div
-      className="absolute -top-2 left-1/2 -translate-x-1/2 z-10"
-      style={{ pointerEvents: "none" }}
-    >
-      <div
-        className="w-4 h-4 rounded-full"
-        style={{
-          background: `radial-gradient(circle at 30% 30%, ${color}cc, ${color})`,
-          boxShadow: `0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 3px rgba(0,0,0,0.2)`,
-        }}
-      />
-      <div
-        className="w-0.5 h-2 mx-auto -mt-0.5"
-        style={{ backgroundColor: "#555" }}
-      />
-    </div>
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        position: "absolute",
+        top: -11,
+        left: "50%",
+        transform: "translateX(-50%)",
+        background: `radial-gradient(circle at 30% 30%, ${color}cc, ${color})`,
+        boxShadow: "0 3px 6px rgba(0,0,0,0.4), inset 0 -2px 3px rgba(0,0,0,0.2)",
+        zIndex: 10,
+        pointerEvents: "none",
+      }}
+    />
   );
 }
 
@@ -284,9 +319,333 @@ function computeAnalytics(nodes: DetectiveNode[], connections: DetectiveConnecti
   };
 }
 
+function EvidenceCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  const pinColor = node.type === "location" ? "#00b894" : "#2980b9";
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 260,
+        background: "#fffef5",
+        borderRadius: 6,
+        boxShadow: isSelected ? "0 0 0 3px #3498db, 3px 3px 12px rgba(0,0,0,0.25)" : "3px 3px 12px rgba(0,0,0,0.25)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color={pinColor} />
+      <div style={{ padding: "18px 18px 14px" }}>
+        <div style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "#888", marginBottom: 6 }}>
+          {node.type === "location" ? "LOCATION" : "EVIDENCE"}
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#2c3e50", marginBottom: 8, lineHeight: 1.3 }}>
+          {node.title}
+        </div>
+        {node.description && (
+          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.5 }}>
+            {node.description.length > 120 ? node.description.slice(0, 120) + "..." : node.description}
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: "#999", marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee", display: "flex", gap: 12 }}>
+          <span>Added {new Date(node.createdAt).toLocaleDateString()}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StickyNoteEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 170,
+        minHeight: 170,
+        padding: 16,
+        paddingTop: 20,
+        fontFamily: "'Caveat', cursive",
+        fontSize: 16,
+        lineHeight: 1.4,
+        color: "#333",
+        background: "linear-gradient(135deg, #fff9c4, #fff59d)",
+        boxShadow: isSelected ? "0 0 0 3px #3498db, 3px 3px 10px rgba(0,0,0,0.15)" : "3px 3px 10px rgba(0,0,0,0.15)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#fdcb6e" />
+      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 18 }}>{node.title}</div>
+      <div>{node.description}</div>
+    </div>
+  );
+}
+
+function PersonCardEl({ node, isSelected, connections, allNodes, onMouseDown }: { node: DetectiveNode; isSelected: boolean; connections: DetectiveConnection[]; allNodes: DetectiveNode[]; onMouseDown: (e: React.MouseEvent) => void }) {
+  const mentions = connections.filter(c => c.sourceNodeId === node.id || c.targetNodeId === node.id).length;
+  const contradictionCount = connections.filter(c =>
+    c.connectionType === "contradicts" && (c.sourceNodeId === node.id || c.targetNodeId === node.id)
+  ).length;
+  const initial = node.title.charAt(0).toUpperCase();
+
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 180,
+        padding: 16,
+        paddingTop: 20,
+        background: "white",
+        borderRadius: 10,
+        boxShadow: isSelected ? "0 0 0 3px #3498db, 3px 3px 12px rgba(0,0,0,0.2)" : "3px 3px 12px rgba(0,0,0,0.2)",
+        textAlign: "center",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#2980b9" />
+      <div style={{
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        margin: "0 auto 10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 26,
+        color: "white",
+        fontWeight: 700,
+        background: "linear-gradient(135deg, #3498db, #2980b9)",
+      }}>
+        {initial}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#2c3e50" }}>{node.title}</div>
+      <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
+        {node.description ? node.description.split("\n")[0] : "Person"}
+      </div>
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: 16,
+        paddingTop: 8,
+        borderTop: "1px solid #eee",
+        marginTop: 8,
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#2c3e50" }}>{mentions}</div>
+          <div style={{ fontSize: 8, color: "#999", textTransform: "uppercase" }}>Mentions</div>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: contradictionCount > 0 ? "#e74c3c" : "#27ae60" }}>{contradictionCount}</div>
+          <div style={{ fontSize: 8, color: "#999", textTransform: "uppercase" }}>Conflicts</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContradictionCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  const parts = node.description.split("\n").filter(Boolean);
+  const stmt1 = parts[0] || node.description;
+  const stmt2 = parts[1] || "";
+
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 300,
+        background: "#fff5f5",
+        border: "2px solid #e74c3c",
+        borderRadius: 8,
+        boxShadow: isSelected ? "0 0 0 3px #3498db, 3px 3px 12px rgba(0,0,0,0.2)" : "3px 3px 12px rgba(0,0,0,0.2)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#c0392b" />
+      <div style={{
+        background: "#e74c3c",
+        color: "white",
+        padding: "10px 14px",
+        fontSize: 11,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}>
+        <Zap size={14} /> CONTRADICTION DETECTED
+      </div>
+      <div style={{ padding: 14 }}>
+        <div style={{
+          background: "white",
+          padding: 10,
+          borderRadius: 6,
+          fontSize: 12,
+          lineHeight: 1.4,
+          marginBottom: 8,
+        }}>
+          {stmt1}
+        </div>
+        {stmt2 && (
+          <>
+            <div style={{ textAlign: "center", fontWeight: 700, color: "#e74c3c", fontSize: 12, margin: "8px 0" }}>VS</div>
+            <div style={{
+              background: "white",
+              padding: 10,
+              borderRadius: 6,
+              fontSize: 12,
+              lineHeight: 1.4,
+            }}>
+              {stmt2}
+            </div>
+          </>
+        )}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingTop: 10,
+          marginTop: 10,
+          borderTop: "1px solid #f0d0d0",
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#e74c3c" }}>{node.title}</span>
+          <span style={{
+            fontSize: 10,
+            padding: "3px 8px",
+            borderRadius: 10,
+            background: "#ffe0e0",
+            color: "#e74c3c",
+          }}>Unresolved</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimelineNodeEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 160,
+        padding: 14,
+        paddingTop: 18,
+        background: "white",
+        borderRadius: 8,
+        boxShadow: isSelected ? "0 0 0 3px #3498db, 3px 3px 10px rgba(0,0,0,0.2)" : "3px 3px 10px rgba(0,0,0,0.2)",
+        textAlign: "center",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#fdcb6e" />
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#2c3e50", marginBottom: 4 }}>{node.title}</div>
+      <div style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>
+        {node.description.length > 80 ? node.description.slice(0, 80) + "..." : node.description}
+      </div>
+    </div>
+  );
+}
+
+function MiniMap({ nodes, pan, containerW, containerH }: { nodes: DetectiveNode[]; pan: { x: number; y: number }; containerW: number; containerH: number }) {
+  const scale = 150 / BOARD_W;
+  const mapH = BOARD_H * scale;
+  const vpW = Math.min(containerW / BOARD_W * 150, 150);
+  const vpH = Math.min(containerH / BOARD_H * mapH, mapH);
+  const vpX = Math.max(0, Math.min((-pan.x / BOARD_W) * 150, 150 - vpW));
+  const vpY = Math.max(0, Math.min((-pan.y / BOARD_H) * mapH, mapH - vpH));
+
+  return (
+    <div
+      data-testid="minimap"
+      style={{
+        position: "absolute",
+        bottom: 16,
+        left: 16,
+        width: 150,
+        height: mapH,
+        background: "rgba(0,0,0,0.6)",
+        borderRadius: 6,
+        border: "1px solid rgba(255,255,255,0.2)",
+        zIndex: 20,
+        padding: 4,
+      }}
+    >
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        {ZONES.map(z => {
+          const zc = ZONE_COLORS[z.key as keyof typeof ZONE_COLORS];
+          return (
+            <div
+              key={z.key}
+              style={{
+                position: "absolute",
+                left: z.x * scale,
+                top: z.y * scale,
+                width: z.w * scale,
+                height: z.h * scale,
+                border: `1px solid ${zc.color}`,
+                borderRadius: 2,
+                opacity: 0.5,
+              }}
+            />
+          );
+        })}
+        {nodes.map(n => (
+          <div
+            key={n.id}
+            style={{
+              position: "absolute",
+              left: n.position.x * scale,
+              top: n.position.y * scale,
+              width: 3,
+              height: 3,
+              borderRadius: "50%",
+              background: PIN_COLORS[n.type] || "#fff",
+            }}
+          />
+        ))}
+        <div style={{
+          position: "absolute",
+          left: vpX,
+          top: vpY,
+          width: vpW,
+          height: vpH,
+          border: "2px solid rgba(255,255,255,0.8)",
+          borderRadius: 2,
+        }} />
+      </div>
+    </div>
+  );
+}
+
 export default function DetectiveBoardPage() {
   const { toast } = useToast();
   const boardRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedMatterId, setSelectedMatterId] = useState<string>("");
   const [selectedNode, setSelectedNode] = useState<DetectiveNode | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<DetectiveConnection | null>(null);
@@ -294,12 +653,14 @@ export default function DetectiveBoardPage() {
   const [showAddConnectionDialog, setShowAddConnectionDialog] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSource, setConnectionSource] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const [dragNode, setDragNode] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [sidebarTab, setSidebarTab] = useState<"details" | "analytics" | "timeline">("details");
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<"history" | "details">("history");
+  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
 
   const [nodeForm, setNodeForm] = useState({
     type: "evidence" as keyof typeof NODE_TYPES,
@@ -331,6 +692,18 @@ export default function DetectiveBoardPage() {
   });
 
   const analytics = useMemo(() => computeAnalytics(nodes, connections), [nodes, connections]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+      }
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const createNodeMutation = useMutation({
     mutationFn: async (data: typeof nodeForm & { position: { x: number; y: number } }) => {
@@ -422,6 +795,8 @@ export default function DetectiveBoardPage() {
 
   const handleNodeMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
+    e.preventDefault();
+
     if (isConnecting) {
       if (connectionSource && connectionSource !== nodeId) {
         setConnectionForm(prev => ({ ...prev, targetNodeId: nodeId }));
@@ -434,37 +809,80 @@ export default function DetectiveBoardPage() {
     if (!node) return;
 
     setDragNode(nodeId);
-    setIsDragging(true);
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset({
-        x: (e.clientX - rect.left) / zoom - pan.x - node.position.x,
-        y: (e.clientY - rect.top) / zoom - pan.y - node.position.y,
-      });
-    }
+    dragStartPos.current = { x: node.position.x, y: node.position.y };
+    lastMousePos.current = { x: e.clientX, y: e.clientY };
     setSelectedNode(node);
     setSelectedConnection(null);
     setSidebarTab("details");
-  }, [isConnecting, connectionSource, nodes, zoom, pan]);
+  }, [isConnecting, connectionSource, nodes]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !dragNode) return;
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = (e.clientX - rect.left) / zoom - pan.x - dragOffset.x;
-    const y = (e.clientY - rect.top) / zoom - pan.y - dragOffset.y;
-    updateNodeMutation.mutate({ id: dragNode, data: { position: { x: Math.max(0, x), y: Math.max(0, y) } } });
-  }, [isDragging, dragNode, zoom, pan, dragOffset, updateNodeMutation]);
+  const handleBoardMouseDown = useCallback((e: React.MouseEvent) => {
+    if (dragNode) return;
+    const target = e.target as HTMLElement;
+    if (target === boardRef.current || target.closest("[data-zone]")) {
+      setIsPanning(true);
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+  }, [dragNode]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (dragNode && dragStartPos.current) {
+      const dx = e.clientX - lastMousePos.current.x;
+      const dy = e.clientY - lastMousePos.current.y;
+      dragStartPos.current = {
+        x: dragStartPos.current.x + dx,
+        y: dragStartPos.current.y + dy,
+      };
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+
+      const el = document.querySelector(`[data-testid="board-element-${dragNode}"]`) as HTMLElement;
+      if (el) {
+        el.style.left = `${Math.max(0, dragStartPos.current.x)}px`;
+        el.style.top = `${Math.max(0, dragStartPos.current.y)}px`;
+      }
+    } else if (isPanning) {
+      const dx = e.clientX - lastMousePos.current.x;
+      const dy = e.clientY - lastMousePos.current.y;
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+      setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    }
+  }, [dragNode, isPanning]);
 
   const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
+    if (dragNode && dragStartPos.current) {
+      updateNodeMutation.mutate({
+        id: dragNode,
+        data: {
+          position: {
+            x: Math.max(0, dragStartPos.current.x),
+            y: Math.max(0, dragStartPos.current.y),
+          },
+        },
+      });
+    }
     setDragNode(null);
-  }, []);
+    dragStartPos.current = null;
+    setIsPanning(false);
+  }, [dragNode, updateNodeMutation]);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   const handleAddNode = () => {
-    const centerX = 200 + Math.random() * 400;
-    const centerY = 150 + Math.random() * 300;
+    const centerX = -pan.x + 200 + Math.random() * 400;
+    const centerY = -pan.y + 150 + Math.random() * 300;
     createNodeMutation.mutate({ ...nodeForm, position: { x: centerX, y: centerY } });
+  };
+
+  const openAddNodeWithType = (type: keyof typeof NODE_TYPES) => {
+    setNodeForm(prev => ({ ...prev, type, color: NODE_TYPES[type].defaultColor }));
+    setShowAddNodeDialog(true);
   };
 
   const startConnecting = (nodeId: string) => {
@@ -478,10 +896,13 @@ export default function DetectiveBoardPage() {
     setConnectionSource(null);
   };
 
-  const getNodeCenter = (node: DetectiveNode) => ({
-    x: node.position.x + NODE_WIDTH / 2,
-    y: node.position.y + NODE_HEIGHT / 2,
-  });
+  const getNodeCenter = (node: DetectiveNode) => {
+    const dims = getNodeDimensions(node.type);
+    return {
+      x: node.position.x + dims.w / 2,
+      y: node.position.y + dims.h / 2,
+    };
+  };
 
   const renderConnection = (conn: DetectiveConnection) => {
     const source = nodes.find(n => n.id === conn.sourceNodeId);
@@ -490,796 +911,724 @@ export default function DetectiveBoardPage() {
 
     const start = getNodeCenter(source);
     const end = getNodeCenter(target);
-    const cfg = CONNECTION_TYPES[conn.connectionType];
+    const color = CONNECTION_COLOR_MAP[conn.connectionType] || "#78716c";
     const isSelected = selectedConnection?.id === conn.id;
 
-    const midX = (start.x + end.x) / 2;
-    const midY = (start.y + end.y) / 2;
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const sag = Math.min(dist * 0.15, 40);
-    const perpX = -dy / (dist || 1);
-    const perpY = dx / (dist || 1);
-    const cpX = midX + perpX * sag;
-    const cpY = midY + perpY * sag;
-
-    const strokeW = 1 + conn.strength * 0.5;
-    const angle = Math.atan2(end.y - cpY, end.x - cpX);
-    const arrowLen = 8;
-    const arrowAng = Math.PI / 6;
-
-    let dashArray = "none";
-    if (cfg.style === "dashed") dashArray = "10,5";
-    else if (cfg.style === "dotted") dashArray = "3,3";
-
     return (
-      <g key={conn.id} onClick={() => { setSelectedConnection(conn); setSelectedNode(null); setSidebarTab("details"); }} className="cursor-pointer">
-        <path
-          d={`M ${start.x} ${start.y} Q ${cpX} ${cpY} ${end.x} ${end.y}`}
-          fill="none"
-          stroke="rgba(0,0,0,0.15)"
-          strokeWidth={strokeW + 2}
-          strokeDasharray={dashArray}
-          style={{ filter: "blur(1px)" }}
-        />
-        <path
-          d={`M ${start.x} ${start.y} Q ${cpX} ${cpY} ${end.x} ${end.y}`}
-          fill="none"
-          stroke={cfg.color}
-          strokeWidth={isSelected ? strokeW + 1.5 : strokeW}
-          strokeDasharray={dashArray}
-          style={{ opacity: isSelected ? 1 : 0.75 }}
-        />
-        <polygon
-          points={`
-            ${end.x},${end.y}
-            ${end.x - arrowLen * Math.cos(angle - arrowAng)},${end.y - arrowLen * Math.sin(angle - arrowAng)}
-            ${end.x - arrowLen * Math.cos(angle + arrowAng)},${end.y - arrowLen * Math.sin(angle + arrowAng)}
-          `}
-          fill={cfg.color}
-        />
-        {conn.label && (
-          <text
-            x={cpX}
-            y={cpY - 8}
-            textAnchor="middle"
-            fill={cfg.color}
-            fontSize={11}
-            fontWeight={600}
-            className="pointer-events-none select-none"
-            style={{ textShadow: "0 1px 2px rgba(255,255,255,0.9)" }}
-          >
-            {conn.label}
-          </text>
-        )}
-      </g>
+      <line
+        key={conn.id}
+        x1={start.x}
+        y1={start.y}
+        x2={end.x}
+        y2={end.y}
+        stroke={color}
+        strokeWidth={isSelected ? 4 : 3}
+        strokeDasharray="10 5"
+        opacity={isSelected ? 1 : 0.8}
+        style={{ cursor: "pointer", pointerEvents: "stroke" }}
+        onClick={() => { setSelectedConnection(conn); setSelectedNode(null); setSidebarTab("details"); }}
+      />
     );
   };
 
-  const getNodeStyle = (node: DetectiveNode): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      left: node.position.x,
-      top: node.position.y,
-      width: NODE_WIDTH,
-      minHeight: NODE_HEIGHT,
-      position: "absolute",
-    };
+  const renderBoardNode = (node: DetectiveNode) => {
+    const isSelected = selectedNode?.id === node.id;
+    const onMouseDown = (e: React.MouseEvent) => handleNodeMouseDown(e, node.id);
 
     switch (node.type) {
       case "note":
-      case "theory":
-        return {
-          ...base,
-          background: node.type === "note"
-            ? "linear-gradient(135deg, #fff9c4 0%, #fff59d 100%)"
-            : "linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%)",
-          boxShadow: "3px 3px 8px rgba(0,0,0,0.2)",
-          borderRadius: "2px",
-          transform: `rotate(${(node.position.x % 5) - 2}deg)`,
-        };
-      case "evidence":
-        return {
-          ...base,
-          background: "#fff",
-          padding: "8px 8px 24px 8px",
-          boxShadow: "3px 3px 10px rgba(0,0,0,0.25)",
-          borderRadius: "2px",
-        };
+        return <StickyNoteEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
       case "person":
-      case "location":
-        return {
-          ...base,
-          background: "#fffef0",
-          boxShadow: "2px 2px 8px rgba(0,0,0,0.2)",
-          border: `1px solid ${node.color}40`,
-          borderTop: `3px solid ${node.color}`,
-        };
+        return <PersonCardEl key={node.id} node={node} isSelected={isSelected} connections={connections} allNodes={nodes} onMouseDown={onMouseDown} />;
+      case "theory":
+        return <ContradictionCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
       case "event":
-        return {
-          ...base,
-          background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
-          border: `1px solid ${node.color}40`,
-          borderTop: `3px solid ${node.color}`,
-          boxShadow: "2px 2px 8px rgba(0,0,0,0.2)",
-        };
+        return <TimelineNodeEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
       default:
-        return {
-          ...base,
-          backgroundColor: node.color + "20",
-          border: `1px solid ${node.color}40`,
-          borderTop: `3px solid ${node.color}`,
-        };
+        return <EvidenceCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
     }
   };
 
-  const renderNode = (node: DetectiveNode) => {
-    const NodeIcon = NODE_TYPES[node.type]?.icon || FileText;
-    const isSelected = selectedNode?.id === node.id;
-    const isSource = connectionSource === node.id;
-    const pinColor = PIN_COLORS[node.type] || "#dc2626";
-    const isSticky = node.type === "note" || node.type === "theory";
-    const isPhoto = node.type === "evidence";
+  const selectedMatter = matters.find(m => m.id === selectedMatterId);
 
+  const panelBg = "#16213e";
+  const panelText = "#ecf0f1";
+  const panelMuted = "#95a5a6";
+
+  if (!selectedMatterId) {
     return (
-      <div
-        key={node.id}
-        data-testid={`node-${node.id}`}
-        className={`cursor-move select-none transition-shadow ${
-          isSelected ? "ring-2 ring-primary" : ""
-        } ${isSource ? "ring-2 ring-yellow-500" : ""}`}
-        style={getNodeStyle(node)}
-        onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-      >
-        <PushPin color={pinColor} />
-
-        {isPhoto ? (
-          <div className="pt-2">
-            <div
-              className="flex items-center justify-center rounded-sm"
-              style={{
-                backgroundColor: node.color + "15",
-                border: `1px solid ${node.color}30`,
-                minHeight: "50px",
-              }}
-            >
-              <NodeIcon className="h-6 w-6" style={{ color: node.color }} />
-            </div>
-            <div className="mt-2 text-center">
-              <span className="font-medium text-xs text-gray-700 dark:text-gray-300">{node.title}</span>
-            </div>
+      <div className="h-full flex" data-testid="page-detective-board" style={{ background: "#1a1a2e" }}>
+        <div style={{ width: 280, background: panelBg, borderRight: "1px solid rgba(255,255,255,0.1)", padding: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+            Select Matter
           </div>
-        ) : isSticky ? (
-          <div className="p-3 pt-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <NodeIcon className="h-3.5 w-3.5 shrink-0" style={{ color: "#555" }} />
-              <span className="font-semibold text-xs text-gray-800" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif" }}>
-                {node.title}
-              </span>
-            </div>
-            {node.description && (
-              <p className="text-[10px] text-gray-600 line-clamp-3 leading-relaxed" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif" }}>
-                {node.description}
-              </p>
-            )}
+          <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
+            <SelectTrigger data-testid="select-matter" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: panelText }}>
+              <SelectValue placeholder="Choose a case..." />
+            </SelectTrigger>
+            <SelectContent>
+              {matters.map(matter => (
+                <SelectItem key={matter.id} value={matter.id}>{matter.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 flex items-center justify-center" style={{ background: "#111" }}>
+          <div style={{ textAlign: "center", color: panelMuted }}>
+            <Lightbulb size={64} style={{ margin: "0 auto 16px", opacity: 0.4 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: panelText }}>Select a Matter</h2>
+            <p style={{ fontSize: 14 }}>Choose a case from the left panel to view its investigation board</p>
           </div>
-        ) : (
-          <div className="p-3 pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <NodeIcon className="h-4 w-4 shrink-0" style={{ color: node.color }} />
-              <span className="font-medium text-sm truncate text-gray-800 dark:text-gray-200">{node.title}</span>
-            </div>
-            {node.description && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{node.description}</p>
-            )}
-            <div className="mt-2">
-              <Badge variant="outline" className="text-[10px] py-0">
-                {NODE_TYPES[node.type]?.label}
-              </Badge>
-            </div>
-          </div>
-        )}
+        </div>
+        <div style={{ width: 320, background: panelBg, borderLeft: "1px solid rgba(255,255,255,0.1)" }} />
       </div>
     );
-  };
+  }
 
-  const renderAnalyticsPanel = () => (
-    <ScrollArea className="flex-1">
-      <div className="p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-md bg-muted/50 text-center">
-            <div className="text-2xl font-bold text-primary" data-testid="stat-total-nodes">{analytics.totalNodes}</div>
-            <div className="text-[10px] text-muted-foreground">Evidence Pieces</div>
+  return (
+    <div className="h-full flex" data-testid="page-detective-board" style={{ background: "#1a1a2e", color: panelText }}>
+      {/* LEFT SIDEBAR */}
+      <div style={{
+        width: 280,
+        minWidth: 280,
+        background: panelBg,
+        borderRight: "1px solid rgba(255,255,255,0.1)",
+        padding: 20,
+        overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+      }}>
+        {/* Matter selector */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+            Active Case
           </div>
-          <div className="p-3 rounded-md bg-muted/50 text-center">
-            <div className="text-2xl font-bold text-primary" data-testid="stat-total-connections">{analytics.totalConnections}</div>
-            <div className="text-[10px] text-muted-foreground">Connections</div>
-          </div>
-          <div className="p-3 rounded-md text-center" style={{ backgroundColor: analytics.contradictions > 0 ? "rgba(220,38,38,0.1)" : undefined }}>
-            <div className="text-2xl font-bold" style={{ color: analytics.contradictions > 0 ? "#dc2626" : undefined }} data-testid="stat-contradictions">
-              {analytics.contradictions}
-            </div>
-            <div className="text-[10px] text-muted-foreground">Contradictions</div>
-          </div>
-          <div className="p-3 rounded-md bg-muted/50 text-center">
-            <div className="text-2xl font-bold" data-testid="stat-density">{(analytics.density * 100).toFixed(0)}%</div>
-            <div className="text-[10px] text-muted-foreground">Density</div>
-          </div>
-        </div>
-
-        {Object.keys(analytics.typeCounts).length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Target className="h-3 w-3" /> Node Breakdown
-            </h4>
-            <div className="space-y-1.5">
-              {Object.entries(analytics.typeCounts).map(([type, count]) => {
-                const config = NODE_TYPES[type as keyof typeof NODE_TYPES];
-                const pct = analytics.totalNodes > 0 ? (count / analytics.totalNodes) * 100 : 0;
-                return (
-                  <div key={type} className="flex items-center gap-2" data-testid={`breakdown-${type}`}>
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config?.defaultColor }} />
-                    <span className="text-xs flex-1">{config?.label || type}</span>
-                    <span className="text-xs text-muted-foreground">{count}</span>
-                    <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: config?.defaultColor }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {Object.keys(analytics.connectionTypeCounts).length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Waypoints className="h-3 w-3" /> String Types
-            </h4>
-            <div className="space-y-1.5">
-              {Object.entries(analytics.connectionTypeCounts).map(([type, count]) => {
-                const cfg = CONNECTION_TYPES[type as keyof typeof CONNECTION_TYPES];
-                return (
-                  <div key={type} className="flex items-center gap-2">
-                    <div className="w-4 h-0.5" style={{ backgroundColor: cfg?.color }} />
-                    <span className="text-xs flex-1">{cfg?.label || type}</span>
-                    <span className="text-xs text-muted-foreground font-medium">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {analytics.hubs.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Network className="h-3 w-3" /> Key Hubs
-            </h4>
-            <div className="space-y-1">
-              {analytics.hubs.map(h => (
-                <div key={h.node!.id} className="flex items-center gap-2 p-1.5 rounded-md hover-elevate cursor-pointer"
-                  onClick={() => { setSelectedNode(h.node!); setSidebarTab("details"); }}
-                  data-testid={`hub-${h.node!.id}`}
-                >
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: h.node!.color }} />
-                  <span className="text-xs truncate flex-1">{h.node!.title}</span>
-                  <Badge variant="secondary" className="text-[9px]">{h.degree} links</Badge>
-                </div>
+          <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
+            <SelectTrigger data-testid="select-matter" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: panelText }}>
+              <SelectValue placeholder="Choose a case..." />
+            </SelectTrigger>
+            <SelectContent>
+              {matters.map(matter => (
+                <SelectItem key={matter.id} value={matter.id}>{matter.name}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          {selectedMatter && (
+            <div style={{ fontSize: 10, color: panelMuted, marginTop: 6 }}>
+              Case #{selectedMatter.caseNumber}
             </div>
-          </div>
-        )}
-
-        {analytics.isolatedNodes.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Unlink className="h-3 w-3" /> Unconnected Evidence
-            </h4>
-            <div className="space-y-1">
-              {analytics.isolatedNodes.map(n => (
-                <div key={n.id} className="flex items-center gap-2 p-1.5 rounded-md hover-elevate cursor-pointer"
-                  onClick={() => { setSelectedNode(n); setSidebarTab("details"); }}
-                  data-testid={`isolated-node-${n.id}`}
-                >
-                  <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                  <span className="text-xs truncate">{n.title}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {analytics.avgStrength > 0 && (
-          <div className="p-3 rounded-md bg-muted/30">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Avg. String Strength</span>
-              <span className="text-xs font-semibold">{analytics.avgStrength.toFixed(1)}/5</span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-muted mt-1.5 overflow-hidden">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${(analytics.avgStrength / 5) * 100}%` }} />
-            </div>
-          </div>
-        )}
-      </div>
-    </ScrollArea>
-  );
-
-  const renderTimelinePanel = () => (
-    <ScrollArea className="flex-1">
-      <div className="p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Timeline Analysis</h3>
+          )}
         </div>
 
-        {analytics.timelineNodes.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-xs">Add "Event" type nodes and "Timeline" connections to see analysis</p>
+        {/* Element Palette */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+            Add Elements
           </div>
-        ) : (
-          <>
-            <div className="p-3 rounded-md bg-muted/50">
-              <div className="text-xs text-muted-foreground mb-1">Events on Timeline</div>
-              <div className="text-lg font-bold">{analytics.timelineNodes.length}</div>
-            </div>
-
-            <div className="p-3 rounded-md bg-muted/50">
-              <div className="text-xs text-muted-foreground mb-1">Timeline Connections</div>
-              <div className="text-lg font-bold">{analytics.timelineConnections.length}</div>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-semibold text-muted-foreground mb-2">Event Sequence (Chronological)</h4>
-              <div className="relative pl-4 border-l-2 border-blue-300 dark:border-blue-700 space-y-3">
-                {analytics.timelineNodes.map((node, i) => {
-                  const hasContradiction = connections.some(
-                    c => c.connectionType === "contradicts" &&
-                    (c.sourceNodeId === node.id || c.targetNodeId === node.id)
-                  );
-                  const datePatterns = [
-                    /(\d{4}-\d{2}-\d{2})/,
-                    /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
-                    /((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2},?\s*\d{2,4})/i,
-                  ];
-                  let parsedDate: string | null = null;
-                  const text = node.title + " " + node.description;
-                  for (const p of datePatterns) {
-                    const m = text.match(p);
-                    if (m) { parsedDate = m[0]; break; }
-                  }
-                  return (
-                    <div key={node.id} className="relative" data-testid={`timeline-event-${node.id}`}>
-                      <div
-                        className="absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-background"
-                        style={{ backgroundColor: hasContradiction ? "#dc2626" : "#2563eb" }}
-                      />
-                      <div
-                        className="p-2 rounded-md cursor-pointer hover-elevate"
-                        style={{ backgroundColor: hasContradiction ? "rgba(220,38,38,0.08)" : "transparent" }}
-                        onClick={() => { setSelectedNode(node); setSidebarTab("details"); }}
-                        data-testid={`button-timeline-event-${node.id}`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {hasContradiction && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
-                          <span className="text-xs font-medium">{node.title}</span>
-                        </div>
-                        {parsedDate && (
-                          <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">{parsedDate}</span>
-                        )}
-                        {node.description && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{node.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {analytics.timelineIssues.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-red-600 dark:text-red-400">
-                  <AlertTriangle className="h-3 w-3" /> Issues Detected
-                </h4>
-                <div className="space-y-2">
-                  {analytics.timelineIssues.map((issue, i) => (
-                    <div key={i} className="p-2 rounded-md text-xs border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300" data-testid={`timeline-issue-${i}`}>
-                      {issue}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </ScrollArea>
-  );
-
-  const renderDetailsPanel = () => {
-    if (selectedNode) {
-      return (
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Node Details</h3>
-            <Button size="icon" variant="ghost" onClick={() => deleteNodeMutation.mutate(selectedNode.id)} data-testid="button-delete-node">
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-muted-foreground text-xs">Type</Label>
-              <div className="flex items-center gap-2 mt-1">
-                {(() => {
-                  const Icon = NODE_TYPES[selectedNode.type]?.icon || FileText;
-                  return <Icon className="h-4 w-4" style={{ color: selectedNode.color }} />;
-                })()}
-                <span className="text-sm">{NODE_TYPES[selectedNode.type]?.label}</span>
-              </div>
-            </div>
-            <div>
-              <Label className="text-muted-foreground text-xs">Title</Label>
-              <p className="font-medium text-sm">{selectedNode.title}</p>
-            </div>
-            {selectedNode.description && (
-              <div>
-                <Label className="text-muted-foreground text-xs">Description</Label>
-                <p className="text-sm">{selectedNode.description}</p>
-              </div>
-            )}
-            <div>
-              <Label className="text-muted-foreground text-xs">Connections</Label>
-              <div className="mt-1 space-y-1">
-                {connections
-                  .filter(c => c.sourceNodeId === selectedNode.id || c.targetNodeId === selectedNode.id)
-                  .map(c => {
-                    const other = nodes.find(n => n.id === (c.sourceNodeId === selectedNode.id ? c.targetNodeId : c.sourceNodeId));
-                    const cfg = CONNECTION_TYPES[c.connectionType];
-                    return (
-                      <div key={c.id} className="flex items-center gap-2 text-xs p-1.5 rounded-md hover-elevate cursor-pointer"
-                        onClick={() => { setSelectedConnection(c); setSelectedNode(null); }}
-                        data-testid={`connection-link-${c.id}`}
-                      >
-                        <div className="w-3 h-0.5" style={{ backgroundColor: cfg.color }} />
-                        <span className="truncate">{cfg.label}: {other?.title || "Unknown"}</span>
-                      </div>
-                    );
-                  })}
-                {connections.filter(c => c.sourceNodeId === selectedNode.id || c.targetNodeId === selectedNode.id).length === 0 && (
-                  <p className="text-xs text-muted-foreground">No connections yet</p>
-                )}
-              </div>
-            </div>
-            <div className="pt-3 border-t">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => startConnecting(selectedNode.id)}
-                data-testid="button-start-connection"
-              >
-                <Link2 className="h-4 w-4 mr-2" />
-                Run String to Node
-              </Button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (selectedConnection) {
-      return (
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Connection Details</h3>
-            <Button size="icon" variant="ghost" onClick={() => deleteConnectionMutation.mutate(selectedConnection.id)} data-testid="button-delete-connection">
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-xs">
-              <span className="font-medium">{nodes.find(n => n.id === selectedConnection.sourceNodeId)?.title}</span>
-              <ArrowRight className="h-3 w-3 shrink-0" />
-              <span className="font-medium">{nodes.find(n => n.id === selectedConnection.targetNodeId)?.title}</span>
-            </div>
-            <div>
-              <Label className="text-muted-foreground text-xs">Type</Label>
-              <Badge
-                variant="outline"
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {(Object.entries(NODE_TYPES) as [keyof typeof NODE_TYPES, typeof NODE_TYPES[keyof typeof NODE_TYPES]][]).map(([key, { icon: Icon, label }]) => (
+              <div
+                key={key}
+                data-testid={`palette-item-${key}`}
+                onClick={() => openAddNodeWithType(key)}
                 style={{
-                  borderColor: CONNECTION_TYPES[selectedConnection.connectionType].color,
-                  color: CONNECTION_TYPES[selectedConnection.connectionType].color,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  padding: 12,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#3498db";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)";
                 }}
               >
-                {CONNECTION_TYPES[selectedConnection.connectionType].label}
-              </Badge>
-            </div>
-            {selectedConnection.label && (
-              <div>
-                <Label className="text-muted-foreground text-xs">Label</Label>
-                <p className="text-sm">{selectedConnection.label}</p>
+                <Icon size={24} style={{ margin: "0 auto 4px", color: panelMuted }} />
+                <div style={{ fontSize: 10, color: panelMuted }}>{label}</div>
               </div>
-            )}
-            <div>
-              <Label className="text-muted-foreground text-xs">Strength</Label>
-              <div className="flex items-center gap-1.5 mt-1">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <div
-                    key={n}
-                    className={`w-3 h-3 rounded-full ${n <= selectedConnection.strength ? "bg-primary" : "bg-muted"}`}
+            ))}
+          </div>
+        </div>
+
+        {/* Zone Status */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+            Case Elements
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {([
+              { key: "duty", label: "1. Duty", color: "#3498db", pct: analytics.totalNodes > 0 ? Math.min(100, (analytics.typeCounts["evidence"] || 0) * 25) : 0 },
+              { key: "breach", label: "2. Breach", color: "#e74c3c", pct: analytics.contradictions > 0 ? 80 : analytics.totalNodes > 0 ? 40 : 0 },
+              { key: "causation", label: "3. Causation", color: "#f39c12", pct: analytics.timelineIssues.length > 0 ? 60 : analytics.totalConnections > 0 ? 70 : 0 },
+              { key: "damages", label: "4. Damages", color: "#27ae60", pct: analytics.totalNodes > 0 ? Math.min(100, (analytics.typeCounts["location"] || 0) * 30 + 20) : 0 },
+            ]).map(zone => (
+              <div key={zone.key} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: zone.color }} />
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{zone.label}</div>
+                </div>
+                <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 2, background: zone.color, width: `${zone.pct}%`, transition: "width 0.5s" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: panelMuted }}>
+                  <span>{zone.pct}% complete</span>
+                  <span>{analytics.typeCounts[zone.key === "duty" ? "evidence" : zone.key === "breach" ? "theory" : zone.key === "causation" ? "event" : "location"] || 0} cards</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Status */}
+        <div style={{
+          background: "linear-gradient(135deg, rgba(155,89,182,0.2), rgba(52,152,219,0.2))",
+          border: "1px solid rgba(155,89,182,0.3)",
+          borderRadius: 10,
+          padding: 15,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              background: "#9b59b6",
+              borderRadius: "50%",
+              animation: "pulse 2s infinite",
+            }} />
+            <div style={{ fontSize: 12, fontWeight: 600 }}>AI Analysis Engine</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+            {[
+              { value: analytics.contradictions, label: "Contradictions" },
+              { value: analytics.timelineNodes.length, label: "Timeline Events" },
+              { value: analytics.typeCounts["person"] || 0, label: "Key Persons" },
+              { value: analytics.timelineIssues.length, label: "Gaps Found" },
+            ].map(stat => (
+              <div key={stat.label} style={{ textAlign: "center", padding: 8, background: "rgba(0,0,0,0.2)", borderRadius: 6 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#9b59b6" }}>{stat.value}</div>
+                <div style={{ fontSize: 9, color: panelMuted, textTransform: "uppercase" }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CENTER - CORK BOARD */}
+      <div
+        ref={containerRef}
+        style={{ flex: 1, position: "relative", overflow: "hidden", background: "#111" }}
+      >
+        {isConnecting && (
+          <div style={{
+            position: "absolute",
+            top: 12,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 30,
+            background: "#e74c3c",
+            color: "white",
+            padding: "6px 16px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}>
+            Click a target node to connect
+            <button
+              onClick={cancelConnecting}
+              style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: 14 }}
+            >
+              <XCircle size={16} />
+            </button>
+          </div>
+        )}
+
+        <div
+          ref={boardRef}
+          data-testid="cork-board"
+          onMouseDown={handleBoardMouseDown}
+          style={{
+            width: BOARD_W,
+            height: BOARD_H,
+            position: "absolute",
+            left: pan.x,
+            top: pan.y,
+            cursor: isPanning ? "grabbing" : "grab",
+            background: `
+              repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px),
+              repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.03) 40px, rgba(0,0,0,0.03) 41px),
+              linear-gradient(135deg, #c9a66b 0%, #a08050 50%, #8B7355 100%)
+            `,
+            boxShadow: "inset 0 0 100px rgba(0,0,0,0.3)",
+          }}
+        >
+          {/* Zones */}
+          {ZONES.map(z => {
+            const zc = ZONE_COLORS[z.key as keyof typeof ZONE_COLORS];
+            return (
+              <div
+                key={z.key}
+                data-zone={z.key}
+                style={{
+                  position: "absolute",
+                  left: z.x,
+                  top: z.y,
+                  width: z.w,
+                  height: z.h,
+                  border: `3px dashed ${zc.color}`,
+                  borderRadius: 20,
+                  background: zc.bg,
+                  opacity: 0.25,
+                  transition: "opacity 0.3s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.4"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "0.25"; }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 15,
+                  left: 25,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: 3,
+                  color: zc.color,
+                }}>
+                  {zc.label}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* SVG Connections */}
+          <svg
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+              zIndex: 5,
+            }}
+          >
+            <g style={{ pointerEvents: "auto" }}>
+              {connections.map(renderConnection)}
+            </g>
+          </svg>
+
+          {/* Nodes */}
+          {isLoadingNodes ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", width: "100%" }}>
+              <Loader2 size={32} style={{ animation: "spin 1s linear infinite", color: "#95a5a6" }} />
+            </div>
+          ) : nodes.length === 0 ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", width: "100%" }}>
+              <div style={{ textAlign: "center", color: "#5a4a3a" }}>
+                <MousePointer2 size={48} style={{ margin: "0 auto 12px", opacity: 0.5 }} />
+                <p style={{ fontSize: 14 }}>Pin your first piece of evidence to start.</p>
+                <p style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>Use the palette on the left to add elements.</p>
+              </div>
+            </div>
+          ) : (
+            nodes.map(renderBoardNode)
+          )}
+        </div>
+
+        {/* Minimap */}
+        <MiniMap
+          nodes={nodes}
+          pan={pan}
+          containerW={containerSize.w}
+          containerH={containerSize.h}
+        />
+
+        {/* Controls hint */}
+        <div style={{
+          position: "absolute",
+          bottom: 16,
+          right: 16,
+          zIndex: 20,
+          background: "rgba(0,0,0,0.6)",
+          color: "rgba(255,255,255,0.7)",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontSize: 11,
+        }}>
+          <kbd style={{ background: "rgba(255,255,255,0.15)", padding: "2px 6px", borderRadius: 4, marginRight: 4 }}>Drag</kbd>
+          elements to move
+          <span style={{ margin: "0 8px", opacity: 0.5 }}>|</span>
+          <kbd style={{ background: "rgba(255,255,255,0.15)", padding: "2px 6px", borderRadius: 4, marginRight: 4 }}>Click + Drag</kbd>
+          on board to pan
+        </div>
+      </div>
+
+      {/* RIGHT SIDEBAR */}
+      <div style={{
+        width: 320,
+        minWidth: 320,
+        background: panelBg,
+        borderLeft: "1px solid rgba(255,255,255,0.1)",
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        {/* Tabs */}
+        <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <div
+            data-testid="tab-history"
+            onClick={() => setSidebarTab("history")}
+            style={{
+              flex: 1,
+              padding: 14,
+              textAlign: "center",
+              fontSize: 11,
+              fontWeight: 600,
+              color: sidebarTab === "history" ? "#3498db" : panelMuted,
+              cursor: "pointer",
+              borderBottom: sidebarTab === "history" ? "2px solid #3498db" : "2px solid transparent",
+              transition: "all 0.2s",
+            }}
+          >
+            History
+          </div>
+          <div
+            data-testid="tab-details"
+            onClick={() => setSidebarTab("details")}
+            style={{
+              flex: 1,
+              padding: 14,
+              textAlign: "center",
+              fontSize: 11,
+              fontWeight: 600,
+              color: sidebarTab === "details" ? "#3498db" : panelMuted,
+              cursor: "pointer",
+              borderBottom: sidebarTab === "details" ? "2px solid #3498db" : "2px solid transparent",
+              transition: "all 0.2s",
+            }}
+          >
+            Details
+          </div>
+        </div>
+
+        {/* Sidebar content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          {sidebarTab === "history" ? (
+            <>
+              {/* What's New */}
+              <div style={{
+                background: "rgba(52,152,219,0.1)",
+                border: "1px solid rgba(52,152,219,0.2)",
+                borderRadius: 10,
+                padding: 14,
+                marginBottom: 20,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span style={{
+                    background: "#e74c3c",
+                    color: "white",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: 3,
+                    textTransform: "uppercase",
+                  }}>NEW</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>Since last session</span>
+                </div>
+                {analytics.contradictions > 0 && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", fontSize: 11, color: panelMuted }}>
+                    <AlertTriangle size={14} style={{ color: "#e74c3c", flexShrink: 0, marginTop: 1 }} />
+                    <span>AI found <strong style={{ color: panelText }}>{analytics.contradictions} contradiction(s)</strong> in evidence</span>
+                  </div>
+                )}
+                {analytics.timelineIssues.length > 0 && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", fontSize: 11, color: panelMuted }}>
+                    <Clock size={14} style={{ color: "#f39c12", flexShrink: 0, marginTop: 1 }} />
+                    <span><strong style={{ color: panelText }}>{analytics.timelineIssues.length} timeline gap(s)</strong> detected</span>
+                  </div>
+                )}
+                {analytics.isolatedNodes.length > 0 && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", fontSize: 11, color: panelMuted }}>
+                    <Search size={14} style={{ color: "#3498db", flexShrink: 0, marginTop: 1 }} />
+                    <span><strong style={{ color: panelText }}>{analytics.isolatedNodes.length} isolated node(s)</strong> need connections</span>
+                  </div>
+                )}
+                {analytics.totalNodes === 0 && (
+                  <div style={{ fontSize: 11, color: panelMuted, padding: "6px 0" }}>
+                    No analysis data yet. Add elements to the board.
+                  </div>
+                )}
+              </div>
+
+              {/* Version History */}
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+                Version History
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{
+                  position: "relative",
+                  padding: "14px 14px 14px 30px",
+                  borderLeft: "2px solid rgba(255,255,255,0.1)",
+                  marginLeft: 8,
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    left: -6,
+                    top: 18,
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: "#27ae60",
+                    border: `2px solid ${panelBg}`,
+                    boxShadow: "0 0 0 3px rgba(39,174,96,0.3)",
+                  }} />
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Current Version</div>
+                  <div style={{ fontSize: 10, color: panelMuted }}>Now</div>
+                  <div style={{ fontSize: 10, color: panelMuted, marginTop: 2 }}>
+                    {analytics.totalNodes} nodes, {analytics.totalConnections} connections
+                  </div>
+                </div>
+                {nodes.slice(0, 5).map((node, i) => (
+                  <div key={node.id} style={{
+                    position: "relative",
+                    padding: "14px 14px 14px 30px",
+                    borderLeft: "2px solid rgba(255,255,255,0.1)",
+                    marginLeft: 8,
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      left: -6,
+                      top: 18,
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: "#3498db",
+                      border: `2px solid ${panelBg}`,
+                    }} />
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Added: {node.title}</div>
+                    <div style={{ fontSize: 10, color: panelMuted }}>{new Date(node.createdAt).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 10, color: panelMuted, marginTop: 2 }}>+1 {node.type}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {selectedNode ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    {(() => {
+                      const Icon = NODE_TYPES[selectedNode.type]?.icon || FileText;
+                      return <Icon size={18} style={{ color: PIN_COLORS[selectedNode.type] }} />;
+                    })()}
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedNode.title}</div>
+                      <div style={{ fontSize: 11, color: panelMuted, textTransform: "capitalize" }}>{selectedNode.type}</div>
+                    </div>
+                  </div>
+
+                  {selectedNode.description && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Description</div>
+                      <p style={{ fontSize: 12, lineHeight: 1.5, color: "#bdc3c7" }}>{selectedNode.description}</p>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Position</div>
+                    <p style={{ fontSize: 11, color: "#bdc3c7" }}>x: {Math.round(selectedNode.position.x)}, y: {Math.round(selectedNode.position.y)}</p>
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Created</div>
+                    <p style={{ fontSize: 11, color: "#bdc3c7" }}>{new Date(selectedNode.createdAt).toLocaleString()}</p>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                    {isConnecting ? (
+                      <Button variant="outline" onClick={cancelConnecting} style={{ flex: 1, fontSize: 12 }}>
+                        <XCircle size={14} style={{ marginRight: 6 }} /> Cancel
+                      </Button>
+                    ) : (
+                      <Button variant="outline" onClick={() => startConnecting(selectedNode.id)} style={{ flex: 1, fontSize: 12 }}>
+                        <Link2 size={14} style={{ marginRight: 6 }} /> Connect
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => deleteNodeMutation.mutate(selectedNode.id)}
+                      style={{ color: "#e74c3c", borderColor: "rgba(231,76,60,0.3)", fontSize: 12 }}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedConnection ? (
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Connection Details</div>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>From / To</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                      <span>{nodes.find(n => n.id === selectedConnection.sourceNodeId)?.title}</span>
+                      <ArrowRight size={14} style={{ color: panelMuted }} />
+                      <span>{nodes.find(n => n.id === selectedConnection.targetNodeId)?.title}</span>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Type</div>
+                    <Badge style={{
+                      background: CONNECTION_COLOR_MAP[selectedConnection.connectionType] || "#78716c",
+                      color: "white",
+                      fontSize: 11,
+                    }}>
+                      {CONNECTION_TYPES[selectedConnection.connectionType]?.label}
+                    </Badge>
+                  </div>
+                  {selectedConnection.label && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Label</div>
+                      <p style={{ fontSize: 12, color: "#bdc3c7" }}>{selectedConnection.label}</p>
+                    </div>
+                  )}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Strength</div>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <div key={n} style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: "50%",
+                          background: n <= selectedConnection.strength ? "#3498db" : "rgba(255,255,255,0.1)",
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                  {selectedConnection.notes && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 6 }}>Notes</div>
+                      <p style={{ fontSize: 12, color: "#bdc3c7" }}>{selectedConnection.notes}</p>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => deleteConnectionMutation.mutate(selectedConnection.id)}
+                    style={{ color: "#e74c3c", borderColor: "rgba(231,76,60,0.3)", fontSize: 12, marginTop: 12 }}
+                  >
+                    <Trash2 size={14} style={{ marginRight: 6 }} /> Remove Connection
+                  </Button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", paddingTop: 60 }}>
+                  <MousePointer2 size={40} style={{ color: panelMuted, opacity: 0.4, marginBottom: 12 }} />
+                  <p style={{ fontSize: 12, color: panelMuted, textAlign: "center" }}>Click a node or connection on the board to view details</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Connection Legend */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 20px" }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 8 }}>
+            String Legend
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            {Object.entries(CONNECTION_TYPES).map(([key, { label, color, style }]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: panelMuted }}>
+                <svg width="16" height="4">
+                  <line
+                    x1="0" y1="2" x2="16" y2="2"
+                    stroke={color}
+                    strokeWidth={2}
+                    strokeDasharray={style === "dashed" ? "4,2" : style === "dotted" ? "2,2" : "none"}
+                  />
+                </svg>
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ADD NODE DIALOG */}
+      <Dialog open={showAddNodeDialog} onOpenChange={setShowAddNodeDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pin Evidence to Board</DialogTitle>
+            <DialogDescription>Add a new piece of evidence, person, or note to the investigation board.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={nodeForm.type} onValueChange={v => {
+                const type = v as keyof typeof NODE_TYPES;
+                setNodeForm(p => ({ ...p, type, color: NODE_TYPES[type].defaultColor }));
+              }}>
+                <SelectTrigger data-testid="select-node-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(NODE_TYPES).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input
+                value={nodeForm.title}
+                onChange={e => setNodeForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="Evidence title..."
+                data-testid="input-node-title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={nodeForm.description}
+                onChange={e => setNodeForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Details about this piece..."
+                data-testid="input-node-description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex gap-2 flex-wrap">
+                {Object.values(NODE_TYPES).map(({ defaultColor }) => (
+                  <button
+                    key={defaultColor}
+                    type="button"
+                    className={`w-8 h-8 rounded-full border-2 ${nodeForm.color === defaultColor ? "border-primary" : "border-transparent"}`}
+                    style={{ backgroundColor: defaultColor }}
+                    onClick={() => setNodeForm(p => ({ ...p, color: defaultColor }))}
+                    data-testid={`button-color-${defaultColor}`}
                   />
                 ))}
               </div>
             </div>
-            {selectedConnection.notes && (
-              <div>
-                <Label className="text-muted-foreground text-xs">Notes</Label>
-                <p className="text-sm">{selectedConnection.notes}</p>
-              </div>
-            )}
           </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-center text-muted-foreground">
-          <MousePointer2 className="h-10 w-10 mx-auto mb-2 opacity-50" />
-          <p className="text-xs">Click a node or string to view details</p>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="h-full flex flex-col" data-testid="page-detective-board">
-      <div className="flex items-center justify-between p-3 border-b gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-xl font-bold" data-testid="text-page-title">Investigation Board</h1>
-            <p className="text-xs text-muted-foreground">Pin evidence, run strings, see the case</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
-            <SelectTrigger className="w-[200px]" data-testid="select-matter">
-              <SelectValue placeholder="Select matter" />
-            </SelectTrigger>
-            <SelectContent>
-              {matters.map(matter => (
-                <SelectItem key={matter.id} value={matter.id}>
-                  {matter.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {selectedMatterId && (
-            <>
-              {isConnecting ? (
-                <Button variant="outline" onClick={cancelConnecting} data-testid="button-cancel-connect">
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => selectedNode && startConnecting(selectedNode.id)} disabled={!selectedNode} data-testid="button-connect">
-                  <Link2 className="h-4 w-4 mr-2" />
-                  String
-                </Button>
-              )}
-
-              <Dialog open={showAddNodeDialog} onOpenChange={setShowAddNodeDialog}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-add-node">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Pin Evidence
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Pin Evidence to Board</DialogTitle>
-                    <DialogDescription>Add a new piece of evidence, person, or note to the investigation board.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Type</Label>
-                      <Select value={nodeForm.type} onValueChange={v => {
-                        const type = v as keyof typeof NODE_TYPES;
-                        setNodeForm(p => ({ ...p, type, color: NODE_TYPES[type].defaultColor }));
-                      }}>
-                        <SelectTrigger data-testid="select-node-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(NODE_TYPES).map(([key, { label }]) => (
-                            <SelectItem key={key} value={key}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input
-                        value={nodeForm.title}
-                        onChange={e => setNodeForm(p => ({ ...p, title: e.target.value }))}
-                        placeholder="Evidence title..."
-                        data-testid="input-node-title"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={nodeForm.description}
-                        onChange={e => setNodeForm(p => ({ ...p, description: e.target.value }))}
-                        placeholder="Details about this piece..."
-                        data-testid="input-node-description"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Color</Label>
-                      <div className="flex gap-2">
-                        {Object.values(NODE_TYPES).map(({ defaultColor }) => (
-                          <button
-                            key={defaultColor}
-                            type="button"
-                            className={`w-8 h-8 rounded-full border-2 ${nodeForm.color === defaultColor ? "border-primary" : "border-transparent"}`}
-                            style={{ backgroundColor: defaultColor }}
-                            onClick={() => setNodeForm(p => ({ ...p, color: defaultColor }))}
-                            data-testid={`button-color-${defaultColor}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      onClick={handleAddNode}
-                      disabled={!nodeForm.title || createNodeMutation.isPending}
-                      data-testid="button-submit-node"
-                    >
-                      {createNodeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Pin to Board
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-        </div>
-      </div>
-
-      {!selectedMatterId ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Lightbulb className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Select a Matter</h2>
-            <p className="text-muted-foreground text-sm">Choose a case to view its investigation board</p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex overflow-hidden">
-          <div
-            ref={boardRef}
-            className="flex-1 relative overflow-hidden cursor-grab"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            data-testid="board-canvas"
-            style={{
-              background: `
-                repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(0,0,0,0.02) 30px, rgba(0,0,0,0.02) 31px),
-                repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(0,0,0,0.02) 30px, rgba(0,0,0,0.02) 31px),
-                linear-gradient(135deg, hsl(var(--muted) / 0.5) 0%, hsl(var(--muted) / 0.3) 100%)
-              `,
-            }}
-          >
-            <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-              <Button size="icon" variant="outline" onClick={() => setZoom(z => Math.min(2, z + 0.1))} data-testid="button-zoom-in">
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="outline" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} data-testid="button-zoom-out">
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <Badge variant="secondary">{Math.round(zoom * 100)}%</Badge>
-            </div>
-
-            {isConnecting && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-                <Badge variant="default" className="text-xs px-3 py-1">
-                  Click a target node to connect
-                </Badge>
-              </div>
-            )}
-
-            <svg
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                width: "100%",
-                height: "100%",
-                transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-                transformOrigin: "0 0",
-              }}
+          <DialogFooter>
+            <Button
+              data-testid="btn-add-element"
+              onClick={handleAddNode}
+              disabled={!nodeForm.title || createNodeMutation.isPending}
             >
-              <g className="pointer-events-auto">
-                {connections.map(renderConnection)}
-              </g>
-            </svg>
+              {createNodeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Pin to Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div
-              className="absolute inset-0"
-              style={{
-                transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-                transformOrigin: "0 0",
-              }}
-            >
-              {isLoadingNodes ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : nodes.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-muted-foreground">
-                    <MousePointer2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Pin your first piece of evidence to start.</p>
-                  </div>
-                </div>
-              ) : (
-                nodes.map(renderNode)
-              )}
-            </div>
-          </div>
-
-          <div className="w-[320px] border-l flex flex-col bg-background">
-            <Tabs value={sidebarTab} onValueChange={v => setSidebarTab(v as any)} className="flex flex-col h-full">
-              <TabsList className="mx-3 mt-3 grid grid-cols-3">
-                <TabsTrigger value="details" data-testid="tab-details">
-                  <FileText className="h-3.5 w-3.5 mr-1" />
-                  Details
-                </TabsTrigger>
-                <TabsTrigger value="analytics" data-testid="tab-analytics">
-                  <BarChart3 className="h-3.5 w-3.5 mr-1" />
-                  Metrics
-                </TabsTrigger>
-                <TabsTrigger value="timeline" data-testid="tab-timeline">
-                  <TrendingUp className="h-3.5 w-3.5 mr-1" />
-                  Timeline
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="details" className="flex-1 mt-0 overflow-auto">
-                {renderDetailsPanel()}
-              </TabsContent>
-              <TabsContent value="analytics" className="flex-1 mt-0 overflow-hidden">
-                {renderAnalyticsPanel()}
-              </TabsContent>
-              <TabsContent value="timeline" className="flex-1 mt-0 overflow-hidden">
-                {renderTimelinePanel()}
-              </TabsContent>
-            </Tabs>
-
-            <div className="border-t p-3">
-              <h4 className="font-semibold text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">String Legend</h4>
-              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                {Object.entries(CONNECTION_TYPES).map(([key, { label, color, style }]) => (
-                  <div key={key} className="flex items-center gap-1.5">
-                    <svg width="16" height="4">
-                      <line
-                        x1="0" y1="2" x2="16" y2="2"
-                        stroke={color}
-                        strokeWidth={2}
-                        strokeDasharray={style === "dashed" ? "4,2" : style === "dotted" ? "2,2" : "none"}
-                      />
-                    </svg>
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* ADD CONNECTION DIALOG */}
       <Dialog open={showAddConnectionDialog} onOpenChange={(open) => {
         setShowAddConnectionDialog(open);
         if (!open) {
@@ -1293,7 +1642,7 @@ export default function DetectiveBoardPage() {
             <DialogDescription>Define how these pieces of evidence connect.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-md flex-wrap">
               <span className="text-sm font-medium">
                 {nodes.find(n => n.id === connectionSource)?.title}
               </span>
@@ -1363,6 +1712,17 @@ export default function DetectiveBoardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7); }
+          50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(155, 89, 182, 0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

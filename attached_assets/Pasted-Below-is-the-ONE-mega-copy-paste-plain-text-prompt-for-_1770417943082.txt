@@ -1,0 +1,481 @@
+Below is the ONE mega, copy/paste plain-text prompt for Replit. It merges your entire VERICASE build spec + the full Security/Compliance appendix into a single document.
+
+⸻
+
+VERICASE MEGA BUILD PROMPT (COPY/PASTE INTO REPLIT)
+
+You are building/expanding an app called VERICASE: a private-server “Clio x Monday x CRM x AI Automations” platform for a Utah litigation lawyer (Lauren). It must ingest hundreds of files, normalize via OCR/extraction/transcription, run secure AI workflows, and operate boards with Monday-like automations. It must support litigation + medical litigation workflows and evolve with Lauren’s real process over time.
+
+============================================================
+GLOBAL RULES (NON-NEGOTIABLE)
+	1.	Safety pattern for any change: detect → propose → approve → execute → log → undo
+	2.	If an operation affects more than 10 items/files/actions, execute only 10 as a preview, then stop and request confirmation to continue.
+	3.	For any AI claim about facts, require citations to source anchors (file + page/line or timestamp).
+	4.	Never auto-delete. Only soft delete to Trash after explicit approval.
+	5.	Enforce permissions: board/matter/client access must filter everything (including retrieval and chat visibility).
+	6.	All AI calls must go through a Model Gateway (no direct provider calls from frontend).
+	7.	No raw content in logs. Store redacted prompts only. Audit all mutations.
+
+============================================================
+MODULE 1: OCR-FIRST DOCUMENT INGEST + MATTER INSIGHTS
+GOAL
+Accept 100s of files of all types. Normalize to text using:
+	•	Extract embedded text from PDFs when available (do NOT OCR clean text PDFs)
+	•	OCR scanned PDFs/images
+	•	Transcribe audio/video
+Store: original asset + derived text + anchors for citations.
+
+DATA MODEL (MINIMUM)
+	•	matter_assets: id, matter_id, filename, storage_url, file_type, size, sha256, uploaded_by, uploaded_at, source_date, status, error
+	•	asset_text: id, asset_id, method(extract|ocr|transcribe), full_text(or blob link), confidence, language, created_at
+	•	text_anchors: id, asset_text_id, anchor_type(page_line|timestamp), page, line_start, line_end, time_start_ms, time_end_ms, snippet, confidence
+	•	text_chunks: id, matter_id, asset_id, asset_text_id, chunk_text, embedding_vector(or pointer), anchor_start, anchor_end, created_at
+	•	insight_runs: id, matter_id, requested_by, intent_type, priority_rules_json, output_format, scope, status, created_at
+	•	insight_outputs: id, insight_run_id, section, content_json, created_at
+
+WORKFLOW
+	1.	Intake & normalization:
+	•	Import assets from Matter / Folder / Board Item / Time range.
+	•	Extract/OCR/transcribe, store derived text + anchors.
+	2.	Scan Summary shown BEFORE analysis:
+	•	total files, total pages/minutes
+	•	date range oldest→newest
+	•	content types breakdown
+	•	OCR/transcription confidence distribution
+	•	problem files list (unreadable/low confidence/corrupt)
+	3.	Ask user BEFORE deep analysis:
+	•	what they want (themes/timeline/contradictions/action items/risks/etc)
+	•	what to prioritize (custodians/doc types/date windows/most recent first)
+	•	output format (exec brief/timeline/issue map/task list/board update)
+	4.	Progressive analysis:
+	•	if >20 files, analyze 10 most recent first; then “Analyze next 10”
+	5.	Outputs must include citations:
+	•	Key themes
+	•	Timeline of events
+	•	Entities + relationships
+	•	Contradictions
+	•	Action items → propose tasks/automations
+	•	Risks/flags + missing evidence
+	6.	Convert insights into operations (“Board Update Pack”):
+	•	create/update board columns: Insight Status, Risk Level, Privilege, Next Action, Deadline, Source Docs
+	•	create tasks from action items; propose assignments/due dates; require approval
+
+API (MINIMUM)
+	•	POST /api/matters/:id/assets (multi-upload)
+	•	GET /api/matters/:id/scan-summary
+	•	POST /api/matters/:id/insights/run
+	•	GET /api/insights/:runId
+	•	POST /api/insights/:runId/create-tasks (proposal-first)
+
+============================================================
+MODULE 2: RECENT UPLOAD ORGANIZER (INBOX TRIAGE)
+GOAL
+Organize “New Incoming” uploads:
+	•	Scan and count screenshots/pdfs/docs/sheets/images/ocr-derived/pictures
+	•	Show total count + date range
+	•	Focus only last 14 days
+	•	For each file: identify what it shows, suggest filename, propose folder or delete candidate
+	•	Group similar files
+	•	Show plan BEFORE changes
+	•	After approval: organize only 10 files preview; confirm before continuing.
+
+DATA MODEL (MINIMUM)
+	•	files: id, owner_user_id, matter_id nullable, original_filename, current_filename, storage_path, file_type, subtype(screenshot/photo), uploaded_at, size, sha256, status(active/trashed), metadata_json
+	•	file_derived_text: id, file_id, method, text, confidence, created_at
+	•	organize_runs: id, owner_user_id, scope(incoming|matter), matter_id, status(draft/awaiting_approval/approved/executing_preview/paused/complete), timestamps
+	•	organize_plan_items: id, run_id, file_id, detected_summary, suggested_filename, suggested_folder, suggested_action(rename_move|keep|trash_candidate), confidence, rationale, approved_* fields
+	•	file_change_log: id, file_id, run_id, old/new filename/path, action(rename|move|trash), created_at
+
+DEFAULT NAMING FORMAT
+YYYY-MM-DD__. (lowercase, hyphens)
+
+DEFAULT FOLDERS (EXAMPLES)
+/Incoming
+/Matters//Documents
+/Matters//Evidence
+/Operations/Receipts
+/Trash
+/Unsorted
+
+API (MINIMUM)
+	•	GET /api/incoming/scan-summary
+	•	POST /api/incoming/organize/run (days=14)
+	•	GET /api/organize/:runId/plan
+	•	POST /api/organize/:runId/approve
+	•	POST /api/organize/:runId/execute-preview (10 max)
+	•	POST /api/organize/:runId/continue
+	•	POST /api/files/:fileId/undo-last-change
+
+============================================================
+MODULE 3: BOARD CHAT (LIVE) + MASTER CHAT (CLIENT/MATTER)
+GOAL
+Add live chat to every board (right panel) visible to board members:
+	•	supports @mentions, #tags, attachments, references to items/tasks
+	•	attachments automatically ingested (OCR/extract/transcribe) and linked to board/item
+	•	system proposes deadlines/tasks/events detected from uploads/messages; user approves
+Add Master Chat at client/matter level:
+	•	can reference all boards/files/tasks for that client/matter (permission filtered)
+	•	can propose moving boards, creating tasks, and solving questions with citations
+	•	no changes without approval.
+
+DATA MODEL (MINIMUM)
+	•	chats: id, scope_type(board|client|matter), scope_id
+	•	chat_messages: id, chat_id, sender_user_id, body_text, body_rich_json(mentions/tags/refs), created_at
+	•	chat_message_entities: id, message_id, type(mention|tag|task_ref|item_ref|date_ref), value, start/end indexes optional
+	•	chat_attachments: id, message_id, file_id
+	•	action_proposals + action_proposal_items (see below)
+	•	audit_log (see below)
+
+REAL-TIME
+Use websockets (e.g., socket.io). Broadcast new messages, typing indicator optional.
+
+============================================================
+MODULE 4: MODEL GATEWAY (SECURE GPT + CLAUDE + GEMINI)
+GOAL
+Use multiple models securely with no data leakage:
+	•	all calls routed through Model Gateway
+	•	mandatory redaction + minimization (RAG)
+	•	do not send raw files; only sanitized text snippets
+	•	store redacted prompts only; no raw prompt logs
+	•	citations required
+	•	action proposals for any change.
+
+MODES
+	•	Local Only (no external calls)
+	•	External Allowed (redacted + minimized)
+	•	External w/ Explicit Consent (still blocks hard sensitive categories)
+
+DATA MODEL (MINIMUM)
+	•	ai_providers: name(openai|anthropic|google), enabled, config_json
+	•	ai_requests: id, scope_type/scope_id, requested_by, purpose, mode_used, provider, model, status, timestamps
+	•	ai_request_inputs: redacted prompts + retrieved_chunk_ids/hashes + token estimate
+	•	ai_request_outputs: output_text/json + citations_json + safety_flags_json
+	•	redaction_profiles + (optional) redaction_maps encrypted
+	•	ai_audit_log events
+
+GATEWAY FLOW
+	1.	policy check (mode + permissions)
+	2.	retrieval: select relevant chunks only (RAG)
+	3.	redaction: replace PII with placeholders
+	4.	provider call
+	5.	store outputs + citations
+	6.	if actions suggested: create proposals (not execute)
+
+============================================================
+MODULE 5: DETECTIVE BOARD (CORKBOARD + GRAPH + TIMELINE + NULL VS ALTERNATIVE)
+GOAL
+Inside each Matter, add “Detective Board” that can see everything associated with the case (within permissions): files, messages, calls, locations, people, devices, vehicles, events. It surfaces patterns and ranks hypotheses via an evidence-backed Support Score (NOT “guilt probability”).
+
+VIEWS
+	•	Corkboard view: cards + connections (user arranged)
+	•	Graph view: nodes/edges, filters by time/confidence/hypothesis
+	•	Timeline view: chronological events
+	•	Hypotheses workspace: H0 baseline vs H1 alternatives
+
+NULL VS ALTERNATIVE
+	•	Baseline window vs Incident window
+	•	Compute changes in:
+	•	comm frequency/new contacts
+	•	location deviation/co-location patterns
+	•	posting/message tone shifts (signal only)
+	•	network centrality change
+	•	Output anomalies + top changed entities with citations
+
+SUPPORT SCORE (SAFE IMPLEMENTATION)
+Score reflects evidence support for hypothesis H about entity E, combining:
+	•	direct evidence count
+	•	independent source count
+	•	temporal proximity
+	•	routine deviation magnitude
+	•	contradictions penalty
+	•	data quality penalty
+Show top supporting + contradicting evidence with citations.
+
+DATA MODEL (MINIMUM)
+	•	case_entities: id, matter_id, type, label, attributes_json
+	•	case_relationships: id, matter_id, from_entity_id, to_entity_id, relationship_type, time range, confidence, provenance(imported|extracted|inferred)
+	•	case_evidence_links: link entity/relationship/hypothesis to source anchors
+	•	incident_windows: baseline_start/end, incident_start/end
+	•	hypotheses: title, description, status
+	•	hypothesis_scores: entity_id, support_score, confidence_band, top_evidence_json, contradictions_json
+
+API (MINIMUM)
+	•	GET /api/matters/:id/detective-board/model
+	•	POST /api/matters/:id/detective-board/layout
+	•	POST /api/matters/:id/detective-board/windows
+	•	GET /api/matters/:id/detective-board/compare
+
+NOTE ON ZIP PROTOTYPE
+There is an HTML investigator board prototype and a Python pipeline in a zip. If importing it:
+	•	prototype can be iframed for MVP, then ported into app
+	•	python pipeline must be fixed to run (imports) and ideally deployed as separate service
+	•	Qdrant can be used for vectors; decide hosting strategy
+
+============================================================
+MODULE 6: AI BOARD OPERATOR (CHATBOT THAT MOVES BOARDS + USES AUTOMATIONS)
+GOAL
+AI assistant acts as “front end” operator:
+	•	understands board schema + items + existing automations
+	•	generates plans to move/update/create items, tasks, deadlines
+	•	can build automations from natural language in Monday style
+	•	can explain and audit automations
+	•	proposals only; execute with preview of 10 actions.
+
+REQUIRED COMPONENTS
+A) Board Context endpoint:
+	•	GET /api/boards/:boardId/context (schema + items summary + permissions + automations)
+B) Assistant endpoint:
+	•	POST /api/assistant/message → returns answer or proposal id
+C) Automation builder:
+	•	POST /api/boards/:boardId/automations/draft-from-text → draft rule + explanation + simulation
+D) Automation auditor:
+	•	GET /api/boards/:boardId/automations/audit → duplicates/conflicts/loops suggestions
+E) Suggestion engine:
+	•	detects repeated manual sequences and suggests automation/macro/template/board
+
+============================================================
+MODULE 7: AUTOMATION CATALOG + 30 LAW-FIRM AUTOMATION TEMPLATES
+GOAL
+Seed a machine-readable Automation Catalog so the AI can reason about triggers/actions, and provide 30 starter automation templates for litigation/medical litigation workflows.
+
+CATALOG KEYS (MVP)
+TRIGGERS include:
+	•	item.created, item.updated, item.status_changed, item.assignee_changed, item.due_date_changed, item.tag_added, item.comment_added, item.mentioned_user, item.moved_group
+	•	file.uploaded_to_item, file.uploaded_to_board, file.uploaded_to_chat, file.ocr_completed, file.classified
+	•	signal.deadline_detected, signal.event_detected, signal.action_item_detected, signal.privilege_detected, signal.contradiction_detected
+	•	time.daily_at, time.weekly_on, time.before_due_date, time.after_due_date
+	•	matter.created, matter.status_changed, client.created
+	•	detective.anomaly_score_threshold (optional)
+
+CONDITIONS include:
+	•	cond.status_changed_to, cond.status_is, cond.tag_contains, cond.due_within_days, cond.due_is_overdue, cond.file_type_is, cond.ocr_confidence_gte, cond.doc_type_is, cond.signal_confidence_gte, cond.privilege_level_is, cond.actor_has_permission, etc.
+
+ACTIONS include:
+	•	act.item.set_status, act.item.assign_user, act.item.set_due_date, act.item.add_tag, act.item.move_group, act.item.create, act.item.add_comment, act.item.link_file, act.item.set_field_value
+	•	act.task.create/assign/complete
+	•	act.board.create_group/create_column/rename_column/reorder_columns (proposal-first)
+	•	act.file.request_ocr/route_to_folder/soft_delete/add_label
+	•	act.notify.in_app/email/sms (optional)
+	•	act.event.create
+	•	detective actions optional
+
+TEMPLATES (30)
+Seed the 30 automation recipes previously defined, using placeholders:
+, , <STATUS_COL>, , <LEAD_ATTORNEY>, , <BILLING_ADMIN>, etc.
+Ensure each template is stored as rule JSON (trigger_key + conditions_json + actions_json) and is selectable in UI.
+
+============================================================
+MODULE 8: SCREEN RECORDER → MACRO → AUTOMATION BUILDER
+GOAL
+Add a “Record Process” button that captures app events (not video) and converts a recorded sequence into:
+	•	an automation rule OR
+	•	a manual macro OR
+	•	an SOP/playbook
+
+RECORD EVENTS
+Navigation, item/field edits, moves, uploads, OCR actions, calendar actions, email actions, etc.
+Store before/after values.
+
+CONVERSION
+After stop, ask: convert to Automation / Macro / Playbook.
+For automation, infer trigger and parameterize values (dates, assignees) using prompts.
+Always show plan → approve → activate.
+
+DATA MODEL
+	•	process_recordings
+	•	process_events
+	•	process_conversions
+
+OTHER USES
+	•	onboarding playbooks
+	•	QA/audit trails
+	•	repeated workflow detection → “make automation?”
+	•	optional timekeeping suggestions (proposal-only)
+
+============================================================
+MODULE 9: CALENDAR 2.0 (LEGAL/CRM AWARE)
+GOAL
+Calendar is the “time spine”:
+	•	events, hearings, deadlines, tasks overlay
+	•	entries link to matter/board/item
+	•	proposals from OCR/email/chat are approved before creation
+	•	reminders and automations integrated
+
+VIEWS
+day/week/month, matter filter, assignee filter, deadlines-only, court-dates-only, overdue follow-ups.
+
+============================================================
+MODULE 10: MAIL LITE (OUTLOOK-LIKE BUT CASE-SPECIFIC) + EMAIL INTELLIGENCE
+GOAL
+A simple case-focused email hub:
+	•	ingest emails by forwarding address per matter (MVP) OR OAuth later
+	•	store threads, link to matter/board/item
+	•	ingest attachments into file pipeline (OCR)
+	•	propose tasks/deadlines/events from email content
+	•	internal comments with @mentions/#tags
+	•	detect repetitive replies and suggest templates/process/automation/board.
+
+EMAIL INGEST MVP
+Each matter has email like matter+@domain. Forwarding ingests thread.
+
+EMAIL INTELLIGENCE OUTPUTS (STORED)
+	•	thread recap
+	•	key dates/deadlines
+	•	action items
+	•	tone shift signals (signal only, not truth)
+	•	repetition detection for replies and workflows
+
+REPETITION SUGGESTIONS
+If similar reply used 3+ times in 30 days or 5+ total:
+	•	prompt: “save as template?”
+If repeated workflow sequence occurs 3+ times:
+	•	prompt: “convert to macro/automation/board template?”
+
+TEMPLATE LIBRARY
+Add Templates section with tabs:
+	•	Email Templates
+	•	Process Macros
+	•	Automation Templates
+	•	Board Templates
+	•	Packages (bundles)
+Support tags, search, versioning, usage logs, “apply to new matter”.
+
+SEED 20 EMAIL TEMPLATES (LITIGATION + MEDICAL LITIGATION)
+Create and store the 20 templates defined (intake welcome, treatment timeline request, HIPAA auth request, missing records follow-up, preservation notice, notice of representation, demand status update, settlement offer update, wage loss docs request, discovery sent update, client discovery responses request, depo scheduling request, depo prep, IME guidance, provider records follow-up, expert review request, litigation hold to client, social media guidance, client approval to file/serve, simple status update) with placeholders.
+
+SECURITY
+Email analysis uses Model Gateway with redaction/minimization; never send full mailbox content.
+
+============================================================
+SHARED SYSTEMS (USED BY ALL MODULES)
+
+ACTION PROPOSALS (REQUIRED)
+	•	action_proposals: id, scope_type/scope_id, created_by, source_message_id optional, status(draft/awaiting_approval/approved/executed/rejected), summary_text
+	•	action_proposal_items: id, proposal_id, action_type, payload_json, confidence, rationale, executed_at, result_json
+Execution supports preview batch of 10.
+
+AUDIT LOG (REQUIRED)
+	•	audit_log: actor_user_id, action_type, target_type/id, before_json, after_json, created_at
+
+PERMISSIONS (REQUIRED)
+	•	enforce user access to boards/matters/clients
+	•	retriever must filter chunks by permission
+	•	chat visible only to board members
+	•	master chat filtered by client/matter membership
+
+BACKGROUND JOBS (REQUIRED)
+	•	ingest runner (OCR/extract/transcribe, chunk, embed, store)
+	•	ai_request runner (policy, RAG, redaction, provider call)
+	•	organize runner (plan build)
+	•	automation runner (trigger execution)
+All jobs update status fields for UI polling.
+
+FINAL ACCEPTANCE CHECK
+A) Upload 100 files → scan summary shows counts/types/date range → run insights on 10 most recent → citations provided → create tasks via proposal.
+B) Organize new incoming → plan first → approve → organize 10 preview → continue.
+C) Board chat live updates → attachments auto-ingested → detected deadlines propose tasks/events.
+D) Master chat can answer across client with citations and propose board moves.
+E) Assistant can build Monday-style automation from plain English + simulate + approve.
+F) Screen recorder captures actions → converts to macro/automation.
+G) Calendar shows deadlines/events linked to matters and tasks.
+H) Email forwarding ingests threads/attachments → recap/dates/action items → template suggestions.
+I) Detective board shows graph/timeline/corkboard + baseline vs incident comparisons + hypothesis support score with evidence.
+
+BUILD IN PHASES
+Phase 1: Organizer + OCR ingest + Board/Matter Insights + Proposal system
+Phase 2: Board chat + Model Gateway + Assistant operator + Automation catalog/templates
+Phase 3: Detective board + Calendar 2.0 + Mail Lite + Template library + Recorder conversion
+
+============================================================
+SECURITY + COMPLIANCE APPENDIX (ENTERPRISE-GRADE)
+
+A) SECURITY PRINCIPLES (NON-NEGOTIABLE)
+	1.	Least privilege (server-side enforcement)
+	2.	Data minimization (RAG + redaction; no raw file sending)
+	3.	Defense in depth (encryption, secrets, logging hygiene)
+	4.	Human-in-the-loop for AI writes
+	5.	Provenance via anchors
+
+B) ROLES + PERMISSIONS + MATTER CONTROLS
+Roles:
+	•	owner_admin, attorney, paralegal, staff, optional client_portal_user
+Every API requires auth + has_access(scope).
+Matter settings:
+	•	ai_mode: LOCAL_ONLY | EXTERNAL_REDACTED | EXTERNAL_CONSENT
+	•	privilege_mode: NORMAL | SENSITIVE | PRIVILEGED
+	•	external_sharing_allowed: boolean
+	•	retention_policy_id
+Default for medical litigation: EXTERNAL_REDACTED (or LOCAL_ONLY) + SENSITIVE.
+
+C) DATA CLASSIFICATION
+Labels: public, internal, sensitive, privileged
+Rules:
+	•	emails/medical records default sensitive
+	•	privilege detection labels privileged
+	•	privileged cannot be sent externally unless EXTERNAL_CONSENT + explicit approval + audit
+
+D) ENCRYPTION + KEY MGMT
+TLS everywhere. Encrypt storage and DB at rest.
+Field-level encrypt:
+	•	OAuth tokens
+	•	redaction maps
+	•	secrets/API keys
+Optionally encrypt email bodies and OCR text for privileged matters.
+Keys in env secrets; separate encryption vs signing keys.
+
+E) SECRETS & AUTH
+No provider keys in frontend. Backend only.
+Session tokens short-lived; support revocation. No raw passwords stored.
+
+F) LOGGING HYGIENE (NO RAW CONTENT)
+Do not log email bodies, OCR text, chat bodies, prompts/responses.
+Allowed logs: IDs, hashes, counts, redacted snippets only if essential.
+Implement safe_log() to strip/redact.
+
+G) AUDIT TRAIL (EXPORTABLE)
+Append-only audit logs for every mutation: actor, time, action, target, before/after (redacted if needed), source(manual|automation|assistant|import).
+Undo supported (inverse or before-state).
+Export per matter.
+
+H) AI GOVERNANCE (MODEL GATEWAY)
+Gateway-only calls. RAG top N chunks. Hard caps.
+Redaction of PII/PHI/IDs; store mapping encrypted.
+Provider settings: API/business use; do not opt-in to training where applicable; prefer minimal retention enterprise modes.
+Tone analysis labeled “signal.”
+Detective scoring is “support score,” never guilt probability.
+Citations required.
+
+I) AUTOMATION SAFETY
+Loop detection, dry-run simulation, blast radius limits, approval gates for dangerous actions.
+Log every run with context and results.
+
+J) EMAIL MODULE DEFAULTS
+Forwarding ingest first. Email bodies labeled sensitive. Attachments OCR’d and classified.
+Suggestions only (no auto create).
+No outbound sending inside app in MVP until security mature.
+
+K) RETENTION & DELETION
+Retention policies per matter:
+	•	operational metadata (audit) long-term (e.g., 7 years)
+	•	content (emails/OCR/chat) per policy (2–7 years)
+	•	derived artifacts (embeddings/summaries) no longer than content
+Soft delete → Trash → restore window. Hard delete requires admin + audit.
+Hard delete must remove derived text, chunks, vectors, summaries, redaction maps.
+
+L) INCIDENT RESPONSE (MINIMUM)
+Admin revoke sessions. Disable external AI firm-wide. Alerts on mass actions.
+Export audit quickly.
+
+M) SECURITY TESTING (ACCEPTANCE)
+	1.	Permission isolation incl RAG chunk filtering
+	2.	Logs contain no raw content
+	3.	Gateway blocks external calls in LOCAL_ONLY
+	4.	Delete removes vectors and derived artifacts
+	5.	Automation loop prevention + dry-run
+	6.	Audit every mutation + undo works
+
+END OF MEGA PROMPT
+
+⸻
+
+If you want it even more “builder-proof,” I can also output a Phase-by-phase checklist with concrete tickets (each with “done” criteria) so your Replit agent can’t accidentally skip the boring-but-critical parts (permissions, retention, logging hygiene).

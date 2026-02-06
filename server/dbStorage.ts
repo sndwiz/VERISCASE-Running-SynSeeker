@@ -201,6 +201,7 @@ export class DbStorage implements IStorage {
       columns: (r.columns as ColumnDef[]) || [],
       clientId: r.clientId || null,
       matterId: r.matterId || null,
+      workspaceId: r.workspaceId || null,
       createdAt: toISOString(r.createdAt) || new Date().toISOString(),
       updatedAt: toISOString(r.updatedAt) || new Date().toISOString(),
     };
@@ -226,6 +227,13 @@ export class DbStorage implements IStorage {
     return rows.map(r => this.rowToBoard(r));
   }
 
+  async getBoardsByWorkspace(workspaceId: string): Promise<Board[]> {
+    const rows = await db.select().from(tables.boards)
+      .where(eq(tables.boards.workspaceId, workspaceId))
+      .orderBy(asc(tables.boards.createdAt));
+    return rows.map(r => this.rowToBoard(r));
+  }
+
   async getBoard(id: string): Promise<Board | undefined> {
     const [row] = await db.select().from(tables.boards).where(eq(tables.boards.id, id));
     if (!row) return undefined;
@@ -244,6 +252,7 @@ export class DbStorage implements IStorage {
       columns: (data.columns as any) || defaultColumns,
       clientId: data.clientId || null,
       matterId: data.matterId || null,
+      workspaceId: data.workspaceId || null,
       createdAt: now,
       updatedAt: now,
     }).returning();
