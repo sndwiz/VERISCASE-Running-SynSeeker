@@ -1034,3 +1034,100 @@ export type BillingReviewLogRecord = typeof billingReviewLogs.$inferSelect;
 export type InsertBillingReviewLogRecord = typeof billingReviewLogs.$inferInsert;
 export type BillingPipelineResultRecord = typeof billingPipelineResults.$inferSelect;
 export type InsertBillingPipelineResultRecord = typeof billingPipelineResults.$inferInsert;
+
+// ============ PROCESS RECORDINGS ============
+export const processRecordings = pgTable("process_recordings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull(),
+  scopeType: varchar("scope_type", { length: 50 }).default("board"),
+  scopeId: varchar("scope_id"),
+  title: varchar("title", { length: 255 }).default("Untitled Recording"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  status: varchar("status", { length: 20 }).default("recording"),
+  eventCount: integer("event_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_process_recordings_user").on(table.createdByUserId),
+  index("IDX_process_recordings_status").on(table.status),
+]);
+
+export const processEvents = pgTable("process_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recordingId: varchar("recording_id").notNull().references(() => processRecordings.id, { onDelete: "cascade" }),
+  ts: timestamp("ts").defaultNow().notNull(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  payloadJson: jsonb("payload_json").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_process_events_recording").on(table.recordingId),
+  index("IDX_process_events_type").on(table.eventType),
+]);
+
+export const processConversions = pgTable("process_conversions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recordingId: varchar("recording_id").notNull().references(() => processRecordings.id, { onDelete: "cascade" }),
+  outputType: varchar("output_type", { length: 50 }).notNull(),
+  generatedJson: jsonb("generated_json").default({}),
+  status: varchar("status", { length: 20 }).default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_process_conversions_recording").on(table.recordingId),
+]);
+
+export type ProcessRecording = typeof processRecordings.$inferSelect;
+export type InsertProcessRecording = typeof processRecordings.$inferInsert;
+export type ProcessEvent = typeof processEvents.$inferSelect;
+export type InsertProcessEvent = typeof processEvents.$inferInsert;
+export type ProcessConversion = typeof processConversions.$inferSelect;
+export type InsertProcessConversion = typeof processConversions.$inferInsert;
+
+// ============ TEMPLATES ============
+export const templates = pgTable("templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type", { length: 50 }).notNull(),
+  scopeType: varchar("scope_type", { length: 50 }).default("global"),
+  scopeId: varchar("scope_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").default(""),
+  category: varchar("category", { length: 100 }).default("general"),
+  tagsJson: jsonb("tags_json").default([]),
+  createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull(),
+  version: integer("version").default(1),
+  status: varchar("status", { length: 20 }).default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_templates_type").on(table.type),
+  index("IDX_templates_status").on(table.status),
+  index("IDX_templates_category").on(table.category),
+  index("IDX_templates_user").on(table.createdByUserId),
+]);
+
+export const templateContents = pgTable("template_contents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").notNull().references(() => templates.id, { onDelete: "cascade" }),
+  contentJson: jsonb("content_json").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_template_contents_template").on(table.templateId),
+]);
+
+export const templateUsageLog = pgTable("template_usage_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").notNull().references(() => templates.id, { onDelete: "cascade" }),
+  usedByUserId: varchar("used_by_user_id", { length: 255 }).notNull(),
+  usedOnScopeType: varchar("used_on_scope_type", { length: 50 }),
+  usedOnScopeId: varchar("used_on_scope_id"),
+  usedAt: timestamp("used_at").defaultNow(),
+}, (table) => [
+  index("IDX_template_usage_template").on(table.templateId),
+  index("IDX_template_usage_user").on(table.usedByUserId),
+]);
+
+export type Template = typeof templates.$inferSelect;
+export type InsertTemplate = typeof templates.$inferInsert;
+export type TemplateContent = typeof templateContents.$inferSelect;
+export type InsertTemplateContent = typeof templateContents.$inferInsert;
+export type TemplateUsageLogEntry = typeof templateUsageLog.$inferSelect;
+export type InsertTemplateUsageLogEntry = typeof templateUsageLog.$inferInsert;

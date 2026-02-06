@@ -1,0 +1,398 @@
+Yep. Your “screen record → replay → automation” button is secretly one of the highest-leverage features in the whole app. It turns tribal process knowledge into repeatable machine behavior without users having to think like programmers.
+
+Here’s a comprehensive, Replit-ready plain-English spec for:
+	1.	Beefing up the Screen Recorder → Automation Builder
+	2.	Expanding Calendar
+	3.	Adding a Simple Outlook-like Mail module designed specifically for your Clio x Monday x CRM system
+
+⸻
+
+VERICASE Feature: Screen Recorder → Automation Builder (Process Capture)
+
+Goal
+
+Let users “record what I did” inside VERICASE and turn it into:
+	•	a reusable automation rule (Trigger → Conditions → Actions), AND/OR
+	•	a reusable “macro” they can run manually, AND/OR
+	•	a guided template/checklist for onboarding.
+
+This is how you bottle workflows.
+
+⸻
+
+1) What to record (events)
+
+When recording is ON, capture a stream of app events (not video pixels).
+
+Event types to capture
+	•	Navigation:
+	•	opened board, item, matter, client
+	•	CRUD actions:
+	•	created item/task/event
+	•	updated fields (status, due date, assignee, tags, custom fields)
+	•	moved item/group/board
+	•	created columns/groups
+	•	Comments/messages:
+	•	posted comment
+	•	@mentions and #tags
+	•	File actions:
+	•	uploaded file
+	•	linked file to item
+	•	ran OCR
+	•	routed file
+	•	Calendar actions:
+	•	created event
+	•	edited time, attendees
+	•	Email actions (once you add it):
+	•	linked email thread to matter
+	•	created task from email
+	•	Detective Board actions (optional):
+	•	created hypothesis
+	•	linked entities
+
+Each recorded event should include:
+	•	timestamp
+	•	user_id
+	•	scope ids (board_id, item_id, matter_id)
+	•	before/after values (for updates)
+	•	metadata (what column changed, what tag added, etc.)
+
+⸻
+
+2) Recorder output types (3 modes)
+
+After user stops recording, show: “What do you want this to become?”
+
+A) “Automation Rule”
+
+Turns recording into a Trigger→Conditions→Actions rule that runs automatically.
+
+B) “Manual Macro”
+
+A one-click script the user can run on demand:
+	•	“Apply this cleanup process to selected items”
+
+C) “SOP / Playbook”
+
+Turns it into a checklist + explanation:
+	•	training / onboarding / compliance doc
+	•	optionally with AI-generated plain-English narration
+
+⸻
+
+3) Turning recordings into automations (the translation)
+
+Recorded actions alone aren’t an automation until you infer:
+	•	Trigger: what starts it?
+	•	Scope: where does it run?
+	•	Parameters: what parts vary (dates, assignees, statuses)?
+	•	Conditions: when should it NOT run?
+	•	Loop guards: avoid repeating forever
+
+Translation rules (MVP)
+	•	If recording began right after an identifiable event (e.g., file upload, status change), propose that as trigger.
+	•	If no obvious event, default trigger to:
+	•	manual.run_macro (manual macro), or
+	•	item.updated with conditions (automation rule) only if user chooses.
+
+Parameterization (key)
+
+When actions refer to specific values, ask the user to generalize:
+	•	“Assign to Alex” → “Assign to item’s assignee?” or “Assign to role: Lead Attorney?”
+	•	“Due date = Feb 12” → “Due date = detected deadline” or “NOW + 7 days”
+	•	“Move to group Urgent” → keep or select a group variable
+
+⸻
+
+4) Other killer uses (beyond automation generation)
+
+Your recorder can do way more than “make automations.”
+
+1) Guided templates (“Board Setup Wizard by Example”)
+
+Record setting up a board once → replay it to create new boards/matters with identical structure.
+
+2) QA + audit (“Who changed what and why”)
+
+Recording events creates a clean, human-readable change trail:
+	•	“These 12 actions were performed during intake.”
+
+3) AI coaching (“You keep doing this manually—want it automated?”)
+
+Detect repeated patterns of recorded sequences:
+	•	If a user repeats the same 8-step flow three times, auto-suggest:
+	•	“Turn this into a macro/automation?”
+
+4) Timekeeping + billing assist (careful, but useful)
+
+Turn recorded sequences into time entries suggestions:
+	•	“You spent 18 minutes on intake tasks.” (proposal-only)
+
+5) Reproduce complex “investigation workflows”
+
+Record the steps of building a Detective Board hypothesis and turning it into tasks.
+
+⸻
+
+5) Data model (minimum)
+
+process_recordings
+	•	id
+	•	created_by_user_id
+	•	scope_type (board/matter/client)
+	•	scope_id
+	•	started_at
+	•	ended_at
+	•	status (draft/converted)
+	•	title (user editable)
+
+process_events
+	•	id
+	•	recording_id
+	•	ts
+	•	event_type
+	•	payload_json (before/after + ids)
+
+process_conversions
+	•	id
+	•	recording_id
+	•	output_type (automation_rule | macro | sop)
+	•	generated_json (rule/macro steps)
+	•	status (draft/approved/active)
+
+Uses your existing:
+	•	automation_rules
+	•	action_proposals
+	•	audit_log
+
+⸻
+
+6) Recorder UX
+	•	Button: “Record Process”
+	•	Shows:
+	•	“Recording… 12 steps”
+	•	Stop → summary:
+	•	“You changed 3 items, created 2 tasks, uploaded 1 file”
+	•	Then:
+	•	“Convert to: Automation / Macro / Playbook”
+	•	Show plan → approve → activate (same pattern)
+
+⸻
+
+⸻
+
+VERICASE Feature: Calendar 2.0 (Legal + CRM aware)
+
+Goal
+
+A calendar that’s not generic. It must understand:
+	•	matters
+	•	deadlines
+	•	hearings/meetings
+	•	tasks
+	•	board statuses
+	•	and email/call follow-ups
+
+Calendar becomes the “time spine” of your whole system.
+
+⸻
+
+1) Calendar objects
+
+Support:
+	•	Events (meeting/hearing/call)
+	•	Deadlines (court dates, filing deadlines, follow-up deadlines)
+	•	Tasks with due dates (optional overlay)
+
+Every calendar entry should be linkable to:
+	•	matter_id
+	•	board_id
+	•	item_id
+	•	evidence file(s) + citations (if derived from OCR)
+
+⸻
+
+2) Views
+	•	Day / Week / Month
+	•	Matter view (filter by matter)
+	•	Assignee view (filter by user)
+	•	“Deadlines only”
+	•	“Court dates only”
+	•	“Overdue follow-ups”
+
+⸻
+
+3) Ingestion and proposals
+
+Calendar should accept proposed events from:
+	•	OCR deadline detection
+	•	Board Chat “Detected actions”
+	•	Email module (below)
+	•	Screen recorder conversion
+
+Always: propose → approve → create.
+
+⸻
+
+4) Calendar automations (native)
+
+Examples:
+	•	“3 days before court date, notify lead attorney + paralegal”
+	•	“If deadline moves, update linked tasks”
+
+⸻
+
+⸻
+
+VERICASE Feature: Mail Lite (Outlook-ish, but purpose-built)
+
+Goal
+
+A simple email hub that supports this system’s workflows:
+	•	pull in / forward emails into VERICASE
+	•	link threads to matters/boards/items
+	•	turn emails into tasks/deadlines
+	•	store attachments into the right place
+	•	allow comments and internal chat around threads
+
+Not a full Outlook clone. A case communication inbox.
+
+⸻
+
+1) Email ingestion methods (choose MVP)
+
+MVP Option A: Forwarding address (simplest)
+	•	Each matter gets a unique email like:
+	•	matter+ABC123@vericase.yourdomain.com
+User forwards emails there and VERICASE ingests them.
+
+MVP Option B: OAuth mailbox connect (later)
+
+Connect Gmail/Outlook accounts and ingest selected folders/labels.
+(Heavier compliance + admin effort.)
+
+Start with forwarding. It’s the least messy.
+
+⸻
+
+2) What happens on ingest
+
+For each email:
+	•	store raw email metadata:
+	•	from, to, cc, subject, date, message-id, thread-id
+	•	store body (sanitized)
+	•	store attachments as files
+	•	run extraction/OCR on attachments
+	•	create linking suggestions:
+	•	which matter?
+	•	which board/item?
+	•	who should be assigned?
+
+Then show a routing proposal card:
+	•	“Link this thread to Matter X”
+	•	“Create task: respond by Friday”
+	•	“Save attachments to Evidence folder”
+User approves.
+
+⸻
+
+3) Email UI (simple, effective)
+	•	Left: folders (Inbox, Linked to Matters, Unlinked, Needs Review)
+	•	Center: thread list (subject, linked matter, tags, last activity)
+	•	Right: thread details:
+	•	full conversation
+	•	attachments
+	•	“Create task” button
+	•	“Link to matter” button
+	•	internal notes/comments (not sent externally)
+
+Support:
+	•	@mentions and #tags inside internal comments
+	•	“Convert to automation” for repeated email workflows (ties into recorder)
+
+⸻
+
+4) Email-to-task and email-to-deadline intelligence
+
+On each email/thread:
+	•	detect deadlines (“by Friday”, “due Feb 10”)
+	•	detect action items (“please send”, “need you to file”)
+	•	detect key entities (names, addresses) for matter linking
+
+Always: propose → approve.
+
+⸻
+
+5) Mail automations (Monday-style)
+
+Examples:
+	•	Trigger: email.received_in_matter_inbox
+	•	Conditions: sender domain, keywords, attachments present
+	•	Actions:
+	•	create task “Respond”
+	•	assign attorney
+	•	set due date +2 days
+	•	route attachments to folder
+	•	tag thread #client-comms
+
+⸻
+
+6) Data model (minimum)
+
+email_accounts (if you do OAuth later)
+	•	id, provider, auth tokens (encrypted), user_id
+
+emails
+	•	id
+	•	thread_id
+	•	matter_id (nullable)
+	•	board_id/item_id (nullable)
+	•	from/to/cc
+	•	subject
+	•	sent_at
+	•	body_text
+	•	body_html (optional)
+	•	status (unlinked/linked/needs_review)
+	•	created_at
+
+email_attachments
+	•	id
+	•	email_id
+	•	file_id
+
+email_internal_comments
+	•	id
+	•	email_id
+	•	user_id
+	•	text
+	•	entities_json (@mentions/#tags)
+	•	created_at
+
+⸻
+
+7) Security and privacy
+	•	All email ingest and AI summarization must use your Model Gateway
+	•	Redaction/minimization
+	•	Audit logs
+	•	No automatic sending emails in MVP (safe). Start with ingest + internal workflow.
+
+⸻
+
+⸻
+
+Recommended build order (so this actually ships)
+	1.	Screen recorder logs events + plays back as manual macro
+	2.	Convert macro → automation rule (simple parameter prompts)
+	3.	Calendar upgrades: unified events/deadlines/tasks view + linking
+	4.	Email forwarding inbox per matter + attachment ingest + proposals
+	5.	Email → tasks/deadlines proposals + calendar linking
+	6.	“Record process” that includes email/calendar actions → automation templates
+
+⸻
+
+If you want the cleanest next deliverable to paste into Replit, I can turn this into three separate “tickets” with acceptance criteria:
+	•	Ticket A: Screen Recorder → Macro → Automation
+	•	Ticket B: Calendar 2.0
+	•	Ticket C: Mail Lite (forwarding-based)
+
+That way your builder can implement without interpreting your intentions like a horoscope.

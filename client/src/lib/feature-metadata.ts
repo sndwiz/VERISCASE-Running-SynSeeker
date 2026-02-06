@@ -24,6 +24,8 @@ import {
   Terminal,
   Settings,
   Cpu,
+  Library,
+  CircleDot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -538,6 +540,40 @@ export const FEATURE_METADATA: FeatureInfo[] = [
       "Monitor the operations log for individual AI call records",
     ],
     tags: ["ai", "monitoring", "cost", "performance", "admin", "tracking"],
+  },
+  {
+    id: "template-library",
+    title: "Template Library",
+    icon: Library,
+    route: "/templates",
+    category: "legal-practice",
+    tooltip: "Email templates, macros, automations, and board templates with usage tracking",
+    description: "Browse and use pre-built templates for emails, macros, automations, and boards. Includes 20 legal email templates with placeholder support.",
+    howToSteps: [
+      "Navigate to Template Library from the sidebar",
+      "Browse templates by type using the tabs (Email, Macro, Automation, Board, Package)",
+      "Filter by category or search by keyword",
+      "Click a template to preview its content and placeholders",
+      "Click Use Template to copy or apply it, usage is tracked automatically",
+    ],
+    tags: ["templates", "email", "legal", "library", "automation", "macro"],
+  },
+  {
+    id: "process-recorder",
+    title: "Process Recorder",
+    icon: CircleDot,
+    route: "/process-recorder",
+    category: "system",
+    tooltip: "Record your workflows to create automations, macros, or SOPs",
+    description: "Capture app events as you work, then convert recordings into automation rules, manual macros, or step-by-step playbooks.",
+    howToSteps: [
+      "Click the Record button in the header to start capturing",
+      "Perform your workflow actions normally",
+      "Click the recording indicator to stop and save",
+      "View recordings in the Process Recorder page",
+      "Convert a recording to an automation rule, macro, or SOP",
+    ],
+    tags: ["recording", "workflow", "automation", "macro", "sop", "playbook", "process"],
   },
 ];
 

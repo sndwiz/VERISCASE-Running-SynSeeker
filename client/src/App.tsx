@@ -16,7 +16,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Bot, Calendar, Terminal } from "lucide-react";
+import { Bot, Calendar, Terminal, Circle } from "lucide-react";
+import { useProcessRecorder } from "@/hooks/use-process-recorder";
 import { Link } from "wouter";
 import { HelpGuide } from "@/components/help-guide";
 
@@ -54,6 +55,8 @@ import UploadOrganizerPage from "@/pages/upload-organizer";
 import MasterChatPage from "@/pages/master-chat";
 import DocumentWashPage from "@/pages/document-wash";
 import BillingVerifierPage from "@/pages/billing-verifier";
+import TemplatesPage from "@/pages/templates";
+import ProcessRecorderPage from "@/pages/process-recorder";
 
 import type { Board } from "@shared/schema";
 
@@ -91,6 +94,8 @@ function Router() {
       <Route path="/master-chat" component={MasterChatPage} />
       <Route path="/document-wash" component={DocumentWashPage} />
       <Route path="/billing-verifier" component={BillingVerifierPage} />
+      <Route path="/templates" component={TemplatesPage} />
+      <Route path="/process-recorder" component={ProcessRecorderPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
@@ -111,6 +116,7 @@ function AppLayout() {
   const { toast } = useToast();
   const [createBoardOpen, setCreateBoardOpen] = useState(false);
   const [location, setLocation] = useLocation();
+  const recorder = useProcessRecorder();
 
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/auth/user"],
@@ -198,6 +204,32 @@ function AppLayout() {
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent>Autonomous computer control via natural language</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={recorder.isRecording ? "destructive" : "outline"}
+                    size="sm"
+                    className="gap-2"
+                    onClick={async () => {
+                      if (recorder.isRecording) {
+                        const result = await recorder.stopRecording();
+                        if (result) {
+                          toast({ title: "Recording stopped", description: `Captured ${result.eventCount || 0} events. View in Process Recorder.` });
+                          setLocation("/process-recorder");
+                        }
+                      } else {
+                        const result = await recorder.startRecording();
+                        if (result) toast({ title: "Recording started", description: "Your actions are being captured." });
+                      }
+                    }}
+                    data-testid="button-record-process"
+                  >
+                    <Circle className={`h-3.5 w-3.5 ${recorder.isRecording ? "fill-current animate-pulse" : ""}`} />
+                    {recorder.isRecording ? `Recording (${recorder.eventCount})` : "Record"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{recorder.isRecording ? "Stop recording and convert to automation/macro/playbook" : "Record your workflow to create automations, macros, or SOPs"}</TooltipContent>
               </Tooltip>
               <HelpGuide />
               <ThemeToggle />

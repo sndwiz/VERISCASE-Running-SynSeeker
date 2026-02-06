@@ -1,0 +1,260 @@
+Below is a single, copiable plain-text “Security + Compliance Appendix” you can paste under your Replit master prompt. It upgrades the whole build from “good” to enterprise-grade defensible for litigation + medical litigation.
+
+⸻
+
+VERICASE SECURITY + COMPLIANCE APPENDIX (PASTE INTO REPLIT)
+
+You are building VERICASE for a litigation + medical litigation workflow. Assume sensitive client data, medical records, privileged communications. The system must be designed for least privilege, auditability, and data minimization, with AI guardrails.
+
+A) Security Principles (non-negotiable)
+	1.	Least privilege: users only see what they’re allowed to see; permissions enforced server-side for every query.
+	2.	Data minimization: never send raw files or full corpuses to any AI provider; only redacted snippets via RAG.
+	3.	Defense in depth: encryption at rest + in transit, strong secrets handling, logging hygiene, access reviews.
+	4.	Human-in-the-loop: any write/change from AI must be proposal → approval → execute → audit → undo.
+	5.	Provenance: any derived fact must trace back to source anchors (file/page/line/timecode).
+
+B) Roles, Permissions, and Matter-Level Controls
+
+Roles (minimum)
+	•	owner_admin: system admin for firm
+	•	attorney: full matter access per assignment
+	•	paralegal: limited matter access per assignment
+	•	staff: operations/billing access
+	•	client_portal_user (optional): restricted portal access
+
+Permission checks (must exist)
+
+Every API route requires:
+	•	authentication
+	•	has_access(scope_type, scope_id) check
+	•	row-level filtering for:
+	•	matters
+	•	boards
+	•	files/assets
+	•	chat messages
+	•	email threads
+	•	vector retrieval (RAG)
+
+Matter security settings (per matter)
+	•	ai_mode: LOCAL_ONLY | EXTERNAL_REDACTED | EXTERNAL_CONSENT
+	•	privilege_mode: NORMAL | SENSITIVE | PRIVILEGED
+	•	external_sharing_allowed: true/false
+	•	retention_policy_id
+
+Default for medical litigation matters:
+	•	ai_mode = EXTERNAL_REDACTED (or LOCAL_ONLY for highest sensitivity)
+	•	privilege_mode = SENSITIVE
+
+C) Data Classification and Labels
+
+All files, threads, and extracted text must carry a classification label:
+	•	public (rare)
+	•	internal
+	•	sensitive
+	•	privileged
+
+Rules:
+	•	Anything imported from client email or medical records defaults to sensitive.
+	•	Anything detected as attorney-client / work product should be labeled privileged.
+	•	Privileged items cannot be sent externally unless EXTERNAL_CONSENT + explicit user approval + logging.
+
+D) Encryption and Key Management
+
+In transit
+	•	Enforce HTTPS/TLS for all traffic.
+	•	Use secure websockets (wss).
+
+At rest
+	•	Encrypt storage buckets/disks.
+	•	Encrypt database at rest (or use managed encryption).
+
+Field-level encryption (required)
+
+Encrypt these fields at the application layer:
+	•	OAuth tokens (email integrations)
+	•	redaction maps (original PII values)
+	•	any secrets / API keys
+	•	optionally: email bodies and OCR text for privileged matters
+
+Key storage:
+	•	keys must be in environment secrets, not repo.
+	•	separate “encryption key” from “signing key”.
+
+E) Secrets, Tokens, and Credentials
+	•	Never hardcode API keys in frontend.
+	•	All model-provider keys live only in backend.
+	•	Rotate keys periodically (admin tooling later).
+	•	Use short-lived session tokens; support logout/invalidation.
+	•	Do not store raw passwords; use a modern password hashing algorithm (if applicable).
+
+F) Logging Hygiene (Biggest Leak Vector)
+
+Strict rule: no raw content in logs
+
+Do NOT log:
+	•	email bodies
+	•	document text
+	•	OCR output
+	•	chat message bodies
+	•	prompts/responses
+
+Allowed logging:
+	•	request IDs
+	•	user IDs
+	•	matter/board IDs
+	•	action types
+	•	counts and hashes
+	•	redacted snippets ONLY if essential
+
+Implement a safe_log() helper that:
+	•	strips content fields
+	•	truncates long strings
+	•	redacts emails/phones/IDs
+	•	blocks known sensitive keys
+
+G) Audit Trail (must be exportable)
+
+Every mutation must write an audit record:
+	•	actor_user_id
+	•	timestamp
+	•	action_type (create/update/delete/move/link)
+	•	target_type + id
+	•	before_json (redacted if sensitive)
+	•	after_json (redacted if sensitive)
+	•	source (manual | automation | assistant | import)
+
+Audit logs must be:
+	•	immutable (append-only)
+	•	exportable per matter (PDF/CSV later)
+
+Undo support:
+	•	store inverse operation or before-state needed for reversal
+	•	allow “undo last 10 changes” by admin within time window
+
+H) AI Governance: Model Gateway Requirements
+
+Gateway-only enforcement
+	•	Frontend must never call OpenAI/Anthropic/Google directly.
+	•	All AI requests go to /api/ai/request (or equivalent).
+
+Data minimization
+	•	Use RAG: top N chunks only (default 8–12).
+	•	Hard caps on characters/tokens.
+	•	Never send raw attachments.
+	•	Prefer sending chunk IDs + short snippets; keep full text internal.
+
+Redaction
+
+Before any external call:
+	•	Replace:
+	•	names (optional, if configured)
+	•	emails, phones, addresses
+	•	DOB
+	•	SSN/IDs
+	•	account numbers/credit cards
+	•	medical record numbers (if present)
+with placeholders:
+	•	PERSON_01, ADDR_XX, PHONE_XX, ID_XX, etc.
+
+Store mapping only if needed and encrypted.
+
+Provider policy settings
+	•	Use provider API/business offerings.
+	•	Do not opt in to training where applicable.
+	•	Prefer “no retention / minimal retention” enterprise modes when available.
+	•	Record provider name/model used per request.
+
+Output constraints
+	•	“Tone analysis” must be labeled “signal” with confidence, never treated as fact.
+	•	“Detective support score” must never be called probability of guilt.
+	•	Require citations for factual claims: output must reference anchors.
+
+I) Automations: Safety Controls
+
+Automations must include:
+	•	loop detection (prevent self-trigger loops)
+	•	dry-run simulation preview before enabling
+	•	blast radius limits:
+	•	max items affected per run
+	•	max runs per hour
+	•	approval gates for “dangerous” actions:
+	•	move boards
+	•	mass updates
+	•	delete/trash
+	•	privilege label changes
+
+Automation execution:
+	•	always logged with run context + results
+	•	errors visible and recoverable
+
+J) Email Module: Legal-Grade Defaults
+
+Ingest method
+
+Start with forwarding address per matter (MVP). Later OAuth.
+
+Storage rules
+	•	Store email metadata + thread structure.
+	•	Store body_text with classification = sensitive by default.
+	•	Store attachments as files; run OCR; apply privilege detection.
+
+Suggestions only
+	•	Email-derived tasks/events/deadlines are proposals; never auto-create.
+
+Client confidentiality
+	•	Internal comments on email threads are not sent externally.
+	•	Avoid “reply from within app” until security controls are mature.
+
+K) Retention & Deletion Policy (must be configurable)
+
+Create retention policies and apply per matter.
+
+Minimum retention categories:
+	1.	Operational metadata (audit logs, action records): retain long-term (e.g., 7 years) unless policy says otherwise.
+	2.	Content (emails, OCR text, chat bodies): retain per matter policy (e.g., 2–7 years).
+	3.	Derived artifacts (embeddings, summaries): retain no longer than content; delete when content deleted.
+
+Deletion behavior:
+	•	Soft delete first (Trash), with restore window (e.g., 30–90 days).
+	•	Hard delete requires admin + confirmation + records in audit log.
+	•	Hard delete must also remove:
+	•	derived text
+	•	chunks
+	•	embeddings/vectors
+	•	cached summaries
+	•	redaction maps
+
+L) Incident Response (minimum)
+
+Implement:
+	•	admin ability to revoke sessions
+	•	admin ability to disable AI external mode firm-wide
+	•	alert on suspicious activity:
+	•	mass downloads
+	•	repeated permission denials
+	•	automation affecting large numbers
+	•	exportable audit for investigation
+
+M) Security Testing Checklist (Acceptance)
+
+Before shipping:
+	1.	Permission tests:
+	•	user A cannot retrieve user B’s matter chunks via RAG
+	•	chat is scoped correctly
+	2.	Logging tests:
+	•	verify logs contain no raw content
+	3.	Gateway tests:
+	•	block external calls in LOCAL_ONLY matters
+	4.	Retention tests:
+	•	deleting a file deletes chunks + vectors + derived summaries
+	5.	Automation tests:
+	•	loop prevention works
+	•	dry-run preview accurate
+	6.	Audit tests:
+	•	every mutation logged; undo works
+
+END OF SECURITY + COMPLIANCE APPENDIX
+
+⸻
+
+If you want the fully merged “one mega prompt” (your master build prompt + this appendix combined into one paste), I can output that next in a single block so you don’t have to stitch anything together.

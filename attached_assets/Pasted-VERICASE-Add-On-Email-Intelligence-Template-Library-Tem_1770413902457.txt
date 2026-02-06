@@ -1,0 +1,291 @@
+VERICASE Add-On: Email Intelligence + Template Library (Templates, Processes, Automations, Boards)
+
+Goal
+
+Upgrade the Mail Lite module so it can:
+	•	pull from her email threads (recap, key dates, tone signals, action items)
+	•	detect repetitive responses/workflows
+	•	proactively suggest creating:
+	•	email templates
+	•	process macros (recorded steps)
+	•	automations
+	•	new boards (from templates)
+	•	maintain a saved template library for later recall and one-click reuse
+
+All with the same house rules:
+minimize → redact → propose → approve → execute → log → undo
+
+⸻
+
+1) Email Intelligence (what it extracts)
+
+For every thread linked to a Matter:
+
+Generate these structured outputs (stored, not just displayed):
+	1.	Thread Recap
+
+	•	5–10 bullet summary
+	•	“What’s decided / what’s pending”
+	•	must cite message IDs (not public citations; internal references)
+
+	2.	Key Dates & Deadlines
+
+	•	extracted dates (“by Friday”, “Feb 10”)
+	•	normalized to absolute dates when possible
+	•	confidence rating + source snippet
+
+	3.	Action Items
+
+	•	tasks implied by language (“please send”, “need you to file”)
+	•	proposed assignee + due date
+	•	proposal-first
+
+	4.	Tone / Sentiment Signals (careful)
+
+	•	mark as a signal, not a fact:
+	•	“tone shift detected: neutral → urgent”
+	•	only used to surface “this thread is getting heated” or “client anxious”
+	•	never used for legal conclusions
+	•	always show low/med/high confidence
+
+	5.	Repetition Signals
+
+	•	“This reply is similar to previous replies”
+	•	“This workflow repeats across threads”
+	•	triggers template suggestions
+
+⸻
+
+2) Repetitive-response detection (the core feature you asked for)
+
+What counts as “repetitive”
+
+Detect repetition in two buckets:
+
+A) Repetitive email replies (template candidates)
+Examples:
+	•	“Thanks for sending this—please complete the attached intake form…”
+	•	“We received your documents. Next steps are…”
+	•	“We cannot provide legal advice until…”
+
+Detection logic (MVP):
+	•	Compare outgoing/internal draft replies’ text similarity
+	•	Also compare recurring phrase patterns across threads
+	•	Cluster similar replies into a “template candidate group”
+	•	Require a minimum threshold:
+	•	e.g., 3 occurrences in 30 days OR 5 occurrences total
+
+B) Repetitive workflows (process/automation candidates)
+Examples:
+	•	email arrives → attachments saved → task created → follow-up reminder scheduled
+Detection logic:
+	•	observe repeated sequences of actions after email ingestion:
+	•	link email → create task → set due date → tag → notify
+	•	cluster sequences into “process candidate groups”
+
+⸻
+
+3) Suggestion engine (“Want to make this a template?”)
+
+When it triggers
+
+When repetition threshold is met, show a non-annoying prompt:
+	•	“You’ve used a similar response 6 times. Save as a template?”
+	•	“You performed the same 8-step intake workflow 4 times. Convert to a process macro or automation?”
+	•	“These matters consistently need the same board structure. Create a board template?”
+
+What it proposes (three choices)
+	1.	Email Template
+	2.	Process Macro (manual run)
+	3.	Automation Rule (Trigger → Conditions → Actions)
+	4.	Board Template (board schema + default automations + starter groups/columns/items)
+
+All proposals show:
+	•	preview
+	•	scope (board/matter/client/global)
+	•	permission requirements
+	•	expected impact (“would have saved ~12 minutes each time” optional)
+
+User approves; nothing auto-creates.
+
+⸻
+
+4) Saved Template Library (what you asked for)
+
+Where it lives
+
+Add: Templates section in the app navigation.
+
+Tabs:
+	•	Email Templates
+	•	Process Macros
+	•	Automation Templates
+	•	Board Templates
+	•	Packages (bundles)
+
+Core features
+	•	search, tags, categories (intake, discovery, billing, court, client comms)
+	•	versioning (v1, v2, who edited, when)
+	•	“Use Template” button
+	•	“Apply to Board/Matter/Client” workflows
+	•	“Duplicate and customize”
+
+“Packages” (very powerful)
+
+A package is a bundle like:
+	•	“PI Intake Package”
+	•	board template
+	•	6 automations
+	•	8 email templates
+	•	1 macro checklist
+One-click apply to a new matter.
+
+⸻
+
+5) Data model (minimum)
+
+templates
+	•	id
+	•	type (email | macro | automation | board | package)
+	•	scope_type (global | client | matter | board)
+	•	scope_id (nullable)
+	•	name
+	•	description
+	•	tags_json
+	•	created_by_user_id
+	•	created_at
+	•	updated_at
+	•	version
+	•	status (draft | active | archived)
+
+template_contents
+	•	id
+	•	template_id
+	•	content_json
+	•	email: subject/body placeholders
+	•	macro: step list
+	•	automation: trigger/conditions/actions schema
+	•	board: columns/groups/default items
+	•	package: list of template_ids included
+
+template_usage_log
+	•	id
+	•	template_id
+	•	used_by_user_id
+	•	used_on_scope_type
+	•	used_on_scope_id
+	•	used_at
+
+repetition_clusters
+
+Stores detected clusters for suggestions.
+	•	id
+	•	cluster_type (email_reply | workflow_sequence)
+	•	scope_type/scope_id
+	•	similarity_signature
+	•	example_ids_json (message_ids or action_run_ids)
+	•	count
+	•	created_at
+	•	last_seen_at
+	•	status (suggested | dismissed | converted)
+
+⸻
+
+6) Email template format (must support placeholders)
+
+Support placeholders like:
+	•	{{CLIENT_NAME}}
+	•	{{MATTER_NAME}}
+	•	{{NEXT_STEP}}
+	•	{{DEADLINE_DATE}}
+	•	{{LINK_PORTAL}}
+	•	{{SIGNATURE}}
+
+Also support “smart blocks”:
+	•	if there’s a deadline detected, include a deadline paragraph
+	•	if attachments are missing, include a “please send” paragraph
+
+⸻
+
+7) Process templates (macros) — from recorder or inferred
+
+A process macro is:
+	•	list of steps referencing your action keys:
+	•	act.item.set_status
+	•	act.task.create
+	•	act.file.route_to_folder
+	•	plus parameters (some may be variables)
+	•	can be run on:
+	•	selected items
+	•	whole board
+	•	new matter creation
+
+⸻
+
+8) Board templates (structure + automations)
+
+A board template must include:
+	•	columns (types, values)
+	•	groups/sections
+	•	default items
+	•	default automations enabled
+	•	optional views (deadline view, evidence view)
+
+When creating a new matter:
+	•	user picks a board template or package
+	•	it creates boards instantly (proposal-first if needed)
+
+⸻
+
+9) API endpoints (minimum)
+
+Email intelligence
+	•	POST /api/emails/:threadId/analyze
+Returns recap, dates, action items, tone signals, citations
+
+Repetition detection
+	•	GET /api/templates/suggestions
+Returns template candidates (clusters)
+	•	POST /api/templates/suggestions/:id/convert
+Converts a cluster into a template/macro/automation/board template (proposal-first)
+
+Templates
+	•	GET /api/templates?type=...
+	•	POST /api/templates
+	•	POST /api/templates/:id/use
+	•	POST /api/templates/:id/archive
+
+⸻
+
+10) Model Gateway requirements (privacy + safety)
+
+All email analysis goes through your secure Model Gateway:
+	•	redact/minimize
+	•	retrieve only needed messages
+	•	never send full mailbox content
+	•	store only sanitized prompts
+	•	audit log every request
+
+⸻
+
+11) MVP build order (fastest to real value)
+	1.	Email thread recap + key dates extraction + action item proposals
+	2.	“Save as template” for email replies
+	3.	Templates Library UI (email templates only first)
+	4.	Repetition clustering for email replies + prompt suggestions
+	5.	Convert repeated workflows to macros (from recorder logs)
+	6.	Add automation template saving + board template saving
+	7.	Packages (bundles)
+
+⸻
+
+12) Definition of “done”
+	•	Email threads have a recap, deadlines, action items, and tone signals (as signals)
+	•	The system notices repetitive replies and prompts to save templates
+	•	Templates are stored in a library and can be reused
+	•	The system notices repetitive workflows and suggests macros/automations/boards
+	•	Everything uses proposal-first + audit logs
+
+⸻
+
+If you want the most plug-and-play deliverable next: I can write 20 starter email templates (intake, follow-up, missing docs, scheduling, billing, status update, disengagement, etc.) using your placeholder format so you can seed the Templates Library immediately.

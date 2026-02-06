@@ -2404,6 +2404,55 @@ export const insertBillingPipelineResultSchema = z.object({
 
 export type InsertBillingPipelineResult = z.infer<typeof insertBillingPipelineResultSchema>;
 
+// ============ PROCESS RECORDER SCHEMAS ============
+export const insertProcessRecordingSchema = z.object({
+  scopeType: z.string().default("board"),
+  scopeId: z.string().optional(),
+  title: z.string().default("Untitled Recording"),
+});
+export type InsertProcessRecordingInput = z.infer<typeof insertProcessRecordingSchema>;
+
+export const insertProcessEventSchema = z.object({
+  recordingId: z.string(),
+  eventType: z.string(),
+  payloadJson: z.any().default({}),
+});
+export type InsertProcessEventInput = z.infer<typeof insertProcessEventSchema>;
+
+export const insertProcessConversionSchema = z.object({
+  recordingId: z.string(),
+  outputType: z.enum(["automation_rule", "macro", "sop"]),
+  generatedJson: z.any().default({}),
+});
+export type InsertProcessConversionInput = z.infer<typeof insertProcessConversionSchema>;
+
+// ============ TEMPLATE SCHEMAS ============
+export const insertTemplateSchema = z.object({
+  type: z.enum(["email", "macro", "automation", "board", "package"]),
+  scopeType: z.string().default("global"),
+  scopeId: z.string().optional(),
+  name: z.string().min(1),
+  description: z.string().default(""),
+  category: z.string().default("general"),
+  tagsJson: z.array(z.string()).default([]),
+  version: z.number().default(1),
+  status: z.string().default("active"),
+});
+export type InsertTemplateInput = z.infer<typeof insertTemplateSchema>;
+
+export const insertTemplateContentSchema = z.object({
+  templateId: z.string(),
+  contentJson: z.any().default({}),
+});
+export type InsertTemplateContentInput = z.infer<typeof insertTemplateContentSchema>;
+
+export const insertTemplateUsageSchema = z.object({
+  templateId: z.string(),
+  usedOnScopeType: z.string().optional(),
+  usedOnScopeId: z.string().optional(),
+});
+export type InsertTemplateUsageInput = z.infer<typeof insertTemplateUsageSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

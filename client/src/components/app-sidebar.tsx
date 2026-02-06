@@ -66,6 +66,8 @@ import {
   Wand2,
   ClipboardCheck,
   LayoutDashboard,
+  Library,
+  CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -110,6 +112,8 @@ const navigationItems = [
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
   { title: "Billing Verifier", url: "/billing-verifier", icon: ClipboardCheck },
+  { title: "Template Library", url: "/templates", icon: Library },
+  { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
 ];
 
 const aiInvestigationItems = [
