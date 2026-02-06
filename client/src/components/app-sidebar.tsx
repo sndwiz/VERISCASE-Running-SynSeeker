@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useWorkspace } from "@/hooks/use-workspace";
 import {
   Sidebar,
   SidebarContent,
@@ -125,29 +126,11 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [practiceOpen, setPracticeOpen] = useState(true);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
-    try { return localStorage.getItem("vericase_active_workspace"); } catch { return null; }
-  });
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
-  const { data: workspaceList = [] } = useQuery<Workspace[]>({
-    queryKey: ["/api/workspaces"],
-  });
-
-  const currentWorkspace = useMemo(() => {
-    if (activeWorkspaceId) {
-      return workspaceList.find(w => w.id === activeWorkspaceId) || workspaceList[0];
-    }
-    return workspaceList[0];
-  }, [workspaceList, activeWorkspaceId]);
-
-  const selectWorkspace = useCallback((id: string) => {
-    setActiveWorkspaceId(id);
-    try { localStorage.setItem("vericase_active_workspace", id); } catch {}
-    queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
-  }, []);
+  const { workspaces: workspaceList, activeWorkspace: currentWorkspace, activeWorkspaceId, setActiveWorkspaceId: selectWorkspace } = useWorkspace();
 
   const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -162,8 +145,14 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
     },
   });
 
+  const boardQueryUrl = activeWorkspaceId ? `/api/boards?workspaceId=${activeWorkspaceId}` : "/api/boards";
   const { data: boards = [] } = useQuery<Board[]>({
-    queryKey: ["/api/boards"],
+    queryKey: ["/api/boards", activeWorkspaceId],
+    queryFn: async () => {
+      const res = await fetch(boardQueryUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch boards");
+      return res.json();
+    },
   });
 
   const { data: clients = [] } = useQuery<Client[]>({

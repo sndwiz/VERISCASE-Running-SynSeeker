@@ -20,6 +20,7 @@ import { Bot, Calendar, Terminal, Circle } from "lucide-react";
 import { useProcessRecorder } from "@/hooks/use-process-recorder";
 import { Link } from "wouter";
 import { HelpGuide } from "@/components/help-guide";
+import { WorkspaceProvider, useWorkspace } from "@/hooks/use-workspace";
 
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
@@ -116,6 +117,7 @@ function AppLayout() {
   const [createBoardOpen, setCreateBoardOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const recorder = useProcessRecorder();
+  const { activeWorkspaceId } = useWorkspace();
 
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/auth/user"],
@@ -124,7 +126,7 @@ function AppLayout() {
 
   const createBoardMutation = useMutation({
     mutationFn: (data: { name: string; description?: string; color: string; clientId?: string | null; matterId?: string | null }) =>
-      apiRequest("POST", "/api/boards", data),
+      apiRequest("POST", "/api/boards", { ...data, workspaceId: activeWorkspaceId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       toast({ title: "Board created successfully" });
@@ -249,7 +251,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="vericase-theme">
         <TooltipProvider>
-          <AppLayout />
+          <WorkspaceProvider>
+            <AppLayout />
+          </WorkspaceProvider>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>
