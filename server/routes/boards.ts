@@ -2,6 +2,10 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertBoardSchema, updateBoardSchema } from "@shared/schema";
 import { z } from "zod";
+import { db } from "../db";
+import { workspaces } from "@shared/models/tables";
+import { eq, and } from "drizzle-orm";
+import { getUserId } from "../utils/auth";
 
 export function registerBoardRoutes(app: Express): void {
   app.get("/api/boards", async (req, res) => {
@@ -13,6 +17,14 @@ export function registerBoardRoutes(app: Express): void {
       } else if (matterId && typeof matterId === "string") {
         boards = await storage.getBoardsByMatter(matterId);
       } else if (workspaceId && typeof workspaceId === "string") {
+        const userId = getUserId(req);
+        if (userId) {
+          const [ws] = await db.select().from(workspaces)
+            .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, userId)));
+          if (!ws) {
+            return res.status(403).json({ error: "Workspace not found or access denied" });
+          }
+        }
         boards = await storage.getBoardsByWorkspace(workspaceId);
       } else {
         boards = await storage.getBoards();
@@ -38,6 +50,16 @@ export function registerBoardRoutes(app: Express): void {
   app.post("/api/boards", async (req, res) => {
     try {
       const data = insertBoardSchema.parse(req.body);
+      if (data.workspaceId) {
+        const userId = getUserId(req);
+        if (userId) {
+          const [ws] = await db.select().from(workspaces)
+            .where(and(eq(workspaces.id, data.workspaceId), eq(workspaces.ownerId, userId)));
+          if (!ws) {
+            return res.status(403).json({ error: "Workspace not found or access denied" });
+          }
+        }
+      }
       const board = await storage.createBoard(data);
       res.status(201).json(board);
     } catch (error) {
