@@ -1,40 +1,52 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Link, useLocation } from "wouter";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { 
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
   Briefcase,
   Plus,
   Search,
-  Users,
-  Calendar,
-  FileText,
-  MessageSquare,
-  Clock,
-  Scale,
-  User,
-  Building2,
-  Phone,
-  Mail,
-  ExternalLink,
   Loader2,
+  ChevronLeft,
   ChevronRight,
-  AlertCircle,
-  CheckCircle2,
-  Pause,
-  Archive,
-  MoreHorizontal,
+  ChevronDown,
   Edit,
-  Trash2
+  Trash2,
+  Copy,
+  ExternalLink,
+  Info,
+  SlidersHorizontal,
+  Columns3,
+  Download,
+  MoreVertical,
+  Scale,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +54,6 @@ import { useToast } from "@/hooks/use-toast";
 interface Client {
   id: string;
   name: string;
-  type: "individual" | "business";
   email?: string;
   phone?: string;
   address?: string;
@@ -56,53 +67,18 @@ interface Matter {
   name: string;
   caseNumber: string;
   matterType: string;
-  status: "active" | "pending" | "on_hold" | "closed" | "archived";
+  status: string;
   description: string;
   practiceArea: string;
-  responsibleAttorney?: string;
+  assignedAttorneys?: string[];
+  courtName?: string;
+  judgeAssigned?: string;
+  opposingCounsel?: string;
   openedDate: string;
-  closeDate?: string;
-  createdAt: string;
-}
-
-interface MatterContact {
-  id: string;
-  matterId: string;
-  name: string;
-  role: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  notes?: string;
-}
-
-interface Thread {
-  id: string;
-  matterId: string;
-  subject: string;
-  status: "active" | "resolved" | "archived";
-  participants: string[];
+  closedDate?: string;
   createdAt: string;
   updatedAt: string;
 }
-
-interface TimelineEvent {
-  id: string;
-  matterId: string;
-  title: string;
-  description: string;
-  eventType: string;
-  eventDate: string;
-  createdAt: string;
-}
-
-const STATUS_CONFIG = {
-  active: { label: "Active", color: "bg-green-500", icon: CheckCircle2 },
-  pending: { label: "Pending", color: "bg-yellow-500", icon: Clock },
-  on_hold: { label: "On Hold", color: "bg-orange-500", icon: Pause },
-  closed: { label: "Closed", color: "bg-gray-500", icon: Archive },
-  archived: { label: "Archived", color: "bg-gray-400", icon: Archive },
-};
 
 const PRACTICE_AREAS = [
   "Civil Litigation",
@@ -120,16 +96,55 @@ const PRACTICE_AREAS = [
   "Other",
 ];
 
+const MATTER_TYPES = [
+  "Consultation",
+  "Litigation",
+  "Transaction",
+  "Administrative",
+  "Regulatory",
+  "Criminal Defense",
+  "Civil Litigation",
+  "Insurance Litigation",
+  "Other",
+];
+
+const STATUS_TAB_MAP: Record<string, string[]> = {
+  all: [],
+  open: ["active"],
+  pending: ["pending", "on_hold"],
+  closed: ["closed", "archived"],
+};
+
+const PAGE_SIZE = 25;
+
+type ColumnKey = "actions" | "matter" | "client" | "responsibleAttorney" | "practiceArea" | "status" | "caseNumber" | "openedDate" | "matterType" | "courtName" | "opposingCounsel";
+
+const ALL_COLUMNS: { key: ColumnKey; label: string; defaultVisible: boolean }[] = [
+  { key: "actions", label: "Actions", defaultVisible: true },
+  { key: "matter", label: "Matter", defaultVisible: true },
+  { key: "client", label: "Client", defaultVisible: true },
+  { key: "responsibleAttorney", label: "Responsible Attorney", defaultVisible: true },
+  { key: "practiceArea", label: "Practice Area", defaultVisible: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "caseNumber", label: "Case Number", defaultVisible: false },
+  { key: "openedDate", label: "Open Date", defaultVisible: true },
+  { key: "matterType", label: "Matter Type", defaultVisible: false },
+  { key: "courtName", label: "Court", defaultVisible: false },
+  { key: "opposingCounsel", label: "Opposing Counsel", defaultVisible: false },
+];
+
 export default function MattersPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedMatter, setSelectedMatter] = useState<Matter | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
+  const [currentPage, setCurrentPage] = useState(0);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showAddContactDialog, setShowAddContactDialog] = useState(false);
-  const [showAddThreadDialog, setShowAddThreadDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
-  
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(
+    new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key))
+  );
+
   const [matterForm, setMatterForm] = useState({
     clientId: "",
     name: "",
@@ -140,20 +155,6 @@ export default function MattersPage() {
     responsibleAttorney: "",
   });
 
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    role: "",
-    organization: "",
-    email: "",
-    phone: "",
-    notes: "",
-  });
-
-  const [threadForm, setThreadForm] = useState({
-    subject: "",
-    participants: "",
-  });
-
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -162,28 +163,13 @@ export default function MattersPage() {
     queryKey: ["/api/matters"],
   });
 
-  const { data: contacts = [] } = useQuery<MatterContact[]>({
-    queryKey: ["/api/matters", selectedMatter?.id, "contacts"],
-    enabled: !!selectedMatter,
-  });
-
-  const { data: threads = [] } = useQuery<Thread[]>({
-    queryKey: ["/api/matters", selectedMatter?.id, "threads"],
-    enabled: !!selectedMatter,
-  });
-
-  const { data: timeline = [] } = useQuery<TimelineEvent[]>({
-    queryKey: ["/api/matters", selectedMatter?.id, "timeline"],
-    enabled: !!selectedMatter,
-  });
-
   const createMatterMutation = useMutation({
     mutationFn: async (data: typeof matterForm) => {
       const res = await apiRequest("POST", "/api/matters", {
         clientId: data.clientId,
         name: data.name,
         caseNumber: data.caseNumber || `CASE-${Date.now().toString(36).toUpperCase()}`,
-        matterType: data.matterType,
+        matterType: data.matterType || "Consultation",
         status: "active",
         description: data.description,
         practiceArea: data.practiceArea,
@@ -203,622 +189,504 @@ export default function MattersPage() {
     }
   });
 
-  const updateMatterMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Matter> }) => {
-      const res = await apiRequest("PATCH", `/api/matters/${id}`, data);
-      return res.json();
+  const deleteMatterMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/matters/${id}`);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
-      setSelectedMatter(data);
-      toast({ title: "Matter updated", description: "Changes have been saved." });
+      toast({ title: "Matter deleted" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update matter.", variant: "destructive" });
+  });
+
+  const filteredMatters = useMemo(() => {
+    let result = [...matters];
+
+    const statusFilters = STATUS_TAB_MAP[activeTab];
+    if (statusFilters && statusFilters.length > 0) {
+      result = result.filter(m => statusFilters.includes(m.status));
     }
-  });
 
-  const createContactMutation = useMutation({
-    mutationFn: async (data: typeof contactForm) => {
-      const res = await apiRequest("POST", `/api/matters/${selectedMatter?.id}/contacts`, {
-        matterId: selectedMatter?.id,
-        name: data.name,
-        role: data.role,
-        organization: data.organization || undefined,
-        email: data.email || undefined,
-        phone: data.phone || undefined,
-        notes: data.notes || undefined,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatter?.id, "contacts"] });
-      setShowAddContactDialog(false);
-      setContactForm({ name: "", role: "", organization: "", email: "", phone: "", notes: "" });
-      toast({ title: "Contact added", description: "New contact has been added to the matter." });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to add contact.", variant: "destructive" });
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(m =>
+        m.name.toLowerCase().includes(q) ||
+        m.caseNumber?.toLowerCase().includes(q) ||
+        getClientName(m.clientId).toLowerCase().includes(q) ||
+        m.practiceArea?.toLowerCase().includes(q)
+      );
     }
-  });
 
-  const createThreadMutation = useMutation({
-    mutationFn: async (data: typeof threadForm) => {
-      const res = await apiRequest("POST", `/api/matters/${selectedMatter?.id}/threads`, {
-        matterId: selectedMatter?.id,
-        subject: data.subject,
-        status: "active",
-        participants: data.participants.split(",").map(p => p.trim()).filter(Boolean),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatter?.id, "threads"] });
-      setShowAddThreadDialog(false);
-      setThreadForm({ subject: "", participants: "" });
-      toast({ title: "Thread created", description: "New discussion thread has been started." });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create thread.", variant: "destructive" });
+    return result;
+  }, [matters, activeTab, searchQuery, clients]);
+
+  const totalPages = Math.ceil(filteredMatters.length / PAGE_SIZE);
+  const paginatedMatters = filteredMatters.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+  const statusCounts = useMemo(() => ({
+    all: matters.length,
+    open: matters.filter(m => m.status === "active").length,
+    pending: matters.filter(m => m.status === "pending" || m.status === "on_hold").length,
+    closed: matters.filter(m => m.status === "closed" || m.status === "archived").length,
+  }), [matters]);
+
+  function getClientName(clientId: string) {
+    return clients.find(c => c.id === clientId)?.name || "Unknown";
+  }
+
+  function toggleColumn(key: ColumnKey) {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === paginatedMatters.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedMatters.map(m => m.id)));
     }
-  });
+  }
 
-  const filteredMatters = matters.filter(matter => {
-    const matchesSearch = matter.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         matter.caseNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || matter.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
-  const getClientName = (clientId: string) => {
-    return clients.find(c => c.id === clientId)?.name || "Unknown Client";
-  };
+  function formatMatterDisplay(matter: Matter): string {
+    const client = clients.find(c => c.id === matter.clientId);
+    const clientName = client?.name?.split(" ")[0] || "";
+    return `${matter.caseNumber}-${clientName}: ${matter.name}`;
+  }
 
   return (
-    <div className="h-full flex" data-testid="page-matters">
-      <div className="flex-1 flex flex-col border-r">
-        <div className="p-4 border-b space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">Matters</h1>
-              <p className="text-muted-foreground">Manage cases and legal matters</p>
-            </div>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-matter">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Matter
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Create New Matter</DialogTitle>
-                  <DialogDescription>Open a new case or matter for a client.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Client</Label>
-                    <Select 
-                      value={matterForm.clientId} 
-                      onValueChange={v => setMatterForm(p => ({ ...p, clientId: v }))}
-                    >
-                      <SelectTrigger data-testid="select-client">
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map(client => (
-                          <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Matter Name</Label>
-                      <Input 
-                        value={matterForm.name}
-                        onChange={e => setMatterForm(p => ({ ...p, name: e.target.value }))}
-                        placeholder="e.g., Estate Planning"
-                        data-testid="input-matter-name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Case Number (optional)</Label>
-                      <Input 
-                        value={matterForm.caseNumber}
-                        onChange={e => setMatterForm(p => ({ ...p, caseNumber: e.target.value }))}
-                        placeholder="Auto-generated if empty"
-                        data-testid="input-case-number"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Practice Area</Label>
-                      <Select 
-                        value={matterForm.practiceArea} 
-                        onValueChange={v => setMatterForm(p => ({ ...p, practiceArea: v }))}
-                      >
-                        <SelectTrigger data-testid="select-practice-area">
-                          <SelectValue placeholder="Select area" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRACTICE_AREAS.map(area => (
-                            <SelectItem key={area} value={area}>{area}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Matter Type</Label>
-                      <Input 
-                        value={matterForm.matterType}
-                        onChange={e => setMatterForm(p => ({ ...p, matterType: e.target.value }))}
-                        placeholder="e.g., Consultation, Litigation"
-                        data-testid="input-matter-type"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Responsible Attorney</Label>
-                    <Input 
-                      value={matterForm.responsibleAttorney}
-                      onChange={e => setMatterForm(p => ({ ...p, responsibleAttorney: e.target.value }))}
-                      placeholder="Name of lead attorney"
-                      data-testid="input-attorney"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea 
-                      value={matterForm.description}
-                      onChange={e => setMatterForm(p => ({ ...p, description: e.target.value }))}
-                      placeholder="Brief description of the matter..."
-                      data-testid="input-description"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button 
-                    onClick={() => createMatterMutation.mutate(matterForm)}
-                    disabled={!matterForm.name || !matterForm.clientId || createMatterMutation.isPending}
-                    data-testid="button-submit-matter"
-                  >
-                    {createMatterMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Create Matter
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search matters..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="flex flex-col h-full" data-testid="page-matters">
+      <div className="flex items-center justify-between gap-4 p-4 border-b">
+        <div className="flex items-center gap-3">
+          <Scale className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-semibold" data-testid="text-matters-title">Matters</h1>
         </div>
-
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-2">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredMatters.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Briefcase className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No matters found</p>
-              </div>
-            ) : (
-              filteredMatters.map(matter => {
-                const StatusIcon = STATUS_CONFIG[matter.status]?.icon || CheckCircle2;
-                const isSelected = selectedMatter?.id === matter.id;
-                
-                return (
-                  <Card 
-                    key={matter.id} 
-                    className={`cursor-pointer transition-colors ${isSelected ? "ring-2 ring-primary" : "hover-elevate"}`}
-                    onClick={() => setSelectedMatter(matter)}
-                    data-testid={`matter-card-${matter.id}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold truncate">{matter.name}</h3>
-                            <Badge variant="outline" className="text-xs shrink-0">
-                              {matter.caseNumber}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {getClientName(matter.clientId)} • {matter.practiceArea}
-                          </p>
-                        </div>
-                        <Badge 
-                          variant="secondary"
-                          className={`shrink-0 ${STATUS_CONFIG[matter.status]?.color} text-white`}
-                        >
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {STATUS_CONFIG[matter.status]?.label}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        </ScrollArea>
-      </div>
-
-      <div className="w-[500px] flex flex-col">
-        {selectedMatter ? (
-          <>
-            <div className="p-4 border-b">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-xl font-semibold">{selectedMatter.name}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedMatter.caseNumber} • {getClientName(selectedMatter.clientId)}
-                  </p>
-                </div>
-                <Select 
-                  value={selectedMatter.status}
-                  onValueChange={v => updateMatterMutation.mutate({ id: selectedMatter.id, data: { status: v as any } })}
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-matter">
+              <Plus className="h-4 w-4 mr-2" />
+              New Matter
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Create New Matter</DialogTitle>
+              <DialogDescription>Open a new case or matter for a client.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Client</Label>
+                <Select
+                  value={matterForm.clientId}
+                  onValueChange={v => setMatterForm(p => ({ ...p, clientId: v }))}
                 >
-                  <SelectTrigger className="w-[120px]" data-testid="select-matter-status">
-                    <SelectValue />
+                  <SelectTrigger data-testid="select-client">
+                    <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <TabsList className="mx-4 mt-2">
-                <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-                <TabsTrigger value="contacts" data-testid="tab-contacts">Contacts</TabsTrigger>
-                <TabsTrigger value="threads" data-testid="tab-threads">Threads</TabsTrigger>
-                <TabsTrigger value="timeline" data-testid="tab-timeline">Timeline</TabsTrigger>
-              </TabsList>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Matter Name</Label>
+                  <Input
+                    value={matterForm.name}
+                    onChange={e => setMatterForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g., Estate Planning"
+                    data-testid="input-matter-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Case Number (optional)</Label>
+                  <Input
+                    value={matterForm.caseNumber}
+                    onChange={e => setMatterForm(p => ({ ...p, caseNumber: e.target.value }))}
+                    placeholder="Auto-generated if empty"
+                    data-testid="input-case-number"
+                  />
+                </div>
+              </div>
 
-              <ScrollArea className="flex-1">
-                <TabsContent value="overview" className="p-4 space-y-4 mt-0">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Practice Area</Label>
-                      <p className="font-medium">{selectedMatter.practiceArea || "-"}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Matter Type</Label>
-                      <p className="font-medium">{selectedMatter.matterType || "-"}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Responsible Attorney</Label>
-                      <p className="font-medium">{selectedMatter.responsibleAttorney || "-"}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Open Date</Label>
-                      <p className="font-medium">{new Date(selectedMatter.openedDate).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Description</Label>
-                    <p className="text-sm">{selectedMatter.description || "No description provided."}</p>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="p-3 text-center">
-                        <Users className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-2xl font-bold">{contacts.length}</p>
-                        <p className="text-xs text-muted-foreground">Contacts</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-3 text-center">
-                        <MessageSquare className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-2xl font-bold">{threads.length}</p>
-                        <p className="text-xs text-muted-foreground">Threads</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-3 text-center">
-                        <Calendar className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                        <p className="text-2xl font-bold">{timeline.length}</p>
-                        <p className="text-xs text-muted-foreground">Events</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="contacts" className="p-4 space-y-4 mt-0">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Matter Contacts</h3>
-                    <Dialog open={showAddContactDialog} onOpenChange={setShowAddContactDialog}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" data-testid="button-add-contact">
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add Contact</DialogTitle>
-                          <DialogDescription>Add a contact related to this matter.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Name</Label>
-                              <Input 
-                                value={contactForm.name}
-                                onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))}
-                                data-testid="input-contact-name"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Role</Label>
-                              <Select 
-                                value={contactForm.role}
-                                onValueChange={v => setContactForm(p => ({ ...p, role: v }))}
-                              >
-                                <SelectTrigger data-testid="select-contact-role">
-                                  <SelectValue placeholder="Select role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="plaintiff">Plaintiff</SelectItem>
-                                  <SelectItem value="defendant">Defendant</SelectItem>
-                                  <SelectItem value="witness">Witness</SelectItem>
-                                  <SelectItem value="expert">Expert</SelectItem>
-                                  <SelectItem value="opposing-counsel">Opposing Counsel</SelectItem>
-                                  <SelectItem value="judge">Judge</SelectItem>
-                                  <SelectItem value="client">Client</SelectItem>
-                                  <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Organization</Label>
-                            <Input 
-                              value={contactForm.organization}
-                              onChange={e => setContactForm(p => ({ ...p, organization: e.target.value }))}
-                              data-testid="input-contact-org"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Email</Label>
-                              <Input 
-                                type="email"
-                                value={contactForm.email}
-                                onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))}
-                                data-testid="input-contact-email"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Phone</Label>
-                              <Input 
-                                value={contactForm.phone}
-                                onChange={e => setContactForm(p => ({ ...p, phone: e.target.value }))}
-                                data-testid="input-contact-phone"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            onClick={() => createContactMutation.mutate(contactForm)}
-                            disabled={!contactForm.name || !contactForm.role || createContactMutation.isPending}
-                            data-testid="button-submit-contact"
-                          >
-                            {createContactMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Add Contact
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-
-                  {contacts.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No contacts yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {contacts.map(contact => (
-                        <Card key={contact.id} data-testid={`contact-card-${contact.id}`}>
-                          <CardContent className="p-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="font-medium">{contact.name}</p>
-                                <p className="text-sm text-muted-foreground">{contact.role}</p>
-                                {contact.organization && (
-                                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                    <Building2 className="h-3 w-3" />
-                                    {contact.organization}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                                {contact.email && (
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    {contact.email}
-                                  </span>
-                                )}
-                                {contact.phone && (
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {contact.phone}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Practice Area</Label>
+                  <Select
+                    value={matterForm.practiceArea}
+                    onValueChange={v => setMatterForm(p => ({ ...p, practiceArea: v }))}
+                  >
+                    <SelectTrigger data-testid="select-practice-area">
+                      <SelectValue placeholder="Select area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRACTICE_AREAS.map(area => (
+                        <SelectItem key={area} value={area}>{area}</SelectItem>
                       ))}
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="threads" className="p-4 space-y-4 mt-0">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">Discussion Threads</h3>
-                    <Dialog open={showAddThreadDialog} onOpenChange={setShowAddThreadDialog}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" data-testid="button-add-thread">
-                          <Plus className="h-4 w-4 mr-1" />
-                          New Thread
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Start New Thread</DialogTitle>
-                          <DialogDescription>Create a discussion thread for this matter.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Subject</Label>
-                            <Input 
-                              value={threadForm.subject}
-                              onChange={e => setThreadForm(p => ({ ...p, subject: e.target.value }))}
-                              placeholder="Thread subject..."
-                              data-testid="input-thread-subject"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Participants (comma-separated)</Label>
-                            <Input 
-                              value={threadForm.participants}
-                              onChange={e => setThreadForm(p => ({ ...p, participants: e.target.value }))}
-                              placeholder="John, Jane, Mike"
-                              data-testid="input-thread-participants"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button 
-                            onClick={() => createThreadMutation.mutate(threadForm)}
-                            disabled={!threadForm.subject || createThreadMutation.isPending}
-                            data-testid="button-submit-thread"
-                          >
-                            {createThreadMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Create Thread
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-
-                  {threads.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No threads yet</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {threads.map(thread => (
-                        <Card key={thread.id} className="hover-elevate cursor-pointer" data-testid={`thread-card-${thread.id}`}>
-                          <CardContent className="p-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium">{thread.subject}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {thread.participants.length} participants • {new Date(thread.updatedAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <Badge variant={thread.status === "active" ? "default" : "secondary"}>
-                                {thread.status}
-                              </Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Matter Type</Label>
+                  <Select
+                    value={matterForm.matterType}
+                    onValueChange={v => setMatterForm(p => ({ ...p, matterType: v }))}
+                  >
+                    <SelectTrigger data-testid="select-matter-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MATTER_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
                       ))}
-                    </div>
-                  )}
-                </TabsContent>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-                <TabsContent value="timeline" className="p-4 space-y-4 mt-0">
-                  <h3 className="font-semibold">Timeline</h3>
-                  
-                  {timeline.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No timeline events</p>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                      <div className="space-y-4">
-                        {timeline.map(event => (
-                          <div key={event.id} className="relative pl-10" data-testid={`timeline-event-${event.id}`}>
-                            <div className="absolute left-2.5 w-3 h-3 rounded-full bg-primary" />
-                            <Card>
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <p className="font-medium">{event.title}</p>
-                                    <p className="text-sm text-muted-foreground">{event.description}</p>
-                                  </div>
-                                  <Badge variant="outline" className="text-xs shrink-0">
-                                    {new Date(event.eventDate).toLocaleDateString()}
-                                  </Badge>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </ScrollArea>
-            </Tabs>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <Briefcase className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <h2 className="text-lg font-medium mb-1">Select a Matter</h2>
-              <p className="text-sm">Choose a matter to view its details</p>
+              <div className="space-y-2">
+                <Label>Responsible Attorney</Label>
+                <Input
+                  value={matterForm.responsibleAttorney}
+                  onChange={e => setMatterForm(p => ({ ...p, responsibleAttorney: e.target.value }))}
+                  placeholder="Name of lead attorney"
+                  data-testid="input-attorney"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={matterForm.description}
+                  onChange={e => setMatterForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Brief description of the matter..."
+                  data-testid="input-description"
+                />
+              </div>
             </div>
+            <DialogFooter>
+              <Button
+                onClick={() => createMatterMutation.mutate(matterForm)}
+                disabled={!matterForm.name || !matterForm.clientId || createMatterMutation.isPending}
+                data-testid="button-submit-matter"
+              >
+                {createMatterMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Create Matter
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 px-4 pt-3 pb-2 border-b">
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setCurrentPage(0); }}>
+          <TabsList>
+            <TabsTrigger value="all" data-testid="tab-all">
+              All ({statusCounts.all})
+            </TabsTrigger>
+            <TabsTrigger value="open" data-testid="tab-open" className="text-primary data-[state=active]:text-primary">
+              Open ({statusCounts.open})
+            </TabsTrigger>
+            <TabsTrigger value="pending" data-testid="tab-pending">
+              Pending ({statusCounts.pending})
+            </TabsTrigger>
+            <TabsTrigger value="closed" data-testid="tab-closed">
+              Closed ({statusCounts.closed})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter by keyword"
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setCurrentPage(0); }}
+              className="pl-8 w-[200px]"
+              data-testid="input-search"
+            />
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="button-columns">
+                <Columns3 className="h-4 w-4 mr-1" />
+                Columns
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {ALL_COLUMNS.filter(c => c.key !== "actions" && c.key !== "matter").map(col => (
+                <DropdownMenuCheckboxItem
+                  key={col.key}
+                  checked={visibleColumns.has(col.key)}
+                  onCheckedChange={() => toggleColumn(col.key)}
+                >
+                  {col.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="button-filters">
+                <SlidersHorizontal className="h-4 w-4 mr-1" />
+                Filters
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Quick Filters</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => { setActiveTab("open"); setCurrentPage(0); }}>
+                Open matters only
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setActiveTab("pending"); setCurrentPage(0); }}>
+                Pending matters
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { setActiveTab("closed"); setCurrentPage(0); }}>
+                Closed matters
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => { setActiveTab("all"); setSearchQuery(""); setCurrentPage(0); }}>
+                Clear all filters
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredMatters.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">No matters found</p>
+            <p className="text-sm">
+              {searchQuery ? "Try adjusting your search or filters" : "Create a new matter to get started"}
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={selectedIds.size === paginatedMatters.length && paginatedMatters.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    data-testid="checkbox-select-all"
+                  />
+                </TableHead>
+                {visibleColumns.has("actions") && (
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                )}
+                <TableHead className="min-w-[250px]">Matter</TableHead>
+                {visibleColumns.has("client") && (
+                  <TableHead>Client</TableHead>
+                )}
+                {visibleColumns.has("responsibleAttorney") && (
+                  <TableHead>Responsible Atty</TableHead>
+                )}
+                {visibleColumns.has("practiceArea") && (
+                  <TableHead>Practice Area</TableHead>
+                )}
+                {visibleColumns.has("status") && (
+                  <TableHead>Status</TableHead>
+                )}
+                {visibleColumns.has("caseNumber") && (
+                  <TableHead>Case Number</TableHead>
+                )}
+                {visibleColumns.has("openedDate") && (
+                  <TableHead>Open Date</TableHead>
+                )}
+                {visibleColumns.has("matterType") && (
+                  <TableHead>Matter Type</TableHead>
+                )}
+                {visibleColumns.has("courtName") && (
+                  <TableHead>Court</TableHead>
+                )}
+                {visibleColumns.has("opposingCounsel") && (
+                  <TableHead>Opposing Counsel</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedMatters.map((matter) => (
+                <TableRow
+                  key={matter.id}
+                  className="cursor-pointer"
+                  data-testid={`matter-row-${matter.id}`}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(matter.id)}
+                      onCheckedChange={() => toggleSelect(matter.id)}
+                      data-testid={`checkbox-matter-${matter.id}`}
+                    />
+                  </TableCell>
+                  {visibleColumns.has("actions") && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid={`button-edit-${matter.id}`}>
+                            Edit
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onSelect={() => setLocation(`/matters/${matter.id}`)}>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setLocation(`/matters/${matter.id}`)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Matter
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onSelect={() => {
+                              if (confirm("Are you sure you want to delete this matter?")) {
+                                deleteMatterMutation.mutate(matter.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                  <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <Link
+                      href={`/matters/${matter.id}`}
+                      className="text-primary hover:underline font-medium"
+                      data-testid={`link-matter-${matter.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {formatMatterDisplay(matter)}
+                    </Link>
+                  </TableCell>
+                  {visibleColumns.has("client") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      <span className="text-primary">{getClientName(matter.clientId)}</span>
+                      <Info className="inline-block h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("responsibleAttorney") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {(matter.assignedAttorneys && matter.assignedAttorneys.length > 0)
+                        ? matter.assignedAttorneys[0]
+                        : <span className="text-muted-foreground">&mdash;</span>
+                      }
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("practiceArea") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.practiceArea || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("status") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      <Badge variant={matter.status === "active" ? "default" : "secondary"}>
+                        {matter.status === "active" ? "Open" : matter.status === "on_hold" ? "On Hold" : matter.status.charAt(0).toUpperCase() + matter.status.slice(1)}
+                      </Badge>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("caseNumber") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.caseNumber || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("openedDate") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.openedDate ? new Date(matter.openedDate).toLocaleDateString() : <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("matterType") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.matterType || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("courtName") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.courtName || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("opposingCounsel") && (
+                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                      {matter.opposingCounsel || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
+      </ScrollArea>
+
+      <div className="flex items-center justify-between gap-4 px-4 py-3 border-t">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={currentPage === 0}
+            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+            data-testid="button-prev-page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage(p => p + 1)}
+            data-testid="button-next-page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground" data-testid="text-pagination">
+            {filteredMatters.length === 0
+              ? "No results"
+              : `${currentPage * PAGE_SIZE + 1}\u2013${Math.min((currentPage + 1) * PAGE_SIZE, filteredMatters.length)} of ${filteredMatters.length}`
+            }
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" data-testid="button-export">
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+        </div>
       </div>
     </div>
   );

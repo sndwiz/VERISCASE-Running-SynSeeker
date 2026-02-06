@@ -41,6 +41,7 @@ import ClientDashboardPage from "@/pages/client-dashboard";
 import ClientDetailDashboard from "@/pages/client-detail-dashboard";
 import VibeCodePage from "@/pages/vibe-code";
 import SecurityDashboardPage from "@/pages/security-dashboard";
+import MatterDetailPage from "@/pages/matter-detail";
 
 import type { Board } from "@shared/schema";
 
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/evidence" component={EvidenceVaultPage} />
       <Route path="/detective" component={DetectiveBoardPage} />
       <Route path="/automations" component={AutomationsPage} />
+      <Route path="/matters/:id" component={MatterDetailPage} />
       <Route path="/matters" component={MattersPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/client-dashboard/:clientId" component={ClientDetailDashboard} />
