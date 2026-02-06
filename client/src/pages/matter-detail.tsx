@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import MatterInsights from "@/components/matter-insights";
 import { Link, useLocation, useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -290,6 +291,7 @@ export default function MatterDetailPage() {
               { value: "documents", label: "Documents" },
               { value: "tasks", label: "Tasks" },
               { value: "contacts", label: "Contacts" },
+              { value: "insights", label: "Insights" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
@@ -750,6 +752,10 @@ export default function MatterDetailPage() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="insights" className="m-0 p-0">
+            <MatterInsights matterId={matter.id} />
           </TabsContent>
         </ScrollArea>
       </Tabs>

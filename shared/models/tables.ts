@@ -583,7 +583,117 @@ export const trustTransactions = pgTable("trust_transactions", {
   index("IDX_trust_client").on(table.clientId),
 ]);
 
+// ============ MATTER INSIGHTS: ASSETS ============
+export const matterAssets = pgTable("matter_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull(),
+  originalFilename: varchar("original_filename", { length: 500 }).notNull(),
+  storageUrl: text("storage_url").notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  hashSha256: varchar("hash_sha256", { length: 64 }),
+  uploadedByUserId: varchar("uploaded_by_user_id"),
+  sourceDate: timestamp("source_date"),
+  docType: varchar("doc_type", { length: 100 }),
+  custodian: varchar("custodian", { length: 100 }),
+  confidentiality: varchar("confidentiality", { length: 50 }).default("normal"),
+  status: varchar("status", { length: 50 }).default("queued").notNull(),
+  errorMessage: text("error_message"),
+  pageCount: integer("page_count"),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_matter_assets_matter_id").on(table.matterId),
+  index("IDX_matter_assets_status").on(table.status),
+]);
+
+// ============ MATTER INSIGHTS: ASSET TEXT ============
+export const assetText = pgTable("asset_text", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assetId: varchar("asset_id").notNull().references(() => matterAssets.id, { onDelete: "cascade" }),
+  method: varchar("method", { length: 50 }).notNull(),
+  fullText: text("full_text"),
+  confidenceOverall: real("confidence_overall"),
+  language: varchar("language", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_asset_text_asset_id").on(table.assetId),
+]);
+
+// ============ MATTER INSIGHTS: TEXT ANCHORS ============
+export const textAnchors = pgTable("text_anchors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  assetTextId: varchar("asset_text_id").notNull().references(() => assetText.id, { onDelete: "cascade" }),
+  anchorType: varchar("anchor_type", { length: 50 }).notNull(),
+  pageNumber: integer("page_number"),
+  lineStart: integer("line_start"),
+  lineEnd: integer("line_end"),
+  timeStartMs: integer("time_start_ms"),
+  timeEndMs: integer("time_end_ms"),
+  snippet: text("snippet"),
+  confidence: real("confidence"),
+}, (table) => [
+  index("IDX_text_anchors_asset_text_id").on(table.assetTextId),
+]);
+
+// ============ MATTER INSIGHTS: TEXT CHUNKS ============
+export const textChunks = pgTable("text_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull(),
+  assetId: varchar("asset_id").notNull(),
+  assetTextId: varchar("asset_text_id").notNull(),
+  chunkText: text("chunk_text").notNull(),
+  anchorIdStart: varchar("anchor_id_start"),
+  anchorIdEnd: varchar("anchor_id_end"),
+  chunkIndex: integer("chunk_index").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_text_chunks_matter_id").on(table.matterId),
+  index("IDX_text_chunks_asset_id").on(table.assetId),
+]);
+
+// ============ MATTER INSIGHTS: INSIGHT RUNS ============
+export const insightRuns = pgTable("insight_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull(),
+  requestedByUserId: varchar("requested_by_user_id"),
+  intentType: varchar("intent_type", { length: 100 }).notNull(),
+  priorityRules: jsonb("priority_rules"),
+  outputFormat: varchar("output_format", { length: 100 }),
+  scope: varchar("scope", { length: 255 }),
+  status: varchar("status", { length: 50 }).default("queued").notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_insight_runs_matter_id").on(table.matterId),
+  index("IDX_insight_runs_status").on(table.status),
+]);
+
+// ============ MATTER INSIGHTS: INSIGHT OUTPUTS ============
+export const insightOutputs = pgTable("insight_outputs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  insightRunId: varchar("insight_run_id").notNull().references(() => insightRuns.id, { onDelete: "cascade" }),
+  section: varchar("section", { length: 100 }).notNull(),
+  contentJson: jsonb("content_json").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_insight_outputs_run_id").on(table.insightRunId),
+]);
+
 // Type exports
+export type MatterAssetRecord = typeof matterAssets.$inferSelect;
+export type InsertMatterAssetRecord = typeof matterAssets.$inferInsert;
+export type AssetTextRecord = typeof assetText.$inferSelect;
+export type InsertAssetTextRecord = typeof assetText.$inferInsert;
+export type TextAnchorRecord = typeof textAnchors.$inferSelect;
+export type InsertTextAnchorRecord = typeof textAnchors.$inferInsert;
+export type TextChunkRecord = typeof textChunks.$inferSelect;
+export type InsertTextChunkRecord = typeof textChunks.$inferInsert;
+export type InsightRunRecord = typeof insightRuns.$inferSelect;
+export type InsertInsightRunRecord = typeof insightRuns.$inferInsert;
+export type InsightOutputRecord = typeof insightOutputs.$inferSelect;
+export type InsertInsightOutputRecord = typeof insightOutputs.$inferInsert;
+
 export type AuditLogRecord = typeof auditLogs.$inferSelect;
 export type InsertAuditLogRecord = typeof auditLogs.$inferInsert;
 export type SecurityEventRecord = typeof securityEvents.$inferSelect;

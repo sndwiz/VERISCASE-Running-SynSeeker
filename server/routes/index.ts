@@ -21,6 +21,7 @@ import { registerMeetingRoutes } from "./meetings";
 import { registerVibeCodeRoutes } from "./vibe-code";
 import { registerSecurityRoutes } from "./security";
 import { registerBillingRoutes } from "./billing";
+import insightsRouter from "./insights";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -48,4 +49,5 @@ export function registerAllRoutes(app: Express): void {
   registerVibeCodeRoutes(app);
   registerSecurityRoutes(app);
   registerBillingRoutes(app);
+  app.use(insightsRouter);
 }
