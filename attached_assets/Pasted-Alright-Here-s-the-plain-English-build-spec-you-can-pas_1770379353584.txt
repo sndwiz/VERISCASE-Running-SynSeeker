@@ -1,0 +1,370 @@
+Alright. Here’s the plain-English build spec you can paste into Replit as your “task doc” for implementing the VERICASE Matter Insights / OCR Intake module. It’s written like instructions to your dev build (or to an AI coder), not marketing fluff.
+
+⸻
+
+VERICASE Module: “Matter Insights” (OCR-first Evidence Intelligence)
+
+Goal
+
+Let a user attach hundreds of files to a Matter (case) in any format. The system normalizes everything into text (extract text when possible, OCR when needed, transcribe audio), then produces:
+	•	a scan summary (counts, date range, types, confidence, problem files)
+	•	an intent-driven analysis (themes, timeline, contradictions, action items, risks)
+	•	citations back to the exact source page/line/timecode so it’s defensible.
+
+This module must fit into a “Clio x Monday x CRM x AI Automations” app structure:
+	•	Matters exist
+	•	Boards / items exist
+	•	Tasks exist
+	•	Automations can create/update tasks/columns/items
+
+⸻
+
+Core UX Flow (what the user sees)
+
+1) Matter → “Insights” tab
+
+Add a new tab on each Matter called Insights with 4 areas:
+
+A. Upload Panel
+	•	Drag/drop files
+	•	Multi-upload
+	•	Show progress per file
+	•	Assign optional tags at upload:
+	•	doc type (intake, invoice, medical, police report, email export, photo, transcript, etc.)
+	•	custodian (client, opposing, witness, attorney)
+	•	confidentiality level (normal / sensitive / privileged)
+
+B. Scan Summary Panel (always shown after ingest starts)
+Before “analysis,” show:
+	•	Total files
+	•	Total pages (for PDFs) and total minutes (for audio)
+	•	Date range (oldest → newest) based on metadata + OCR detected dates when metadata missing
+	•	Content types breakdown (PDF, image, doc, email export, audio, etc.)
+	•	OCR/transcription confidence distribution (High/Med/Low)
+	•	“Problem files” list:
+	•	unreadable pages
+	•	very low OCR confidence
+	•	corrupted/unsupported
+	•	missing pages
+
+C. Intent Questions (required before deep analysis)
+Pop a modal or form that asks:
+	1.	What do you want to discover?
+	•	Themes
+	•	Timeline
+	•	Contradictions
+	•	Action items
+	•	Risks / red flags
+	•	“Deposition prep”
+	•	“Board update pack”
+	2.	What should be prioritized?
+	•	date window
+	•	doc types
+	•	custodians
+	•	“most recent first”
+	3.	What output format is best?
+	•	executive brief
+	•	timeline table
+	•	issue map
+	•	task list
+	•	board-ready update
+
+D. Results Area
+Tabs:
+	•	Themes
+	•	Timeline
+	•	Entities (people/orgs/places)
+	•	Contradictions
+	•	Action items → “Create Tasks”
+	•	Risks / flags
+	•	Citations (always included under each claim)
+
+Also add a “Progressive analysis” rule:
+	•	If more than 20 files exist, analyze 10 most recent first, then “Analyze next 10” button.
+
+⸻
+
+Data Model (minimum tables/collections)
+
+1) matter_assets
+
+One row per uploaded file.
+Fields:
+	•	id
+	•	matter_id
+	•	original_filename
+	•	storage_url (or path)
+	•	file_type (pdf, image, audio, doc, other)
+	•	size_bytes
+	•	hash_sha256 (dedupe + integrity)
+	•	uploaded_by_user_id
+	•	created_at (upload time)
+	•	source_date (best guess date from metadata)
+	•	status (queued, processing, ready, failed)
+	•	error_message (if failed)
+
+2) asset_text
+
+One row per “derived text output” per asset.
+Fields:
+	•	id
+	•	asset_id
+	•	method (extracted_text | ocr | transcription)
+	•	full_text (or link to stored text blob)
+	•	confidence_overall (0–1)
+	•	language
+	•	created_at
+
+3) text_anchors
+
+This is how we do citations. Many rows per asset_text.
+Fields:
+	•	id
+	•	asset_text_id
+	•	anchor_type (page_line | timestamp)
+	•	page_number (nullable)
+	•	line_start, line_end (nullable)
+	•	time_start_ms, time_end_ms (nullable)
+	•	snippet (short excerpt for UI)
+	•	confidence (optional)
+
+4) text_chunks
+
+For retrieval/search.
+Fields:
+	•	id
+	•	matter_id
+	•	asset_id
+	•	asset_text_id
+	•	chunk_text
+	•	embedding_vector (if you use vectors)
+	•	anchor_id_start, anchor_id_end (or store anchor ranges)
+	•	created_at
+
+5) insight_runs
+
+Every analysis request creates a run (so outputs are auditable).
+Fields:
+	•	id
+	•	matter_id
+	•	requested_by_user_id
+	•	intent_type (themes/timeline/etc)
+	•	priority_rules (json: date range/doc types/custodians)
+	•	output_format
+	•	scope (e.g., “10 most recent”, “all”, “next batch”)
+	•	status (queued, running, complete, failed)
+	•	created_at
+
+6) insight_outputs
+
+Stores the generated results.
+Fields:
+	•	id
+	•	insight_run_id
+	•	section (themes/timeline/contradictions/action_items/risks)
+	•	content_json (structured results)
+	•	created_at
+
+⸻
+
+Ingestion Pipeline (how files become text)
+
+Step 1: Upload & store
+	•	Save file to storage (Replit filesystem for now; later S3)
+	•	Create matter_assets row
+	•	Mark status = queued
+
+Step 2: Determine the cheapest accurate text method
+
+For each file:
+	•	If PDF and it contains selectable text → extract text (no OCR)
+	•	If PDF is scanned/image-based → OCR
+	•	If image (png/jpg/heic) → OCR
+	•	If audio/video → transcription
+	•	If doc/docx → convert to text (or treat as extract step)
+
+Important rule: even if you prefer OCR-first, don’t OCR a clean text PDF. It’s slower and worse.
+
+Step 3: Produce asset_text + anchors
+	•	Store full text
+	•	Create anchors:
+	•	PDFs/images: page + line ranges
+	•	audio: timestamps
+	•	Record confidence:
+	•	OCR engines return confidence; store it
+	•	transcription can store average confidence if available; otherwise mark unknown
+
+Step 4: Chunk for search
+	•	Split into chunks that preserve citation anchors
+	•	Store into text_chunks for retrieval
+
+Step 5: Update scan summary fields
+	•	Total pages/minutes
+	•	Confidence distribution
+	•	Problem files list
+
+⸻
+
+Analysis Pipeline (how text becomes insights)
+
+Rule: Ask intent first
+
+Do not analyze until intent questions are answered, EXCEPT you can always show scan summary.
+
+Progressive analysis
+
+If total files > 20:
+	•	Default analysis scope = 10 most recent assets with status=ready
+	•	Provide a “Next batch” workflow
+
+Retrieval-first analysis (RAG)
+
+When generating any claim:
+	•	Pull relevant chunks by query
+	•	Generate output that includes citations (asset + anchor/snippet)
+
+Required outputs (structured)
+
+Each insight run generates:
+
+1) Themes
+	•	theme title
+	•	short explanation
+	•	supporting citations (at least 2 when possible)
+
+2) Timeline
+	•	event_date (or date range / approximate)
+	•	event_description
+	•	involved parties
+	•	citations
+
+3) Entities
+	•	people/orgs/places
+	•	role guesses (witness, attorney, etc.) marked as “inferred” if not explicit
+	•	citations
+
+4) Contradictions
+	•	statement A vs statement B
+	•	why it conflicts
+	•	citations for both
+
+5) Action items
+	•	task_title
+	•	suggested owner (optional)
+	•	suggested due date (optional)
+	•	confidence
+	•	citations
+	•	button: “Create tasks in board”
+
+6) Risks / flags
+	•	low-confidence OCR areas
+	•	sensitive/privileged indicators
+	•	missing docs (“referenced but not found”)
+	•	contradictions
+	•	deadlines mentioned
+	•	citations
+
+⸻
+
+Monday-style Board Integration (operationalization)
+
+A) Board columns to add (if not present)
+	•	Insight Status (New / Reviewed / Actioned)
+	•	Risk Level (Low/Med/High)
+	•	Privilege (Normal / Privileged / Sensitive)
+	•	Next Action
+	•	Deadline
+	•	Source Docs (auto-links)
+
+B) “Board Update Pack” button
+
+One click generates:
+	•	3–10 tasks from action items
+	•	3–10 timeline entries (as board updates or subitems)
+	•	risk flags as a “Risk” column update
+	•	a short executive summary posted as a board comment
+
+Everything created must store references back to insight_run_id.
+
+⸻
+
+API Endpoints (minimum)
+
+Upload & ingest
+	•	POST /api/matters/:matterId/assets
+	•	accepts multiple files
+	•	returns asset IDs
+
+Scan summary
+	•	GET /api/matters/:matterId/scan-summary
+	•	returns totals, date range, type breakdown, confidence, problem files
+
+Start analysis
+	•	POST /api/matters/:matterId/insights/run
+	•	body: intent_type, priority_rules, output_format, scope
+	•	returns insight_run_id
+
+Get analysis results
+	•	GET /api/insights/:insightRunId
+	•	returns structured sections + citations
+
+Create tasks from action items
+	•	POST /api/insights/:insightRunId/create-tasks
+	•	creates tasks/items in board
+	•	returns created IDs
+
+⸻
+
+Background Jobs (must-have, even if simple)
+
+Replit can run a basic job runner:
+	•	When an asset is uploaded, enqueue ingest work
+	•	When an insight run is requested, enqueue analysis work
+	•	Store progress:
+	•	matter_assets.status
+	•	insight_runs.status
+	•	UI polls every few seconds for updates
+
+Later you can swap to Redis/BullMQ without rewriting the whole app.
+
+⸻
+
+Non-negotiable Trust Rules (legal-grade behavior)
+	•	Every claim must show citations.
+	•	If confidence is low, say so and flag it.
+	•	Never overwrite original files; keep hashes.
+	•	Keep all insight runs stored for audit (who ran it, when, with what scope).
+	•	Provide “downloadable report” later, but not required now.
+
+⸻
+
+“Problem Files” definition
+
+Put a file on the problem list if:
+	•	OCR confidence is below a threshold (ex: <0.6)
+	•	extraction produces near-empty text
+	•	parse errors/corruption
+	•	file too large / timeouts
+
+⸻
+
+What to build first (MVP order)
+	1.	Upload → store → matter_assets
+	2.	Extract text from PDFs with text (no OCR)
+	3.	OCR for images/scanned PDFs
+	4.	Scan summary UI
+	5.	Intent questions UI
+	6.	Themes + timeline analysis with citations
+	7.	Action items → create tasks in board
+
+⸻
+
+What “done” looks like
+
+On a Matter, I can upload 100 files, see a scan summary, choose “timeline + action items,” get results with citations, and click “Create tasks” to populate Properly across the app. 
+
+⸻
+
+That’s the full plain-English spec. It’s tight enough that you can paste it into your Replit “build doc” or hand it to an AI coder without it wandering off into sci-fi.
+
+Next logical step (no back-and-forth needed): paste your current stack at the top of this doc (Next.js vs Express, DB choice, auth method). Even one line like “Next.js + Prisma + Postgres + Clerk” lets the implementation follow your house rules instead of inventing new ones.
