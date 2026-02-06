@@ -88,7 +88,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 16384,
     contextWindow: 128000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   },
   {
     id: "gpt-4o",
@@ -97,7 +97,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   },
   {
     id: "gpt-4o-mini",
@@ -106,7 +106,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   },
   {
     id: "gemini-2.5-flash",
@@ -115,7 +115,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
   },
   {
     id: "gemini-2.5-pro",
@@ -124,7 +124,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
   },
   {
     id: "gemini-3-flash-preview",
@@ -133,7 +133,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: true,
+    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
   },
 ];
 

@@ -5,6 +5,8 @@ import { storage } from "../../storage";
 import {
   AVAILABLE_MODELS,
   streamAnthropicResponse,
+  streamGeminiResponse,
+  streamResponse,
   getModelInfo,
   getModelsByProvider,
   getVisionModels,
@@ -128,6 +130,7 @@ export function registerChatRoutes(app: Express): void {
         providers: {
           anthropic: getModelsByProvider("anthropic"),
           openai: getModelsByProvider("openai"),
+          gemini: getModelsByProvider("gemini"),
           deepseek: getModelsByProvider("deepseek"),
         },
       });
@@ -284,18 +287,24 @@ export function registerChatRoutes(app: Express): void {
 
       const modelInfo = getModelInfo(selectedModel);
       
-      // Validate model exists
       if (!modelInfo) {
         res.setHeader("Content-Type", "application/json");
         return res.status(400).json({ error: `Unknown model: ${selectedModel}` });
       }
 
-      // Check if provider is supported
-      if (modelInfo.provider !== "anthropic") {
+      if (!modelInfo.available) {
         res.setHeader("Content-Type", "application/json");
         return res.status(400).json({ 
-          error: `Provider ${modelInfo.provider} is not yet implemented. Currently only Anthropic models are supported.`,
-          supportedProviders: ["anthropic"],
+          error: `Model ${modelInfo.name} is not currently available. Its API key may not be configured.`,
+        });
+      }
+
+      const supportedProviders = ["anthropic", "gemini", "openai"];
+      if (!supportedProviders.includes(modelInfo.provider)) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(400).json({ 
+          error: `Provider ${modelInfo.provider} is not configured. Available providers: ${supportedProviders.join(", ")}.`,
+          supportedProviders,
         });
       }
 
@@ -307,10 +316,14 @@ export function registerChatRoutes(app: Express): void {
 
       let fullResponse = "";
 
-      for await (const chunk of streamAnthropicResponse(chatMessages, config)) {
+      for await (const chunk of streamResponse(chatMessages, config)) {
         if (chunk.content) {
           fullResponse += chunk.content;
           res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
+        }
+        if (chunk.error) {
+          res.write(`data: ${JSON.stringify({ error: chunk.error })}\n\n`);
+          break;
         }
         if (chunk.done) {
           break;

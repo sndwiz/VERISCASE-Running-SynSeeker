@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -158,13 +161,22 @@ const LEGAL_WORKFLOWS: LegalWorkflow[] = [
   },
 ];
 
-const RECENT_ITEMS = [
-  { id: "1", title: "Motion for Summary Judgment - Anderson v. Tech Corp", matter: null },
-  { id: "2", title: "Contract Review - SaaS Agreement Draft v3", matter: null },
-  { id: "3", title: "Complaint Analysis - Williams Employment Dispute", matter: null },
-  { id: "4", title: "Research Memo - Utah Code 78B-6-801", matter: null },
-  { id: "5", title: "Deposition Summary - Dr. Martinez Testimony", matter: null },
-];
+const WORKFLOW_SYSTEM_PROMPTS: Record<string, string> = {
+  "research-question": "You are a legal research assistant. Help the user find answers in case law, legislation, and secondary sources. Provide citations and analyze the strength of authorities found.",
+  "analyze-contract": "You are a contract analysis specialist. Review the contract text provided. Identify key clauses, definitions, risks, client-hostile language, and suggest revisions.",
+  "analyze-complaint": "You are a litigation analyst. Extract claims and facts from the complaint, build a timeline of events, identify potential defenses, and assess the strength of each claim.",
+  "document-review-tables": "You are a document review specialist. Produce structured table reports summarizing the key information from documents and collections provided.",
+  "build-argument": "You are a legal argumentation specialist. Help construct a persuasive legal argument with supporting authorities, anticipate counter-arguments, and suggest rhetorical strategies.",
+  "compare-jurisdictions": "You are a comparative law specialist. Compare laws, regulations, and case law across the specified jurisdictions. Highlight key differences and practical implications.",
+  "redline-analysis": "You are a redline analysis specialist. Compare two document versions, identify all changes, assess their legal significance, and flag any concerning modifications.",
+  "explore-proposition": "You are a legal reasoning specialist. Analyze the legal proposition provided, identify supporting and opposing authorities, and assess its viability.",
+  "compare-documents": "You are a document comparison specialist. Compare the provided documents, identify similarities and differences, and assess their relative strengths.",
+  "create-timeline": "You are a timeline construction specialist. Build a comprehensive chronological timeline from the facts provided, identify gaps, and highlight key dates.",
+  "summarize-documents": "You are a document summarization specialist. Provide concise, accurate summaries of the documents provided, highlighting key points and action items.",
+  "analyze-pleadings": "You are a pleadings analyst. Review the pleading for procedural compliance, substantive arguments, potential weaknesses, and suggested improvements.",
+  "analyze-deposition": "You are a deposition analysis specialist. Review the deposition transcript, identify key admissions, inconsistencies, impeachment opportunities, and notable exchanges.",
+  "analyze-judicial-proceedings": "You are a judicial proceedings analyst. Transcribe and analyze the audio/video content, identify key rulings, arguments, and procedural developments.",
+};
 
 const DRAFT_STATUS_CONFIG: Record<string, { label: string; icon: typeof FileText }> = {
   draft: { label: "Draft", icon: FileText },
@@ -186,7 +198,15 @@ const TAG_COLORS: Record<WorkflowCategory, string> = {
   "Video Analysis": "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
+interface Conversation {
+  id: number;
+  title: string;
+  matterId?: string;
+}
+
 export default function LegalAIPage() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<SidebarTab>("veribot");
   const [selectedMatterId, setSelectedMatterId] = useState<string>("__none__");
   const [promptText, setPromptText] = useState("");
@@ -208,6 +228,60 @@ export default function LegalAIPage() {
   const { data: documents = [], isLoading: documentsLoading } = useQuery<GeneratedDocument[]>({
     queryKey: ["/api/documents/documents"],
   });
+
+  const { data: recentConversations = [] } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
+  });
+
+  const launchWorkflowMutation = useMutation({
+    mutationFn: async (data: { title: string; systemPrompt: string; matterId?: string; initialMessage?: string }) => {
+      const res = await apiRequest("POST", "/api/conversations", {
+        title: data.title,
+        model: "claude-sonnet-4-5",
+        matterId: data.matterId && data.matterId !== "__none__" ? data.matterId : undefined,
+        systemPrompt: data.systemPrompt,
+      });
+      const conversation = await res.json();
+
+      if (data.initialMessage) {
+        await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+          content: data.initialMessage,
+        });
+      }
+
+      return conversation;
+    },
+    onSuccess: (conversation: Conversation) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setLocation(`/ai-chat?conversation=${conversation.id}`);
+    },
+    onError: () => {
+      toast({ title: "Failed to launch workflow", variant: "destructive" });
+    },
+  });
+
+  const handleWorkflowClick = (workflow: LegalWorkflow) => {
+    const systemPrompt = WORKFLOW_SYSTEM_PROMPTS[workflow.id] || "";
+    const initialMessage = promptText.trim()
+      ? promptText
+      : `I'd like to ${workflow.title.toLowerCase()}. Please help me get started.`;
+    launchWorkflowMutation.mutate({
+      title: workflow.title,
+      systemPrompt,
+      matterId: selectedMatterId,
+      initialMessage,
+    });
+  };
+
+  const handlePromptSubmit = () => {
+    if (!promptText.trim()) return;
+    launchWorkflowMutation.mutate({
+      title: promptText.substring(0, 60) + (promptText.length > 60 ? "..." : ""),
+      systemPrompt: `Jurisdiction context: ${jurisdiction}. The user is working in VERICASE legal practice management system.`,
+      matterId: selectedMatterId,
+      initialMessage: promptText,
+    });
+  };
 
   const filteredWorkflows = LEGAL_WORKFLOWS.filter((w) => {
     const matchesFilter = workflowFilter === "all" || w.tags.includes(workflowFilter as WorkflowCategory);
@@ -289,20 +363,24 @@ export default function LegalAIPage() {
 
         <ScrollArea className="flex-1 px-1">
           <div className="space-y-0.5 p-2">
-            {RECENT_ITEMS.map((item) => (
+            {recentConversations.slice(0, 8).map((conv) => (
               <button
-                key={item.id}
+                key={conv.id}
                 className="w-full text-left rounded-md px-2 py-2 hover-elevate active-elevate-2 cursor-pointer"
-                data-testid={`button-recent-${item.id}`}
+                onClick={() => setLocation(`/ai-chat?conversation=${conv.id}`)}
+                data-testid={`button-recent-${conv.id}`}
               >
-                <p className="text-sm truncate" data-testid={`text-recent-title-${item.id}`}>
-                  {item.title}
+                <p className="text-sm truncate" data-testid={`text-recent-title-${conv.id}`}>
+                  {conv.title}
                 </p>
-                <p className="text-xs text-muted-foreground" data-testid={`text-recent-matter-${item.id}`}>
-                  No matter assigned
+                <p className="text-xs text-muted-foreground" data-testid={`text-recent-matter-${conv.id}`}>
+                  {conv.matterId ? "Linked to matter" : "No matter assigned"}
                 </p>
               </button>
             ))}
+            {recentConversations.length === 0 && (
+              <p className="text-xs text-muted-foreground px-2 py-4">No recent conversations</p>
+            )}
           </div>
         </ScrollArea>
 
@@ -341,6 +419,9 @@ export default function LegalAIPage() {
             workflowSearch={workflowSearch}
             onWorkflowSearchChange={setWorkflowSearch}
             filteredWorkflows={filteredWorkflows}
+            onWorkflowClick={handleWorkflowClick}
+            onPromptSubmit={handlePromptSubmit}
+            isLaunching={launchWorkflowMutation.isPending}
           />
         )}
         {activeTab === "library" && (
@@ -381,6 +462,9 @@ function VeribotView({
   workflowSearch,
   onWorkflowSearchChange,
   filteredWorkflows,
+  onWorkflowClick,
+  onPromptSubmit,
+  isLaunching,
 }: {
   matters: Matter[];
   mattersLoading: boolean;
@@ -395,6 +479,9 @@ function VeribotView({
   workflowSearch: string;
   onWorkflowSearchChange: (v: string) => void;
   filteredWorkflows: LegalWorkflow[];
+  onWorkflowClick: (workflow: LegalWorkflow) => void;
+  onPromptSubmit: () => void;
+  isLaunching: boolean;
 }) {
   return (
     <ScrollArea className="flex-1">
@@ -453,7 +540,12 @@ function VeribotView({
                 Add Documents
               </Button>
             </div>
-            <Button size="icon" data-testid="button-submit-prompt">
+            <Button
+              size="icon"
+              onClick={onPromptSubmit}
+              disabled={isLaunching || !promptText.trim()}
+              data-testid="button-submit-prompt"
+            >
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -505,6 +597,7 @@ function VeribotView({
                 <Card
                   key={workflow.id}
                   className="cursor-pointer hover-elevate"
+                  onClick={() => onWorkflowClick(workflow)}
                   data-testid={`card-workflow-${workflow.id}`}
                 >
                   <CardHeader className="pb-2">

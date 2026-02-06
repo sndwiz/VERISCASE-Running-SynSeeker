@@ -1993,7 +1993,7 @@ export const insertGeneratedDocumentSchema = z.object({
   templateId: z.string(),
   matterId: z.string().optional(),
   title: z.string().min(1),
-  documentType: z.enum(["motions", "pleadings", "discovery", "contracts", "court-filings", "client-forms", "correspondence", "administrative", "family-law", "criminal", "civil", "probate", "real-estate", "business", "other"]),
+  documentType: z.enum(["motions", "pleadings", "discovery", "contracts", "court-filings", "client-forms", "correspondence", "administrative", "family-law", "criminal", "civil", "torts", "probate", "real-estate", "business", "other"]),
   jurisdiction: z.enum(["utah-district-court", "utah-justice-court", "utah-juvenile-court", "utah-appellate-court", "utah-supreme-court", "federal-district-utah", "other"]),
   content: z.string(),
   fieldValues: z.record(z.any()).default({}),
