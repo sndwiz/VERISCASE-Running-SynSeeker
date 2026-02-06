@@ -3,33 +3,58 @@ import { storage } from "../storage";
 import { insertBoardSchema, updateBoardSchema } from "@shared/schema";
 import { z } from "zod";
 import { db } from "../db";
-import { workspaces } from "@shared/models/tables";
-import { eq, and } from "drizzle-orm";
+import { workspaces, boards } from "@shared/models/tables";
+import { eq, and, inArray } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
+
+async function verifyWorkspaceOwnership(userId: string, workspaceId: string): Promise<boolean> {
+  const [ws] = await db.select().from(workspaces)
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, userId)));
+  return !!ws;
+}
+
+async function verifyBoardAccess(userId: string, boardId: string): Promise<boolean> {
+  const [board] = await db.select().from(boards).where(eq(boards.id, boardId));
+  if (!board) return false;
+  if (!board.workspaceId) return true;
+  return verifyWorkspaceOwnership(userId, board.workspaceId);
+}
+
+async function getUserWorkspaceIds(userId: string): Promise<string[]> {
+  const userWorkspaces = await db.select({ id: workspaces.id }).from(workspaces)
+    .where(eq(workspaces.ownerId, userId));
+  return userWorkspaces.map(ws => ws.id);
+}
 
 export function registerBoardRoutes(app: Express): void {
   app.get("/api/boards", async (req, res) => {
     try {
       const { clientId, matterId, workspaceId } = req.query;
-      let boards;
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      let boardList;
+
       if (clientId && typeof clientId === "string") {
-        boards = await storage.getBoardsByClient(clientId);
+        boardList = await storage.getBoardsByClient(clientId);
       } else if (matterId && typeof matterId === "string") {
-        boards = await storage.getBoardsByMatter(matterId);
+        boardList = await storage.getBoardsByMatter(matterId);
       } else if (workspaceId && typeof workspaceId === "string") {
-        const userId = getUserId(req);
-        if (userId) {
-          const [ws] = await db.select().from(workspaces)
-            .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, userId)));
-          if (!ws) {
-            return res.status(403).json({ error: "Workspace not found or access denied" });
-          }
+        const owns = await verifyWorkspaceOwnership(userId, workspaceId);
+        if (!owns) {
+          return res.status(403).json({ error: "Workspace not found or access denied" });
         }
-        boards = await storage.getBoardsByWorkspace(workspaceId);
+        boardList = await storage.getBoardsByWorkspace(workspaceId);
       } else {
-        boards = await storage.getBoards();
+        const wsIds = await getUserWorkspaceIds(userId);
+        if (wsIds.length > 0) {
+          boardList = await db.select().from(boards)
+            .where(inArray(boards.workspaceId, wsIds));
+        } else {
+          boardList = [];
+        }
       }
-      res.json(boards);
+      res.json(boardList);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch boards" });
     }
@@ -37,6 +62,13 @@ export function registerBoardRoutes(app: Express): void {
 
   app.get("/api/boards/:id", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const hasAccess = await verifyBoardAccess(userId, req.params.id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Board not found or access denied" });
+      }
       const board = await storage.getBoard(req.params.id);
       if (!board) {
         return res.status(404).json({ error: "Board not found" });
@@ -49,15 +81,14 @@ export function registerBoardRoutes(app: Express): void {
 
   app.post("/api/boards", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
       const data = insertBoardSchema.parse(req.body);
       if (data.workspaceId) {
-        const userId = getUserId(req);
-        if (userId) {
-          const [ws] = await db.select().from(workspaces)
-            .where(and(eq(workspaces.id, data.workspaceId), eq(workspaces.ownerId, userId)));
-          if (!ws) {
-            return res.status(403).json({ error: "Workspace not found or access denied" });
-          }
+        const owns = await verifyWorkspaceOwnership(userId, data.workspaceId);
+        if (!owns) {
+          return res.status(403).json({ error: "Workspace not found or access denied" });
         }
       }
       const board = await storage.createBoard(data);
@@ -72,6 +103,13 @@ export function registerBoardRoutes(app: Express): void {
 
   app.patch("/api/boards/:id", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const hasAccess = await verifyBoardAccess(userId, req.params.id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Board not found or access denied" });
+      }
       const data = updateBoardSchema.parse(req.body);
       const board = await storage.updateBoard(req.params.id, data as any);
       if (!board) {
@@ -88,6 +126,13 @@ export function registerBoardRoutes(app: Express): void {
 
   app.delete("/api/boards/:id", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const hasAccess = await verifyBoardAccess(userId, req.params.id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Board not found or access denied" });
+      }
       const deleted = await storage.deleteBoard(req.params.id);
       if (!deleted) {
         return res.status(404).json({ error: "Board not found" });
