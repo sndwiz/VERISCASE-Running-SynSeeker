@@ -43,6 +43,11 @@ interface TimeEntry {
   approved?: boolean;
   adjustedHours?: number;
   adjustedAmount?: number;
+  clioNarrative?: string;
+  evidenceSuggested?: string;
+  reviewStatus: "pending" | "confirmed" | "edited";
+  notes?: string;
+  writeOff?: boolean;
 }
 
 interface Flag {
@@ -80,6 +85,13 @@ interface VerifierSettings {
   checkBlockBilling: boolean;
   checkDuplicates: boolean;
   checkWeekendHoliday: boolean;
+  firmName: string;
+  attorneyName: string;
+  firmAddress: string;
+  paymentTerms: "receipt" | "net15" | "net30" | "net60";
+  retainerBalance: number;
+  startDate: string;
+  endDate: string;
 }
 
 const UTBMS_CODES: Record<string, { phase: string; description: string }> = {
@@ -103,6 +115,17 @@ const UTBMS_CODES: Record<string, { phase: string; description: string }> = {
   "L340": { phase: "Discovery", description: "Expert Discovery" },
   "L400": { phase: "Trial", description: "Trial Preparation and Trial" },
   "L500": { phase: "Appeal", description: "Appeal" },
+  "A101": { phase: "Activity", description: "Plan and Prepare For" },
+  "A102": { phase: "Activity", description: "Research" },
+  "A103": { phase: "Activity", description: "Draft/Revise" },
+  "A104": { phase: "Activity", description: "Review/Analyze" },
+  "A105": { phase: "Activity", description: "Communicate (In Firm)" },
+  "A106": { phase: "Activity", description: "Communicate (With Client)" },
+  "A107": { phase: "Activity", description: "Communicate (Other Outside Counsel)" },
+  "A108": { phase: "Activity", description: "Communicate (Other External)" },
+  "A109": { phase: "Activity", description: "Appear For/Attend" },
+  "A110": { phase: "Activity", description: "Manage Data/Files" },
+  "A111": { phase: "Activity", description: "Other" },
 };
 
 const QUALITY_PATTERNS = {
@@ -141,6 +164,13 @@ const DEFAULT_SETTINGS: VerifierSettings = {
   checkBlockBilling: true,
   checkDuplicates: true,
   checkWeekendHoliday: true,
+  firmName: "Synergy Law PLLC",
+  attorneyName: "",
+  firmAddress: "",
+  paymentTerms: "receipt",
+  retainerBalance: 0,
+  startDate: "",
+  endDate: "",
 };
 
 function parseCSV(text: string): string[][] {
@@ -232,13 +262,81 @@ function detectUTBMS(description: string): { code: string; phase: string; task: 
     [/\bsettlement|mediat|negotiat|ADR\b/, "L160"],
     [/\binvestigat|fact|interview|witness\b/, "L110"],
     [/\bassess|evaluat|strateg|analys|review\b/, "L100"],
+    [/\bcall|phone|conference|meet.*client|email.*client\b/, "A106"],
+    [/\binternal|staff|team\b/, "A105"],
+    [/\bfile|document|organize\b/, "A110"],
+    [/\bdraft|revise|prepare|write\b/, "A103"],
+    [/\breview|analyze|analysis\b/, "A104"],
+    [/\bresearch|legal research|case law\b/, "A102"],
   ];
   for (const [rx, code] of patterns) {
     if (rx.test(lower) && UTBMS_CODES[code]) {
+      if (code.startsWith("A")) {
+        return { code, phase: UTBMS_CODES[code].phase, task: UTBMS_CODES[code].description };
+      }
       return { code, phase: UTBMS_CODES[code].phase, task: UTBMS_CODES[code].description };
     }
   }
   return null;
+}
+
+function craftClioNarrative(description: string, evidence: string, settings: VerifierSettings): string {
+  const text = `${description} ${evidence}`.toLowerCase();
+  const docMap: [RegExp, string][] = [
+    [/injunction|civil stalking/, "Draft/revise civil stalking injunction"],
+    [/notice of appearance/, "Prepare/file Notice of Appearance"],
+    [/return of service|proof of service|service assistance/, "Coordinate service / prepare proof of service"],
+    [/acceptance of service/, "Prepare/file Acceptance of Service"],
+    [/attorney fees/, "Draft/revise motion re attorney fees"],
+    [/extension of time/, "Draft/revise motion re extension of time"],
+    [/meet\s*&\s*confer|meet and confer/, "Meet & confer re case issues"],
+    [/research/, "Legal research"],
+    [/review|analy/, "Review/analyze materials"],
+    [/draft|revise|edit/, "Draft/revise documents"],
+    [/email/, "Email correspondence"],
+    [/call|phone|voicemail|telephone/, "Telephone conference / call"],
+    [/deposition|depo/, "Deposition preparation/attendance"],
+    [/hearing|court|appear/, "Court appearance/hearing"],
+    [/motion/, "Prepare/file motion"],
+    [/discovery|interrogat/, "Discovery work"],
+  ];
+
+  let task = "Case work (client matter)";
+  for (const [pat, label] of docMap) {
+    if (pat.test(text)) { task = label; break; }
+  }
+
+  let narrative = `${task}; ${settings.clientName || "Client"}`;
+  if (evidence && evidence !== "nan" && evidence.trim()) {
+    const truncated = evidence.replace(/\s+/g, " ").trim().substring(0, 80);
+    narrative += ` (${truncated}${evidence.length > 80 ? "..." : ""})`;
+  }
+  return narrative;
+}
+
+interface DailySummary {
+  date: string;
+  entries: number;
+  hours: number;
+  amount: number;
+  flagCount: number;
+  overThreshold: boolean;
+}
+
+function computeDailySummary(entries: TimeEntry[], settings: VerifierSettings): DailySummary[] {
+  const byDate: Record<string, DailySummary> = {};
+  for (const e of entries) {
+    if (!byDate[e.date]) {
+      byDate[e.date] = { date: e.date, entries: 0, hours: 0, amount: 0, flagCount: 0, overThreshold: false };
+    }
+    byDate[e.date].entries++;
+    byDate[e.date].hours += e.adjustedHours || e.hours;
+    byDate[e.date].amount += e.adjustedAmount || e.amount;
+    byDate[e.date].flagCount += e.flags.length;
+  }
+  return Object.values(byDate)
+    .map(d => ({ ...d, overThreshold: d.hours > settings.dayThreshold }))
+    .sort((a, b) => b.hours - a.hours);
 }
 
 function checkQuality(description: string, settings: VerifierSettings): QualityIssue[] {
@@ -290,16 +388,29 @@ function suggestSplit(entry: TimeEntry): SplitSuggestion | null {
   return null;
 }
 
+function filterByDateRange(entries: TimeEntry[], settings: VerifierSettings): TimeEntry[] {
+  if (!settings.startDate && !settings.endDate) return entries;
+  return entries.filter(e => {
+    if (!e.date) return true;
+    const entryDate = e.date.substring(0, 10);
+    if (settings.startDate && entryDate < settings.startDate) return false;
+    if (settings.endDate && entryDate > settings.endDate) return false;
+    return true;
+  });
+}
+
 function runPipeline(rawEntries: TimeEntry[], settings: VerifierSettings): TimeEntry[] {
   const dayTotals: Record<string, number> = {};
   const descHashes: Map<string, string[]> = new Map();
+  const filtered = filterByDateRange(rawEntries, settings);
 
-  return rawEntries.map(entry => {
+  return filtered.map(entry => {
     const flags: Flag[] = [];
     const qualityIssues: QualityIssue[] = [];
     let utbmsCode: string | undefined;
     let utbmsPhase: string | undefined;
     let utbmsTask: string | undefined;
+    let utbmsActivity: string | undefined;
     let splitSuggestion: SplitSuggestion | undefined;
 
     if (entry.hours > settings.longThreshold) {
@@ -361,7 +472,11 @@ function runPipeline(rawEntries: TimeEntry[], settings: VerifierSettings): TimeE
       if (detected) {
         utbmsCode = detected.code;
         utbmsPhase = detected.phase;
-        utbmsTask = detected.task;
+        if (detected.code.startsWith("A")) {
+          utbmsActivity = detected.task;
+        } else {
+          utbmsTask = detected.task;
+        }
       }
     }
 
@@ -376,6 +491,8 @@ function runPipeline(rawEntries: TimeEntry[], settings: VerifierSettings): TimeE
     if (errorCount > 0 || warningCount >= 3) confidence = "low";
     else if (warningCount > 0 || qualityIssues.length >= 2) confidence = "medium";
 
+    const clioNarrative = craftClioNarrative(entry.description, "", settings);
+
     return {
       ...entry,
       flags,
@@ -384,15 +501,19 @@ function runPipeline(rawEntries: TimeEntry[], settings: VerifierSettings): TimeE
       utbmsCode,
       utbmsPhase,
       utbmsTask,
+      utbmsActivity,
       roundedHours,
       splitSuggestion,
       adjustedHours: roundedHours,
       adjustedAmount: roundedHours * (entry.rate || settings.hourlyRate),
+      clioNarrative,
+      reviewStatus: "pending" as const,
+      writeOff: false,
     };
   });
 }
 
-type TabKey = "upload" | "settings" | "results" | "review" | "export";
+type TabKey = "upload" | "settings" | "results" | "daily" | "adjustments" | "review" | "export";
 
 export default function BillingVerifierPage() {
   const { toast } = useToast();
@@ -412,6 +533,8 @@ export default function BillingVerifierPage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [dailySummary, setDailySummary] = useState<DailySummary[]>([]);
+  const [showAdjustmentsTab, setShowAdjustmentsTab] = useState(false);
 
   const { data: profiles = [] } = useQuery<any[]>({ queryKey: ["/api/billing-verifier/profiles"] });
 
@@ -458,6 +581,8 @@ export default function BillingVerifierPage() {
           confidence: "high" as const,
           flags: [],
           qualityIssues: [],
+          reviewStatus: "pending" as const,
+          writeOff: false,
         }));
       } else if (file.name.endsWith(".json")) {
         const json = JSON.parse(text);
@@ -474,6 +599,8 @@ export default function BillingVerifierPage() {
           confidence: "high" as const,
           flags: [],
           qualityIssues: [],
+          reviewStatus: "pending" as const,
+          writeOff: false,
         }));
       } else {
         const lines = text.split("\n").filter(l => l.trim());
@@ -490,6 +617,8 @@ export default function BillingVerifierPage() {
             confidence: "high" as const,
             flags: [],
             qualityIssues: [],
+            reviewStatus: "pending" as const,
+            writeOff: false,
           };
         });
       }
@@ -506,6 +635,7 @@ export default function BillingVerifierPage() {
 
       const processed = runPipeline(entries, settings);
       setProcessedEntries(processed);
+      setDailySummary(computeDailySummary(processed, settings));
       setProgress(100);
       setActiveTab("results");
       toast({ title: "File processed", description: `${processed.length} entries analyzed` });
@@ -529,6 +659,8 @@ export default function BillingVerifierPage() {
       confidence: "high",
       flags: [],
       qualityIssues: [],
+      reviewStatus: "pending" as const,
+      writeOff: false,
     };
     setRawEntries(prev => [...prev, entry]);
     setSelectedEntry(entry);
@@ -542,6 +674,7 @@ export default function BillingVerifierPage() {
       setProgress(50);
       const processed = runPipeline(rawEntries, settings);
       setProcessedEntries(processed);
+      setDailySummary(computeDailySummary(processed, settings));
       setProgress(100);
       setIsProcessing(false);
       toast({ title: "Pipeline re-run complete" });
@@ -621,20 +754,111 @@ export default function BillingVerifierPage() {
     }
   };
 
-  const exportData = useCallback((format: "csv" | "json" | "pdf") => {
+  const exportData = useCallback((format: "csv" | "json" | "pdf" | "review-log") => {
     const entries = processedEntries;
     const dateSuffix = new Date().toISOString().slice(0, 10);
 
+    if (format === "review-log") {
+      const log = {
+        exportedAt: new Date().toISOString(),
+        settings,
+        reviewLog: entries.map(e => ({
+          id: e.id, date: e.date, hours: e.hours,
+          reviewStatus: e.reviewStatus || "pending",
+          approved: e.approved || false,
+          writeOff: e.writeOff || false,
+          notes: e.notes || "",
+          clioNarrative: e.clioNarrative || "",
+        })),
+        summary: {
+          total: entries.length,
+          confirmed: entries.filter(e => e.reviewStatus === "confirmed").length,
+          writtenOff: entries.filter(e => e.writeOff).length,
+          approved: entries.filter(e => e.approved).length,
+        }
+      };
+      const blob = new Blob([JSON.stringify(log, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `billing-review-log-${dateSuffix}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Exported review log" });
+      return;
+    }
+
     if (format === "pdf") {
       const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text("Billing Verification Report", 14, 20);
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
-      doc.text(`Total Entries: ${summary?.total || 0}  |  Total Hours: ${summary?.totalHours?.toFixed(1) || "0"}  |  Total Amount: $${summary?.totalAmount?.toFixed(2) || "0"}`, 14, 35);
-      doc.text(`Flagged: ${summary?.flagged || 0}  |  Approved: ${summary?.approved || 0}`, 14, 42);
+      let y = 20;
 
-      let y = 55;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(settings.firmName || "Law Firm", 14, y);
+      y += 7;
+
+      if (settings.attorneyName) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(settings.attorneyName, 14, y);
+        y += 6;
+      }
+
+      if (settings.firmAddress) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const addrLines = settings.firmAddress.split("\n");
+        for (const line of addrLines) {
+          doc.text(line, 14, y);
+          y += 4;
+        }
+      }
+
+      y += 2;
+      doc.setDrawColor(0, 0, 0);
+      doc.line(14, y, 196, y);
+      y += 8;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("BILLING STATEMENT", 105, y, { align: "center" });
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, y, { align: "center" });
+      y += 10;
+
+      doc.setFontSize(10);
+      if (settings.clientName) {
+        doc.text(`Client: ${settings.clientName}`, 14, y);
+        y += 6;
+      }
+      if (settings.startDate || settings.endDate) {
+        doc.text(`Period: ${settings.startDate || "N/A"} to ${settings.endDate || "N/A"}`, 14, y);
+        y += 6;
+      }
+      const termsMap: Record<string, string> = { receipt: "Due Upon Receipt", net15: "Net 15 Days", net30: "Net 30 Days", net60: "Net 60 Days" };
+      doc.text(`Payment Terms: ${termsMap[settings.paymentTerms] || "Due Upon Receipt"}`, 14, y);
+      y += 8;
+
+      doc.setFontSize(9);
+      doc.text(`Dear ${settings.clientName || "Client"},`, 14, y);
+      y += 5;
+      doc.text("Please find below a summary of legal services rendered during the billing period.", 14, y);
+      y += 10;
+
+      doc.setFillColor(240, 240, 240);
+      doc.rect(14, y, 182, 24, "F");
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Entries: ${summary?.total || 0}`, 20, y + 7);
+      doc.text(`Total Hours: ${summary?.totalHours?.toFixed(1) || "0"}`, 75, y + 7);
+      doc.text(`Hourly Rate: $${settings.hourlyRate.toFixed(2)}`, 130, y + 7);
+      doc.text(`Total Due: $${summary?.totalAmount?.toFixed(2) || "0.00"}`, 20, y + 17);
+      doc.text(`Flagged: ${summary?.flagged || 0}`, 75, y + 17);
+      doc.text(`Approved: ${summary?.approved || 0}`, 130, y + 17);
+      y += 32;
+
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.text("Date", 14, y);
@@ -647,10 +871,10 @@ export default function BillingVerifierPage() {
       doc.setFont("helvetica", "normal");
 
       entries.forEach(e => {
-        if (y > 275) { doc.addPage(); y = 20; }
+        if (y > 265) { doc.addPage(); y = 20; }
         doc.text(e.date.substring(0, 10), 14, y);
         doc.text(e.attorney.substring(0, 15), 40, y);
-        doc.text(e.description.substring(0, 45), 75, y);
+        doc.text((e.clioNarrative || e.description).substring(0, 45), 75, y);
         doc.text((e.adjustedHours || e.hours).toFixed(1), 150, y);
         doc.text(`$${(e.adjustedAmount || e.amount).toFixed(2)}`, 168, y);
         doc.text(e.confidence, 190, y);
@@ -663,7 +887,15 @@ export default function BillingVerifierPage() {
         }
       });
 
-      doc.save(`billing-review-${dateSuffix}.pdf`);
+      y += 10;
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setFontSize(10);
+      doc.text("Respectfully submitted,", 14, y);
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.text(settings.attorneyName || settings.firmName || "", 14, y);
+
+      doc.save(`billing-statement-${dateSuffix}.pdf`);
       toast({ title: "Exported as PDF" });
       return;
     }
@@ -750,6 +982,8 @@ export default function BillingVerifierPage() {
             <TabsTrigger value="upload" data-testid="tab-upload"><Upload className="h-4 w-4 mr-1" /> Upload</TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
             <TabsTrigger value="results" data-testid="tab-results"><BarChart3 className="h-4 w-4 mr-1" /> Results</TabsTrigger>
+            <TabsTrigger value="daily" data-testid="tab-daily"><Clock className="h-4 w-4 mr-1" /> Daily</TabsTrigger>
+            <TabsTrigger value="adjustments" data-testid="tab-adjustments"><Scale className="h-4 w-4 mr-1" /> Adjustments</TabsTrigger>
             <TabsTrigger value="review" data-testid="tab-review"><Eye className="h-4 w-4 mr-1" /> Review</TabsTrigger>
             <TabsTrigger value="export" data-testid="tab-export"><Download className="h-4 w-4 mr-1" /> Export</TabsTrigger>
           </TabsList>
@@ -783,6 +1017,7 @@ export default function BillingVerifierPage() {
             <ResultsTab
               summary={summary}
               filteredEntries={filteredEntries}
+              processedEntries={processedEntries}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               filterConfidence={filterConfidence}
@@ -796,6 +1031,18 @@ export default function BillingVerifierPage() {
               confidenceIcon={confidenceIcon}
               setSplitEntry={setSplitEntry}
               setShowSplitDialog={setShowSplitDialog}
+            />
+          </TabsContent>
+
+          <TabsContent value="daily" className="mt-0">
+            <DailySummaryTab dailySummary={dailySummary} settings={settings} />
+          </TabsContent>
+
+          <TabsContent value="adjustments" className="mt-0">
+            <AdjustmentsTab
+              processedEntries={processedEntries}
+              setProcessedEntries={setProcessedEntries}
+              settings={settings}
             />
           </TabsContent>
 
@@ -994,6 +1241,54 @@ function SettingsTab({ settings, setSettings, aliasInput, setAliasInput, partyIn
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Scale className="h-5 w-5" /> Firm Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="firmName">Firm Name</Label>
+              <Input id="firmName" value={settings.firmName} onChange={e => setSettings({ ...settings, firmName: e.target.value })} placeholder="Synergy Law PLLC" data-testid="input-firm-name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="attorneyName">Attorney Name</Label>
+              <Input id="attorneyName" value={settings.attorneyName} onChange={e => setSettings({ ...settings, attorneyName: e.target.value })} placeholder="Attorney name" data-testid="input-attorney-name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="firmAddress">Firm Address</Label>
+              <Textarea id="firmAddress" value={settings.firmAddress} onChange={e => setSettings({ ...settings, firmAddress: e.target.value })} placeholder={"123 Main St\nCity, State ZIP"} data-testid="input-firm-address" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="paymentTerms">Payment Terms</Label>
+                <Select value={settings.paymentTerms} onValueChange={v => setSettings({ ...settings, paymentTerms: v as any })}>
+                  <SelectTrigger data-testid="select-payment-terms"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receipt">Due Upon Receipt</SelectItem>
+                    <SelectItem value="net15">Net 15 Days</SelectItem>
+                    <SelectItem value="net30">Net 30 Days</SelectItem>
+                    <SelectItem value="net60">Net 60 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="retainerBalance">Retainer Balance ($)</Label>
+                <Input id="retainerBalance" type="number" value={settings.retainerBalance} onChange={e => setSettings({ ...settings, retainerBalance: +e.target.value })} data-testid="input-retainer-balance" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input id="startDate" type="date" value={settings.startDate} onChange={e => setSettings({ ...settings, startDate: e.target.value })} data-testid="input-start-date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input id="endDate" type="date" value={settings.endDate} onChange={e => setSettings({ ...settings, endDate: e.target.value })} data-testid="input-end-date" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Rate and Thresholds</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1108,7 +1403,7 @@ function SettingsTab({ settings, setSettings, aliasInput, setAliasInput, partyIn
   );
 }
 
-function ResultsTab({ summary, filteredEntries, searchTerm, setSearchTerm, filterConfidence, setFilterConfidence, expandedRows, toggleRow, toggleApproval, handleSort, sortField, sortDirection, confidenceIcon, setSplitEntry, setShowSplitDialog }: any) {
+function ResultsTab({ summary, filteredEntries, processedEntries, searchTerm, setSearchTerm, filterConfidence, setFilterConfidence, expandedRows, toggleRow, toggleApproval, handleSort, sortField, sortDirection, confidenceIcon, setSplitEntry, setShowSplitDialog }: any) {
   if (!summary) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
@@ -1155,6 +1450,12 @@ function ResultsTab({ summary, filteredEntries, searchTerm, setSearchTerm, filte
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-green-500" data-testid="text-approved">{summary.approved}</p>
             <p className="text-xs text-muted-foreground">Approved</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-500" data-testid="text-writeoffs">{processedEntries.filter((e: TimeEntry) => e.writeOff).length}</p>
+            <p className="text-xs text-muted-foreground">Write-offs</p>
           </CardContent>
         </Card>
       </div>
@@ -1457,7 +1758,7 @@ function ReviewTab({ processedEntries, summary, settings }: { processedEntries: 
   );
 }
 
-function ExportTab({ processedEntries, summary, exportData }: { processedEntries: TimeEntry[]; summary: any; exportData: (format: "csv" | "json" | "pdf") => void }) {
+function ExportTab({ processedEntries, summary, exportData }: { processedEntries: TimeEntry[]; summary: any; exportData: (format: "csv" | "json" | "pdf" | "review-log") => void }) {
   if (!summary) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
@@ -1478,7 +1779,7 @@ function ExportTab({ processedEntries, summary, exportData }: { processedEntries
           <CardDescription>Download your verified billing data in various formats</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="hover-elevate">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -1521,6 +1822,20 @@ function ExportTab({ processedEntries, summary, exportData }: { processedEntries
                 </Button>
               </CardContent>
             </Card>
+            <Card className="hover-elevate">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileText className="h-8 w-8 text-purple-600" />
+                  <div>
+                    <p className="font-medium">Review Log</p>
+                    <p className="text-xs text-muted-foreground">Audit trail of review actions</p>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={() => exportData("review-log")} data-testid="button-export-review-log">
+                  <Download className="h-4 w-4 mr-1" /> Download Review Log
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
@@ -1547,6 +1862,202 @@ function ExportTab({ processedEntries, summary, exportData }: { processedEntries
               <p className="text-muted-foreground">Total Amount</p>
               <p className="font-medium">${summary.totalAmount.toFixed(2)}</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DailySummaryTab({ dailySummary, settings }: { dailySummary: DailySummary[]; settings: VerifierSettings }) {
+  if (dailySummary.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Clock className="h-12 w-12 mb-4" />
+        <p>Process entries first to see daily summaries.</p>
+      </div>
+    );
+  }
+
+  const totalDays = dailySummary.length;
+  const overThresholdDays = dailySummary.filter(d => d.overThreshold).length;
+  const totalFlagged = dailySummary.reduce((s, d) => s + d.flagCount, 0);
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold" data-testid="text-total-days">{totalDays}</p>
+            <p className="text-xs text-muted-foreground">Days with Entries</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-500" data-testid="text-days-over">{overThresholdDays}</p>
+            <p className="text-xs text-muted-foreground">Days Over {settings.dayThreshold}h</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-yellow-500" data-testid="text-total-flagged-daily">{totalFlagged}</p>
+            <p className="text-xs text-muted-foreground">Total Flags</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{dailySummary.length > 0 ? (dailySummary.reduce((s, d) => s + d.hours, 0) / dailySummary.length).toFixed(1) : "0"}</p>
+            <p className="text-xs text-muted-foreground">Avg Hours/Day</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Daily Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="p-3 text-left">Date</th>
+                  <th className="p-3 text-right">Entries</th>
+                  <th className="p-3 text-right">Hours</th>
+                  <th className="p-3 text-right">Amount</th>
+                  <th className="p-3 text-center">Flags</th>
+                  <th className="p-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailySummary.map(d => (
+                  <tr key={d.date} className={`border-b ${d.overThreshold ? "bg-red-500/5" : ""}`} data-testid={`row-daily-${d.date}`}>
+                    <td className="p-3">{d.date}</td>
+                    <td className="p-3 text-right">{d.entries}</td>
+                    <td className="p-3 text-right font-medium">{d.hours.toFixed(2)}</td>
+                    <td className="p-3 text-right">${d.amount.toFixed(2)}</td>
+                    <td className="p-3 text-center">{d.flagCount > 0 ? <Badge variant="outline">{d.flagCount}</Badge> : <span className="text-muted-foreground">-</span>}</td>
+                    <td className="p-3 text-center">{d.overThreshold ? <Badge variant="destructive">Over {settings.dayThreshold}h</Badge> : <Badge variant="secondary">OK</Badge>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdjustmentsTab({ processedEntries, setProcessedEntries, settings }: {
+  processedEntries: TimeEntry[];
+  setProcessedEntries: (fn: (prev: TimeEntry[]) => TimeEntry[]) => void;
+  settings: VerifierSettings;
+}) {
+  if (processedEntries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Scale className="h-12 w-12 mb-4" />
+        <p>Process entries first to manage adjustments.</p>
+      </div>
+    );
+  }
+
+  const origTotal = processedEntries.reduce((s, e) => s + e.amount, 0);
+  const writeOffTotal = processedEntries.filter(e => e.writeOff).reduce((s, e) => s + (e.adjustedAmount || e.amount), 0);
+  const adjustedTotal = processedEntries.filter(e => !e.writeOff).reduce((s, e) => s + (e.adjustedAmount || e.amount), 0);
+
+  const toggleWriteOff = (id: string) => {
+    setProcessedEntries((prev: TimeEntry[]) =>
+      prev.map(e => e.id === id ? { ...e, writeOff: !e.writeOff } : e)
+    );
+  };
+
+  const updateReviewStatus = (id: string, status: "pending" | "confirmed" | "edited") => {
+    setProcessedEntries((prev: TimeEntry[]) =>
+      prev.map(e => e.id === id ? { ...e, reviewStatus: status } : e)
+    );
+  };
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold" data-testid="text-original-total">${origTotal.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">Original Total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-500" data-testid="text-writeoff-total">${writeOffTotal.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">Write-offs</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-green-500" data-testid="text-adjusted-total">${adjustedTotal.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">Adjusted Total</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Entry Adjustments</CardTitle>
+          <CardDescription>Toggle write-offs and confirm entries for final billing</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="p-3 text-left">Date</th>
+                  <th className="p-3 text-left">Description</th>
+                  <th className="p-3 text-right">Original</th>
+                  <th className="p-3 text-right">Adjusted</th>
+                  <th className="p-3 text-right">Amount</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {processedEntries.map(entry => (
+                  <tr key={entry.id} className={`border-b ${entry.writeOff ? "opacity-50 line-through" : ""}`} data-testid={`row-adj-${entry.id}`}>
+                    <td className="p-3 whitespace-nowrap">{entry.date}</td>
+                    <td className="p-3 max-w-xs truncate">{entry.clioNarrative || entry.description}</td>
+                    <td className="p-3 text-right">{entry.hours.toFixed(2)}h</td>
+                    <td className="p-3 text-right">{(entry.adjustedHours || entry.hours).toFixed(2)}h</td>
+                    <td className="p-3 text-right">${(entry.adjustedAmount || entry.amount).toFixed(2)}</td>
+                    <td className="p-3 text-center">
+                      <Badge variant={entry.reviewStatus === "confirmed" ? "default" : entry.reviewStatus === "edited" ? "outline" : "secondary"}>
+                        {entry.reviewStatus || "pending"}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant={entry.writeOff ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={() => toggleWriteOff(entry.id)}
+                          data-testid={`button-writeoff-${entry.id}`}
+                        >
+                          {entry.writeOff ? "Undo" : "Write Off"}
+                        </Button>
+                        <Button
+                          variant={entry.reviewStatus === "confirmed" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => updateReviewStatus(entry.id, entry.reviewStatus === "confirmed" ? "pending" : "confirmed")}
+                          data-testid={`button-confirm-${entry.id}`}
+                        >
+                          {entry.reviewStatus === "confirmed" ? "Confirmed" : "Confirm"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
