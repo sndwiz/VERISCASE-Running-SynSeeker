@@ -73,6 +73,9 @@ export async function registerRoutes(
   // Daily briefing - any authenticated role
   app.use("/api/briefing", isAuthenticated, requireAnyRole);
   
+  // Vibe Code app builder - member or above
+  app.use("/api/vibe", isAuthenticated, viewerReadOnly);
+  
   // Register all other API routes
   registerAllRoutes(app);
   

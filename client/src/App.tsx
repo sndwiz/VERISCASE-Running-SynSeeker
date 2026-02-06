@@ -39,6 +39,7 @@ import DocumentMakerPage from "@/pages/document-maker";
 import MeetingNotesPage from "@/pages/meeting-notes";
 import ClientDashboardPage from "@/pages/client-dashboard";
 import ClientDetailDashboard from "@/pages/client-detail-dashboard";
+import VibeCodePage from "@/pages/vibe-code";
 
 import type { Board } from "@shared/schema";
 
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/approvals" component={ApprovalsPage} />
       <Route path="/briefing" component={DailyBriefingPage} />
       <Route path="/meetings" component={MeetingNotesPage} />
+      <Route path="/vibe-code" component={VibeCodePage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

@@ -52,6 +52,7 @@ import {
   User,
   Mic,
   Server,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Board, Client, Matter } from "@shared/schema";
@@ -201,6 +202,14 @@ export function AppSidebar({ boards, onCreateBoard }: AppSidebarProps) {
                 <Link href="/" data-testid="link-dashboard">
                   <Home className="h-4 w-4" />
                   <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location === "/vibe-code"}>
+                <Link href="/vibe-code" data-testid="link-vibe-code">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Vibe Code</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

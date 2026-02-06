@@ -18,6 +18,7 @@ import clawbotRouter from "./clawbot";
 import documentsRouter from "./documents";
 import synseekrRouter from "./synseekr";
 import { registerMeetingRoutes } from "./meetings";
+import { registerVibeCodeRoutes } from "./vibe-code";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -42,4 +43,5 @@ export function registerAllRoutes(app: Express): void {
   registerApprovalRoutes(app);
   registerBriefingRoutes(app);
   registerMeetingRoutes(app);
+  registerVibeCodeRoutes(app);
 }
