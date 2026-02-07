@@ -58,6 +58,8 @@ import DocumentWashPage from "@/pages/document-wash";
 import BillingVerifierPage from "@/pages/billing-verifier";
 import TemplatesPage from "@/pages/templates";
 import ProcessRecorderPage from "@/pages/process-recorder";
+import TeamMembersPage from "@/pages/team-members";
+import MyTasksPage from "@/pages/my-tasks";
 
 
 function Router() {
@@ -96,6 +98,8 @@ function Router() {
       <Route path="/billing-verifier" component={BillingVerifierPage} />
       <Route path="/templates" component={TemplatesPage} />
       <Route path="/process-recorder" component={ProcessRecorderPage} />
+      <Route path="/team-members" component={TeamMembersPage} />
+      <Route path="/my-tasks" component={MyTasksPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

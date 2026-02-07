@@ -30,6 +30,7 @@ import aiOpsRouter from "./ai-ops";
 import { registerTemplateRoutes } from "./templates";
 import { registerProcessRecorderRoutes } from "./process-recorder";
 import { registerWorkspaceRoutes } from "./workspaces";
+import { registerTeamMemberRoutes } from "./team-members";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -66,5 +67,6 @@ export function registerAllRoutes(app: Express): void {
   registerTemplateRoutes(app);
   registerProcessRecorderRoutes(app);
   registerWorkspaceRoutes(app);
+  registerTeamMemberRoutes(app);
   app.use(aiOpsRouter);
 }

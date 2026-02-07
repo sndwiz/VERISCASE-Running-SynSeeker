@@ -1006,6 +1006,24 @@ export const insertClientSchema = z.object({
 
 export const updateClientSchema = insertClientSchema.partial();
 
+// Team Member schemas
+export const insertTeamMemberSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  role: z.enum(["attorney", "paralegal", "legal_assistant", "office_manager", "clerk", "intern", "of_counsel", "partner", "associate", "staff"]),
+  title: z.string().optional(),
+  barNumber: z.string().optional(),
+  department: z.string().optional(),
+  isActive: z.boolean().optional().default(true),
+  userId: z.string().optional(),
+});
+
+export const updateTeamMemberSchema = insertTeamMemberSchema.partial();
+
+export type InsertTeamMemberInput = z.infer<typeof insertTeamMemberSchema>;
+
 // Matter schemas
 export const insertMatterSchema = z.object({
   clientId: z.string(),
@@ -1020,6 +1038,8 @@ export const insertMatterSchema = z.object({
   courtName: z.string().optional(),
   judgeAssigned: z.string().optional(),
   opposingCounsel: z.string().optional(),
+  assignedAttorneys: z.array(z.string()).optional().default([]),
+  assignedParalegals: z.array(z.string()).optional().default([]),
 });
 
 export const updateMatterSchema = insertMatterSchema.partial().omit({ clientId: true });

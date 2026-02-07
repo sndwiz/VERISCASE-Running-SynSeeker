@@ -73,6 +73,7 @@ interface Matter {
   practiceArea: string;
   responsiblePartyId?: string;
   assignedAttorneys?: string[];
+  assignedParalegals?: string[];
   courtName?: string;
   judgeAssigned?: string;
   opposingCounsel?: string;
@@ -86,7 +87,13 @@ interface TeamMember {
   id: string;
   firstName: string;
   lastName: string;
+  email?: string;
+  phone?: string;
   role: string;
+  title?: string;
+  barNumber?: string;
+  department?: string;
+  isActive: boolean;
 }
 
 interface MatterDocument {
@@ -550,6 +557,79 @@ export default function MatterDetailPage() {
                         title="Analyze"
                         description="Summarize or extract insights from uploaded documents"
                       />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Team Assignments
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {(() => {
+                        const responsibleParty = matter.responsiblePartyId
+                          ? teamMembers.find(tm => tm.id === matter.responsiblePartyId)
+                          : null;
+                        const assignedAtts = (matter.assignedAttorneys || [])
+                          .map(id => teamMembers.find(tm => tm.id === id))
+                          .filter(Boolean);
+                        const assignedPls = (matter.assignedParalegals || [])
+                          .map(id => teamMembers.find(tm => tm.id === id))
+                          .filter(Boolean);
+                        const hasTeam = responsibleParty || assignedAtts.length > 0 || assignedPls.length > 0;
+
+                        if (!hasTeam) {
+                          return <p className="text-sm text-muted-foreground">No team members assigned.</p>;
+                        }
+
+                        return (
+                          <>
+                            {responsibleParty && (
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                    {responsibleParty.firstName[0]}{responsibleParty.lastName[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium" data-testid="text-responsible-party">
+                                    {responsibleParty.firstName} {responsibleParty.lastName}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">Responsible Attorney</p>
+                                </div>
+                              </div>
+                            )}
+                            {assignedAtts.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1.5">Attorneys</p>
+                                {assignedAtts.map(atty => atty && (
+                                  <div key={atty.id} className="flex items-center gap-3 py-1" data-testid={`text-attorney-${atty.id}`}>
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarFallback className="text-xs">{atty.firstName[0]}{atty.lastName[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <p className="text-sm">{atty.firstName} {atty.lastName}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {assignedPls.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1.5">Paralegals</p>
+                                {assignedPls.map(pl => pl && (
+                                  <div key={pl.id} className="flex items-center gap-3 py-1" data-testid={`text-paralegal-${pl.id}`}>
+                                    <Avatar className="h-7 w-7">
+                                      <AvatarFallback className="text-xs">{pl.firstName[0]}{pl.lastName[0]}</AvatarFallback>
+                                    </Avatar>
+                                    <p className="text-sm">{pl.firstName} {pl.lastName}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
 

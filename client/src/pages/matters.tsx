@@ -66,7 +66,13 @@ interface TeamMember {
   id: string;
   firstName: string;
   lastName: string;
+  email?: string;
+  phone?: string;
   role: string;
+  title?: string;
+  barNumber?: string;
+  department?: string;
+  isActive: boolean;
 }
 
 interface Matter {
@@ -80,6 +86,7 @@ interface Matter {
   practiceArea: string;
   responsiblePartyId?: string;
   assignedAttorneys?: string[];
+  assignedParalegals?: string[];
   courtName?: string;
   judgeAssigned?: string;
   opposingCounsel?: string;
@@ -115,6 +122,71 @@ const MATTER_TYPES = [
   "Civil Litigation",
   "Insurance Litigation",
   "Other",
+];
+
+const UTAH_COURTS = [
+  "Third District Court - Salt Lake",
+  "Third District Court - West Jordan",
+  "Third District Court - Sandy",
+  "Third District Court - Tooele",
+  "Third District Court - Summit",
+  "Second District Court - Ogden",
+  "Second District Court - Farmington",
+  "Second District Court - Layton",
+  "First District Court - Logan",
+  "First District Court - Brigham City",
+  "Fourth District Court - Provo",
+  "Fourth District Court - American Fork",
+  "Fourth District Court - Spanish Fork",
+  "Fifth District Court - Cedar City",
+  "Fifth District Court - St. George",
+  "Sixth District Court - Richfield",
+  "Sixth District Court - Manti",
+  "Seventh District Court - Moab",
+  "Seventh District Court - Price",
+  "Eighth District Court - Vernal",
+  "Utah Supreme Court",
+  "Utah Court of Appeals",
+  "U.S. District Court - District of Utah",
+  "U.S. Bankruptcy Court - District of Utah",
+  "U.S. Court of Appeals - 10th Circuit",
+  "Utah Justice Court",
+  "Utah Juvenile Court",
+  "Other",
+];
+
+const UTAH_JUDGES = [
+  "Judge Matthew Bates",
+  "Judge Jess Betz",
+  "Judge Amber Mettler",
+  "Judge Robert Faust",
+  "Judge Keith Kelly",
+  "Judge Laura Scott",
+  "Judge Barry Lawrence",
+  "Judge Andrew Stone",
+  "Judge William Kendall",
+  "Judge James Blanch",
+  "Judge Adam Mow",
+  "Judge Su Chon",
+  "Judge Kara Pettit",
+  "Judge David Connors",
+  "Judge Todd Shaughnessy",
+  "Judge Dianna Gibson",
+  "Judge Douglas Hogan",
+  "Judge Robert Shelby",
+  "Judge David Nuffer",
+  "Judge Howard Nielson",
+  "Judge Tena Campbell",
+  "Judge Deno Himonas",
+  "Other",
+];
+
+const MATTER_STATUSES = [
+  { value: "active", label: "Active" },
+  { value: "pending", label: "Pending" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "closed", label: "Closed" },
+  { value: "archived", label: "Archived" },
 ];
 
 const STATUS_TAB_MAP: Record<string, string[]> = {
@@ -165,6 +237,10 @@ export default function MattersPage() {
     description: "",
     practiceArea: "",
     responsiblePartyId: "",
+    assignedAttorneys: [] as string[],
+    assignedParalegals: [] as string[],
+    courtName: "",
+    judgeAssigned: "",
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
@@ -179,6 +255,9 @@ export default function MattersPage() {
     queryKey: ["/api/team-members"],
   });
 
+  const attorneys = teamMembers.filter(m => ["attorney", "partner", "associate", "of_counsel"].includes(m.role) && m.isActive);
+  const paralegals = teamMembers.filter(m => m.role === "paralegal" && m.isActive);
+
   const createMatterMutation = useMutation({
     mutationFn: async (data: typeof matterForm) => {
       const res = await apiRequest("POST", "/api/matters", {
@@ -190,6 +269,10 @@ export default function MattersPage() {
         description: data.description,
         practiceArea: data.practiceArea,
         responsiblePartyId: data.responsiblePartyId || undefined,
+        assignedAttorneys: data.assignedAttorneys,
+        assignedParalegals: data.assignedParalegals,
+        courtName: data.courtName || undefined,
+        judgeAssigned: data.judgeAssigned || undefined,
         openedDate: new Date().toISOString().split("T")[0],
         workspaceId: activeWorkspaceId,
       });
@@ -199,7 +282,7 @@ export default function MattersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       setShowCreateDialog(false);
-      setMatterForm({ clientId: "", name: "", caseNumber: "", matterType: "", description: "", practiceArea: "", responsiblePartyId: "" });
+      setMatterForm({ clientId: "", name: "", caseNumber: "", matterType: "", description: "", practiceArea: "", responsiblePartyId: "", assignedAttorneys: [], assignedParalegals: [], courtName: "", judgeAssigned: "" });
       toast({ title: "Matter created", description: "New matter has been opened." });
     },
     onError: () => {
@@ -439,6 +522,91 @@ export default function MattersPage() {
                   </Select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Court</Label>
+                  <Select
+                    value={matterForm.courtName}
+                    onValueChange={v => setMatterForm(p => ({ ...p, courtName: v }))}
+                  >
+                    <SelectTrigger data-testid="select-court">
+                      <SelectValue placeholder="Select court" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UTAH_COURTS.map(court => (
+                        <SelectItem key={court} value={court}>{court}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Judge Assigned</Label>
+                  <Select
+                    value={matterForm.judgeAssigned}
+                    onValueChange={v => setMatterForm(p => ({ ...p, judgeAssigned: v }))}
+                  >
+                    <SelectTrigger data-testid="select-judge">
+                      <SelectValue placeholder="Select judge" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UTAH_JUDGES.map(judge => (
+                        <SelectItem key={judge} value={judge}>{judge}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {attorneys.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assigned Attorneys</Label>
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md" data-testid="select-attorneys">
+                    {attorneys.map(atty => (
+                      <label key={atty.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={matterForm.assignedAttorneys.includes(atty.id)}
+                          onCheckedChange={(checked) => {
+                            setMatterForm(p => ({
+                              ...p,
+                              assignedAttorneys: checked
+                                ? [...p.assignedAttorneys, atty.id]
+                                : p.assignedAttorneys.filter(id => id !== atty.id),
+                            }));
+                          }}
+                          data-testid={`checkbox-attorney-${atty.id}`}
+                        />
+                        {atty.firstName} {atty.lastName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {paralegals.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assigned Paralegals</Label>
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md" data-testid="select-paralegals">
+                    {paralegals.map(pl => (
+                      <label key={pl.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={matterForm.assignedParalegals.includes(pl.id)}
+                          onCheckedChange={(checked) => {
+                            setMatterForm(p => ({
+                              ...p,
+                              assignedParalegals: checked
+                                ? [...p.assignedParalegals, pl.id]
+                                : p.assignedParalegals.filter(id => id !== pl.id),
+                            }));
+                          }}
+                          data-testid={`checkbox-paralegal-${pl.id}`}
+                        />
+                        {pl.firstName} {pl.lastName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Description</Label>

@@ -70,6 +70,8 @@ import {
   LayoutDashboard,
   Library,
   CircleDot,
+  ListTodo,
+  UserCheck,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -93,9 +95,11 @@ function getTooltipForTitle(title: string): string {
 }
 
 const navigationItems = [
+  { title: "My Tasks", url: "/my-tasks", icon: ListTodo },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
+  { title: "Team Members", url: "/team-members", icon: UserCheck },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Upload Organizer", url: "/upload-organizer", icon: FolderOpen },

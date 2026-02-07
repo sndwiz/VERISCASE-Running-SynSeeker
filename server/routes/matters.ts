@@ -1,5 +1,8 @@
 import type { Express } from "express";
 import { storage } from "../storage";
+import { db } from "../db";
+import { teamMembers, matterDocuments } from "@shared/models/tables";
+import { eq, desc, inArray } from "drizzle-orm";
 import {
   insertMatterSchema,
   updateMatterSchema,
@@ -14,10 +17,6 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
-import { db } from "../db";
-import { users } from "@shared/models/auth";
-import { matterDocuments } from "@shared/models/tables";
-import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -70,20 +69,6 @@ const matterUpload = multer({
 });
 
 export function registerMatterRoutes(app: Express): void {
-  app.get("/api/team-members", async (_req, res) => {
-    try {
-      const members = await db.select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        role: users.role,
-      }).from(users);
-      res.json(members);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch team members" });
-    }
-  });
-
   app.get("/api/matters", async (req, res) => {
     try {
       const clientId = req.query.clientId as string | undefined;
@@ -112,9 +97,22 @@ export function registerMatterRoutes(app: Express): void {
       const matter = await storage.createMatter(data);
 
       const workspaceId = req.body.workspaceId as string | undefined;
+      const teamNames: string[] = [];
+      const allAssignedIds = [
+        ...(req.body.assignedAttorneys || []),
+        ...(req.body.assignedParalegals || []),
+      ].filter(Boolean);
+      if (allAssignedIds.length > 0) {
+        const members = await db.select().from(teamMembers).where(inArray(teamMembers.id, allAssignedIds));
+        for (const m of members) {
+          teamNames.push(`${m.firstName} ${m.lastName}`);
+        }
+      }
+      const boardDesc = `Case board for ${matter.name} | Opened: ${matter.openedDate}${teamNames.length ? ` | Team: ${teamNames.join(", ")}` : ""}`;
+
       await storage.createBoard({
         name: matter.name,
-        description: `Case board for ${matter.name}`,
+        description: boardDesc,
         color: "#6366f1",
         icon: "briefcase",
         clientId: matter.clientId,
@@ -147,6 +145,8 @@ export function registerMatterRoutes(app: Express): void {
         description: original.description || "",
         openedDate: new Date().toISOString().split("T")[0],
         responsiblePartyId: (original as any).responsiblePartyId || undefined,
+        assignedAttorneys: (original as any).assignedAttorneys || [],
+        assignedParalegals: (original as any).assignedParalegals || [],
         practiceArea: original.practiceArea,
         courtName: original.courtName || undefined,
         judgeAssigned: original.judgeAssigned || undefined,

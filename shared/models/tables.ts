@@ -1,6 +1,26 @@
 import { sql } from "drizzle-orm";
 import { index, jsonb, pgTable, timestamp, varchar, text, integer, boolean, real } from "drizzle-orm/pg-core";
 
+// ============ TEAM MEMBERS ============
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  role: varchar("role", { length: 50 }).notNull(),
+  title: varchar("title", { length: 100 }),
+  barNumber: varchar("bar_number", { length: 50 }),
+  department: varchar("department", { length: 100 }),
+  isActive: boolean("is_active").default(true),
+  userId: varchar("user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
 // ============ WORKSPACES ============
 export const workspaces = pgTable("workspaces", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -125,6 +145,7 @@ export const matters = pgTable("matters", {
   closedDate: varchar("closed_date", { length: 50 }),
   responsiblePartyId: varchar("responsible_party_id"),
   assignedAttorneys: jsonb("assigned_attorneys").default([]),
+  assignedParalegals: jsonb("assigned_paralegals").default([]),
   practiceArea: varchar("practice_area", { length: 100 }).notNull(),
   courtName: varchar("court_name", { length: 255 }),
   judgeAssigned: varchar("judge_assigned", { length: 255 }),

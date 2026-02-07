@@ -2,6 +2,14 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertTaskSchema, updateTaskSchema } from "@shared/schema";
 import { z } from "zod";
+import { db } from "../db";
+import { tasks as tasksTable } from "@shared/models/tables";
+import { boards } from "@shared/models/tables";
+import { eq, and, sql, or } from "drizzle-orm";
+
+function getUserId(req: any): string | null {
+  return (req as any).user?.id || (req.session as any)?.passport?.user?.id || null;
+}
 
 const mirrorMoveSchema = z.object({
   targetBoardId: z.string().min(1),
@@ -24,6 +32,73 @@ export function registerTaskRoutes(app: Express): void {
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch recent tasks" });
+    }
+  });
+
+  app.get("/api/tasks/my", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const allTasks = await db.select({
+        task: tasksTable,
+        boardName: boards.name,
+        boardColor: boards.color,
+        matterId: boards.matterId,
+      })
+        .from(tasksTable)
+        .leftJoin(boards, eq(tasksTable.boardId, boards.id))
+        .orderBy(tasksTable.dueDate, tasksTable.priority);
+
+      const myTasks = allTasks.filter(row => {
+        const assignees = row.task.assignees as any[];
+        const owner = row.task.owner as any;
+        if (assignees && Array.isArray(assignees)) {
+          if (assignees.some((a: any) => a.id === userId || a === userId)) return true;
+        }
+        if (owner && (owner.id === userId || owner === userId)) return true;
+        if (row.task.lastUpdatedBy === userId) return false;
+        return false;
+      });
+
+      res.json(myTasks.map(row => ({
+        ...row.task,
+        boardName: row.boardName,
+        boardColor: row.boardColor,
+        matterId: row.matterId,
+      })));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user tasks" });
+    }
+  });
+
+  app.get("/api/tasks/all-today", async (_req, res) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const allTasks = await db.select({
+        task: tasksTable,
+        boardName: boards.name,
+        boardColor: boards.color,
+        matterId: boards.matterId,
+      })
+        .from(tasksTable)
+        .leftJoin(boards, eq(tasksTable.boardId, boards.id))
+        .where(
+          or(
+            eq(tasksTable.dueDate, today),
+            eq(tasksTable.startDate, today)
+          )
+        )
+        .orderBy(tasksTable.priority);
+
+      res.json(allTasks.map(row => ({
+        ...row.task,
+        boardName: row.boardName,
+        boardColor: row.boardColor,
+        matterId: row.matterId,
+      })));
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch today's tasks" });
     }
   });
 
