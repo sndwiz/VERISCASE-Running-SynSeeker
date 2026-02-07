@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,11 +23,14 @@ import {
   Loader2,
   Edit,
   Trash2,
-  MoreHorizontal,
-  Calendar
+  Calendar,
+  ArrowRight,
+  CheckCircle2,
+  Search as SearchIcon,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkspace } from "@/hooks/use-workspace";
 
 interface Client {
   id: string;
@@ -48,13 +52,31 @@ interface Matter {
   practiceArea: string;
 }
 
+const PRACTICE_AREAS = [
+  "Civil Litigation", "Criminal Defense", "Family Law", "Corporate Law",
+  "Real Estate", "Intellectual Property", "Employment Law", "Immigration",
+  "Personal Injury", "Estate Planning", "Bankruptcy", "Tax Law", "Other",
+];
+
+const MATTER_TYPES = [
+  "Consultation", "Litigation", "Transaction", "Administrative",
+  "Regulatory", "Criminal Defense", "Civil Litigation", "Insurance Litigation", "Other",
+];
+
 export default function ClientsPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { activeWorkspaceId } = useWorkspace();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showNextStepDialog, setShowNextStepDialog] = useState(false);
+  const [showQuickMatterDialog, setShowQuickMatterDialog] = useState(false);
+  const [showMatterSuccessDialog, setShowMatterSuccessDialog] = useState(false);
+  const [newlyCreatedClient, setNewlyCreatedClient] = useState<Client | null>(null);
+  const [newlyCreatedMatter, setNewlyCreatedMatter] = useState<Matter | null>(null);
   
   const [clientForm, setClientForm] = useState({
     name: "",
@@ -63,6 +85,14 @@ export default function ClientsPage() {
     phone: "",
     address: "",
     notes: "",
+  });
+
+  const [matterForm, setMatterForm] = useState({
+    name: "",
+    matterType: "",
+    practiceArea: "",
+    description: "",
+    caseNumber: "",
   });
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
@@ -87,14 +117,46 @@ export default function ClientsPage() {
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: Client) => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setShowCreateDialog(false);
       setClientForm({ name: "", type: "individual", email: "", phone: "", address: "", notes: "" });
-      toast({ title: "Client created", description: "New client has been added." });
+      setNewlyCreatedClient(data);
+      setSelectedClient(data);
+      toast({ title: "Client created", description: `${data.name} has been added.` });
+      setShowNextStepDialog(true);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create client.", variant: "destructive" });
+    }
+  });
+
+  const createMatterMutation = useMutation({
+    mutationFn: async (data: typeof matterForm & { clientId: string }) => {
+      const res = await apiRequest("POST", "/api/matters", {
+        clientId: data.clientId,
+        name: data.name,
+        caseNumber: data.caseNumber || `CASE-${Date.now().toString(36).toUpperCase()}`,
+        matterType: data.matterType || "Consultation",
+        status: "active",
+        description: data.description,
+        practiceArea: data.practiceArea,
+        openedDate: new Date().toISOString().split("T")[0],
+        workspaceId: activeWorkspaceId,
+      });
+      return res.json();
+    },
+    onSuccess: (data: Matter) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      setShowQuickMatterDialog(false);
+      setMatterForm({ name: "", matterType: "", practiceArea: "", description: "", caseNumber: "" });
+      setNewlyCreatedMatter(data);
+      toast({ title: "Matter created", description: `${data.name} has been opened with a case board.` });
+      setShowMatterSuccessDialog(true);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create matter.", variant: "destructive" });
     }
   });
 
@@ -146,6 +208,26 @@ export default function ClientsPage() {
         notes: selectedClient.notes || "",
       });
       setShowEditDialog(true);
+    }
+  };
+
+  const handleStartMatter = () => {
+    setShowNextStepDialog(false);
+    setMatterForm({ name: "", matterType: "", practiceArea: "", description: "", caseNumber: "" });
+    setShowQuickMatterDialog(true);
+  };
+
+  const handleOpenDetectiveBoard = () => {
+    setShowMatterSuccessDialog(false);
+    if (newlyCreatedMatter) {
+      setLocation(`/detective?matterId=${newlyCreatedMatter.id}`);
+    }
+  };
+
+  const handleOpenMatterDetail = () => {
+    setShowMatterSuccessDialog(false);
+    if (newlyCreatedMatter) {
+      setLocation(`/matters/${newlyCreatedMatter.id}`);
     }
   };
 
@@ -314,7 +396,7 @@ export default function ClientsPage() {
                           <div>
                             <h3 className="font-semibold">{client.name}</h3>
                             <p className="text-sm text-muted-foreground">
-                              {client.email || "No email"} • {matterCount} matter{matterCount !== 1 ? "s" : ""}
+                              {client.email || "No email"} {matterCount > 0 && <>· {matterCount} matter{matterCount !== 1 ? "s" : ""}</>}
                             </p>
                           </div>
                         </div>
@@ -411,7 +493,25 @@ export default function ClientsPage() {
                 )}
 
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Matters ({clientMatters.length})</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Matters ({clientMatters.length})</h3>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        if (selectedClient) {
+                          setNewlyCreatedClient(selectedClient);
+                          setMatterForm({ name: "", matterType: "", practiceArea: "", description: "", caseNumber: "" });
+                          setShowQuickMatterDialog(true);
+                        }
+                      }}
+                      disabled={!selectedClient}
+                      data-testid="button-add-matter-for-client"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Add Matter
+                    </Button>
+                  </div>
                   
                   {clientMatters.length === 0 ? (
                     <div className="text-center py-4 text-muted-foreground">
@@ -427,7 +527,7 @@ export default function ClientsPage() {
                               <div>
                                 <p className="font-medium text-sm">{matter.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {matter.caseNumber} • {matter.practiceArea}
+                                  {matter.caseNumber} · {matter.practiceArea}
                                 </p>
                               </div>
                               <Badge variant={matter.status === "active" ? "default" : "secondary"}>
@@ -535,6 +635,200 @@ export default function ClientsPage() {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNextStepDialog} onOpenChange={setShowNextStepDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Client Created Successfully</DialogTitle>
+            <DialogDescription>
+              {newlyCreatedClient?.name} has been added. What would you like to do next?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span>Step 1 of 3: Client created</span>
+            </div>
+            <Button 
+              className="w-full justify-start gap-3" 
+              onClick={handleStartMatter}
+              data-testid="button-next-create-matter"
+            >
+              <Briefcase className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Open a Matter</div>
+                <div className="text-xs opacity-80">Create a case or matter for this client</div>
+              </div>
+              <ArrowRight className="h-4 w-4 ml-auto" />
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-3"
+              onClick={() => setShowNextStepDialog(false)}
+              data-testid="button-skip-matter"
+            >
+              <Users className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Stay on Clients</div>
+                <div className="text-xs opacity-80">Continue managing client details</div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showQuickMatterDialog} onOpenChange={setShowQuickMatterDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create Matter for {newlyCreatedClient?.name}</DialogTitle>
+            <DialogDescription>Open a new case or matter for this client.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span>Step 2 of 3: Open a matter</span>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Matter Name</Label>
+                <Input
+                  value={matterForm.name}
+                  onChange={e => setMatterForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g., Personal Injury Claim"
+                  data-testid="input-quick-matter-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Case Number (optional)</Label>
+                <Input
+                  value={matterForm.caseNumber}
+                  onChange={e => setMatterForm(p => ({ ...p, caseNumber: e.target.value }))}
+                  placeholder="Auto-generated if empty"
+                  data-testid="input-quick-case-number"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Practice Area</Label>
+                <Select
+                  value={matterForm.practiceArea}
+                  onValueChange={v => setMatterForm(p => ({ ...p, practiceArea: v }))}
+                >
+                  <SelectTrigger data-testid="select-quick-practice-area">
+                    <SelectValue placeholder="Select area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRACTICE_AREAS.map(area => (
+                      <SelectItem key={area} value={area}>{area}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Matter Type</Label>
+                <Select
+                  value={matterForm.matterType}
+                  onValueChange={v => setMatterForm(p => ({ ...p, matterType: v }))}
+                >
+                  <SelectTrigger data-testid="select-quick-matter-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATTER_TYPES.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Textarea
+                value={matterForm.description}
+                onChange={e => setMatterForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Brief description of the matter..."
+                data-testid="input-quick-matter-description"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setShowQuickMatterDialog(false)}
+              data-testid="button-cancel-quick-matter"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (newlyCreatedClient) {
+                  createMatterMutation.mutate({ ...matterForm, clientId: newlyCreatedClient.id });
+                }
+              }}
+              disabled={!matterForm.name || !matterForm.practiceArea || createMatterMutation.isPending}
+              data-testid="button-submit-quick-matter"
+            >
+              {createMatterMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create Matter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMatterSuccessDialog} onOpenChange={setShowMatterSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Matter Created Successfully</DialogTitle>
+            <DialogDescription>
+              {newlyCreatedMatter?.name} has been opened with a case board. What would you like to do next?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span>Step 3 of 3: Start investigating</span>
+            </div>
+            <Button 
+              className="w-full justify-start gap-3"
+              onClick={handleOpenDetectiveBoard}
+              data-testid="button-open-detective-board"
+            >
+              <SearchIcon className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Open Detective Board</div>
+                <div className="text-xs opacity-80">Start building your investigation board for this case</div>
+              </div>
+              <ArrowRight className="h-4 w-4 ml-auto" />
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-3"
+              onClick={handleOpenMatterDetail}
+              data-testid="button-open-matter-detail"
+            >
+              <Briefcase className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">View Matter Details</div>
+                <div className="text-xs opacity-80">Add documents, contacts, and timeline events</div>
+              </div>
+              <ArrowRight className="h-4 w-4 ml-auto" />
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-3"
+              onClick={() => setShowMatterSuccessDialog(false)}
+              data-testid="button-stay-clients"
+            >
+              <Users className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Stay on Clients</div>
+                <div className="text-xs opacity-80">Continue managing client details</div>
+              </div>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -642,11 +643,43 @@ function MiniMap({ nodes, pan, containerW, containerH }: { nodes: DetectiveNode[
   );
 }
 
+interface MatterContact {
+  id: string;
+  matterId: string;
+  name: string;
+  role: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+}
+
+interface TimelineEvent {
+  id: string;
+  matterId: string;
+  title: string;
+  description: string;
+  eventDate: string;
+  eventType: string;
+}
+
+interface EvidenceItem {
+  id: string;
+  matterId: string;
+  title: string;
+  evidenceType: string;
+  status: string;
+  description?: string;
+  batesNumber?: string;
+}
+
 export default function DetectiveBoardPage() {
   const { toast } = useToast();
   const boardRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedMatterId, setSelectedMatterId] = useState<string>("");
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const urlMatterId = urlParams.get("matterId") || "";
+  const [selectedMatterId, setSelectedMatterId] = useState<string>(urlMatterId);
   const [selectedNode, setSelectedNode] = useState<DetectiveNode | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<DetectiveConnection | null>(null);
   const [showAddNodeDialog, setShowAddNodeDialog] = useState(false);
@@ -659,7 +692,7 @@ export default function DetectiveBoardPage() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const lastMousePos = useRef({ x: 0, y: 0 });
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"history" | "details">("history");
+  const [sidebarTab, setSidebarTab] = useState<"context" | "history" | "details">("context");
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
 
   const [nodeForm, setNodeForm] = useState({
@@ -688,6 +721,21 @@ export default function DetectiveBoardPage() {
 
   const { data: connections = [] } = useQuery<DetectiveConnection[]>({
     queryKey: ["/api/matters", selectedMatterId, "detective", "connections"],
+    enabled: !!selectedMatterId,
+  });
+
+  const { data: matterContacts = [] } = useQuery<MatterContact[]>({
+    queryKey: ["/api/matters", selectedMatterId, "contacts"],
+    enabled: !!selectedMatterId,
+  });
+
+  const { data: timelineEvents = [] } = useQuery<TimelineEvent[]>({
+    queryKey: ["/api/matters", selectedMatterId, "timeline"],
+    enabled: !!selectedMatterId,
+  });
+
+  const { data: evidenceItems = [] } = useQuery<EvidenceItem[]>({
+    queryKey: ["/api/matters", selectedMatterId, "evidence"],
     enabled: !!selectedMatterId,
   });
 
@@ -1282,45 +1330,150 @@ export default function DetectiveBoardPage() {
       }}>
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <div
-            data-testid="tab-history"
-            onClick={() => setSidebarTab("history")}
-            style={{
-              flex: 1,
-              padding: 14,
-              textAlign: "center",
-              fontSize: 11,
-              fontWeight: 600,
-              color: sidebarTab === "history" ? "#3498db" : panelMuted,
-              cursor: "pointer",
-              borderBottom: sidebarTab === "history" ? "2px solid #3498db" : "2px solid transparent",
-              transition: "all 0.2s",
-            }}
-          >
-            History
-          </div>
-          <div
-            data-testid="tab-details"
-            onClick={() => setSidebarTab("details")}
-            style={{
-              flex: 1,
-              padding: 14,
-              textAlign: "center",
-              fontSize: 11,
-              fontWeight: 600,
-              color: sidebarTab === "details" ? "#3498db" : panelMuted,
-              cursor: "pointer",
-              borderBottom: sidebarTab === "details" ? "2px solid #3498db" : "2px solid transparent",
-              transition: "all 0.2s",
-            }}
-          >
-            Details
-          </div>
+          {(["context", "history", "details"] as const).map(tab => (
+            <div
+              key={tab}
+              data-testid={`tab-${tab}`}
+              onClick={() => setSidebarTab(tab)}
+              style={{
+                flex: 1,
+                padding: 14,
+                textAlign: "center",
+                fontSize: 11,
+                fontWeight: 600,
+                color: sidebarTab === tab ? "#3498db" : panelMuted,
+                cursor: "pointer",
+                borderBottom: sidebarTab === tab ? "2px solid #3498db" : "2px solid transparent",
+                transition: "all 0.2s",
+                textTransform: "capitalize",
+              }}
+            >
+              {tab === "context" ? "Case Data" : tab}
+            </div>
+          ))}
         </div>
 
         {/* Sidebar content */}
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-          {sidebarTab === "history" ? (
+          {sidebarTab === "context" ? (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+                Contacts ({matterContacts.length})
+              </div>
+              {matterContacts.length === 0 ? (
+                <div style={{ fontSize: 11, color: panelMuted, padding: "8px 0 16px", textAlign: "center" }}>
+                  No contacts linked to this matter yet.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+                  {matterContacts.map(contact => (
+                    <div key={contact.id} style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 8,
+                      padding: 10,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <User size={12} style={{ color: "#3498db" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{contact.name}</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: panelMuted, paddingLeft: 20 }}>
+                        {contact.role}
+                        {contact.email && <> · {contact.email}</>}
+                      </div>
+                      {contact.notes && (
+                        <div style={{ fontSize: 10, color: panelMuted, paddingLeft: 20, marginTop: 2, fontStyle: "italic" }}>
+                          {contact.notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+                Timeline ({timelineEvents.length})
+              </div>
+              {timelineEvents.length === 0 ? (
+                <div style={{ fontSize: 11, color: panelMuted, padding: "8px 0 16px", textAlign: "center" }}>
+                  No timeline events recorded yet.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: 20 }}>
+                  {timelineEvents
+                    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+                    .map((event, i) => (
+                    <div key={event.id} style={{
+                      position: "relative",
+                      padding: "10px 10px 10px 24px",
+                      borderLeft: i < timelineEvents.length - 1 ? "2px solid rgba(255,255,255,0.1)" : "2px solid transparent",
+                      marginLeft: 6,
+                    }}>
+                      <div style={{
+                        position: "absolute",
+                        left: -5,
+                        top: 14,
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: event.eventType === "critical" ? "#e74c3c" : event.eventType === "milestone" ? "#f39c12" : "#3498db",
+                        border: `2px solid ${panelBg}`,
+                      }} />
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>{event.title}</div>
+                      <div style={{ fontSize: 10, color: panelMuted }}>
+                        {new Date(event.eventDate).toLocaleDateString()} · {event.eventType}
+                      </div>
+                      {event.description && (
+                        <div style={{ fontSize: 10, color: panelMuted, marginTop: 2 }}>{event.description}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+                Evidence ({evidenceItems.length})
+              </div>
+              {evidenceItems.length === 0 ? (
+                <div style={{ fontSize: 11, color: panelMuted, padding: "8px 0 16px", textAlign: "center" }}>
+                  No evidence items in the vault yet.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+                  {evidenceItems.map(item => (
+                    <div key={item.id} style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 8,
+                      padding: 10,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <FileText size={12} style={{ color: "#e67e22" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{item.title}</span>
+                      </div>
+                      <div style={{ fontSize: 10, color: panelMuted, paddingLeft: 20 }}>
+                        {item.evidenceType}
+                        {item.batesNumber && <> · {item.batesNumber}</>}
+                        {item.status && <> · {item.status}</>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{
+                background: "rgba(52,152,219,0.08)",
+                border: "1px solid rgba(52,152,219,0.2)",
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 10,
+                color: panelMuted,
+                textAlign: "center",
+              }}>
+                Add contacts, timeline events, and evidence from the Matter Detail page to see them here.
+              </div>
+            </>
+          ) : sidebarTab === "history" ? (
             <>
               {/* What's New */}
               <div style={{

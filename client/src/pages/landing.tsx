@@ -1,17 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Scale, 
   ArrowRight, 
-  CheckCircle2, 
-  Sparkles,
   Shield,
   FileText,
-  BarChart3,
-  Users,
-  Clock,
-  Zap
+  Brain,
+  Lock,
+  Search,
+  Workflow,
+  Database,
+  Eye,
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -19,150 +18,135 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onLogin }: LandingPageProps) {
-  const features = [
-    {
-      icon: FileText,
-      title: "Matter Management",
-      description: "Organize cases, track deadlines, and manage client relationships in one place."
-    },
+  const capabilities = [
     {
       icon: Shield,
-      title: "Evidence Vault",
-      description: "Secure, immutable storage with complete chain-of-custody tracking."
+      title: "Bank-Level Security",
+      description: "AES-256 encryption, SHA-256 chain-of-custody, and immutable audit trails protect every piece of evidence.",
     },
     {
-      icon: Sparkles,
-      title: "AI-Powered Analysis",
-      description: "Leverage Claude and GPT to analyze documents and accelerate research."
+      icon: Database,
+      title: "Evidence Management",
+      description: "Secure vault with Bates numbering, filing classification, and complete chain-of-custody tracking.",
     },
     {
-      icon: BarChart3,
-      title: "Visual Boards",
-      description: "Monday.com-style boards to track cases, tasks, and project progress."
+      icon: Workflow,
+      title: "Automated Workflows",
+      description: "85+ automation templates with event-driven triggers to eliminate repetitive tasks and streamline operations.",
     },
     {
-      icon: Users,
-      title: "Team Collaboration",
-      description: "Role-based access control and team assignment for seamless coordination."
+      icon: Brain,
+      title: "AI Document Analysis",
+      description: "Multi-model AI engine for entity extraction, contradiction detection, timeline construction, and case summarization.",
     },
     {
-      icon: Zap,
-      title: "Workflow Automation",
-      description: "Automate repetitive tasks with customizable triggers and actions."
-    }
+      icon: Search,
+      title: "Case Analysis",
+      description: "Visual investigation boards with relationship mapping, timeline analysis, and automated anomaly detection.",
+    },
+    {
+      icon: Eye,
+      title: "Matter Intelligence",
+      description: "OCR-powered evidence processing with AI-driven theme extraction, risk assessment, and action item generation.",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center" data-testid="logo-icon">
-              <Scale className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-bold text-lg" data-testid="text-brand-name">VERICASE</span>
-            <span className="text-muted-foreground text-sm hidden sm:inline" data-testid="text-brand-tagline">Legal Practice OS</span>
-          </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" data-testid="link-features">
-              Features
-            </Button>
-            <Button onClick={onLogin} data-testid="button-signin">
-              Sign In
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            <div className="h-9 w-9 rounded-md bg-primary flex items-center justify-center" data-testid="logo-icon">
+              <Scale className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm leading-tight" data-testid="text-brand-name">VERICASE</span>
+              <span className="text-[10px] text-muted-foreground leading-tight tracking-wider uppercase" data-testid="text-brand-sub">Running SynSeeker</span>
+            </div>
+            <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
+            <span className="text-xs text-muted-foreground hidden sm:inline" data-testid="text-brand-org">Synergy LAW</span>
           </div>
+          <Button onClick={onLogin} data-testid="button-signin">
+            <Lock className="h-4 w-4 mr-2" />
+            Secure Sign In
+          </Button>
         </div>
       </header>
 
-      <main>
-        <section className="py-20 px-4">
-          <div className="container mx-auto text-center max-w-4xl">
-            <Badge variant="secondary" className="mb-6 px-4 py-1.5" data-testid="badge-ai-powered">
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              Powered by GPT-5 & Claude AI
-            </Badge>
+      <main className="flex-1 flex flex-col">
+        <section className="py-16 px-6 flex-shrink-0">
+          <div className="container mx-auto max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-xs font-medium mb-6" data-testid="badge-proprietary">
+              <Lock className="h-3 w-3" />
+              Authorized Access Only
+            </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6" data-testid="text-hero-headline">
-              The Complete Operating System for{" "}
-              <span className="text-primary">Modern Law Firms</span>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-hero-headline">
+              Vericase Running SynSeeker
             </h1>
-            
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="text-hero-description">
-              Manage matters, track evidence, automate workflows, and leverage AI for 
-              document analysis. Everything your practice needs in one powerful platform — 
-              completely free.
+            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-widest font-medium" data-testid="text-hero-org">
+              by Synergy LAW
             </p>
             
-            <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
-              <Button size="lg" onClick={onLogin} data-testid="button-get-started">
-                Get Started Free
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-              <Button size="lg" variant="outline" data-testid="button-learn-more">
-                Learn More
-              </Button>
-            </div>
+            <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto mt-6" data-testid="text-hero-description">
+              Your integrated legal practice operating system. Manage matters, secure evidence,
+              automate workflows, and leverage AI-powered document and case analysis — all in one
+              secure platform.
+            </p>
             
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground" data-testid="list-trust-bullets">
-              <div className="flex items-center gap-2" data-testid="trust-bullet-1">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                No credit card required
-              </div>
-              <div className="flex items-center gap-2" data-testid="trust-bullet-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                All features included
-              </div>
-              <div className="flex items-center gap-2" data-testid="trust-bullet-3">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                Bank-level security
-              </div>
-            </div>
+            <Button size="lg" onClick={onLogin} data-testid="button-get-started">
+              Sign In to Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
           </div>
         </section>
 
-        <section className="py-20 px-4 bg-muted/30">
-          <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4" data-testid="text-features-headline">Everything You Need to Run Your Practice</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto" data-testid="text-features-description">
-                Purpose-built tools for legal professionals, from solo practitioners to large firms.
+        <section className="py-12 px-6 bg-muted/30 flex-1">
+          <div className="container mx-auto max-w-5xl">
+            <div className="text-center mb-8">
+              <h2 className="text-lg font-semibold mb-1" data-testid="text-capabilities-headline">Platform Capabilities</h2>
+              <p className="text-sm text-muted-foreground" data-testid="text-capabilities-description">
+                Enterprise-grade tools built for legal professionals
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="grid-features">
-              {features.map((feature, index) => (
-                <Card key={index} className="hover-elevate" data-testid={`card-feature-${index}`}>
-                  <CardContent className="pt-6">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                      <feature.icon className="h-6 w-6 text-primary" />
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="grid-capabilities">
+              {capabilities.map((cap, index) => (
+                <Card key={index} data-testid={`card-capability-${index}`}>
+                  <CardContent className="pt-5 pb-4 px-5">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <cap.icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm mb-1" data-testid={`text-cap-title-${index}`}>{cap.title}</h3>
+                        <p className="text-muted-foreground text-xs leading-relaxed" data-testid={`text-cap-desc-${index}`}>{cap.description}</p>
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-lg mb-2" data-testid={`text-feature-title-${index}`}>{feature.title}</h3>
-                    <p className="text-muted-foreground text-sm" data-testid={`text-feature-description-${index}`}>{feature.description}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </div>
         </section>
-
-        <section className="py-20 px-4" data-testid="section-cta">
-          <div className="container mx-auto max-w-4xl text-center">
-            <h2 className="text-3xl font-bold mb-4" data-testid="text-cta-headline">Ready to Transform Your Practice?</h2>
-            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto" data-testid="text-cta-description">
-              Join thousands of legal professionals who trust VERICASE to manage their cases efficiently.
-            </p>
-            <Button size="lg" onClick={onLogin} data-testid="button-get-started-bottom">
-              Get Started Free
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </div>
-        </section>
       </main>
 
-      <footer className="border-t py-8 px-4" data-testid="section-footer">
-        <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p data-testid="text-copyright">&copy; 2026 VERICASE. All rights reserved.</p>
+      <footer className="border-t py-4 px-6" data-testid="section-footer">
+        <div className="container mx-auto flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Scale className="h-3 w-3" />
+            <span data-testid="text-copyright">Vericase by Synergy LAW</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <Shield className="h-3 w-3" />
+              <span>AES-256 Encrypted</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3 w-3" />
+              <span>HIPAA Compliant</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
