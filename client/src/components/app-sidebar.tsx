@@ -72,6 +72,7 @@ import {
   CircleDot,
   ListTodo,
   UserCheck,
+  BookOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,7 @@ const navigationItems = [
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Template Library", url: "/templates", icon: Library },
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
+  { title: "Product Guide", url: "/product-guide", icon: BookOpen },
 ];
 
 const aiInvestigationItems = [
