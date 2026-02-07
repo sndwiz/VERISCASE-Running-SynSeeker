@@ -71,6 +71,7 @@ const typeIcons: Record<string, any> = {
   macro: PlayCircle,
   automation: Zap,
   board: LayoutGrid,
+  "automation-board": Zap,
   package: Package,
 };
 
@@ -79,6 +80,7 @@ const typeLabels: Record<string, string> = {
   macro: "Process Macros",
   automation: "Automation Templates",
   board: "Board Templates",
+  "automation-board": "Automation Boards",
   package: "Packages",
 };
 
@@ -228,19 +230,40 @@ export default function TemplatesPage() {
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
-              <FileText className="h-8 w-8" />
-              <p data-testid="text-no-templates">No templates found</p>
-              {activeTab === "email" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => seedMutation.mutate()}
-                  disabled={seedMutation.isPending}
-                  data-testid="button-seed-templates-empty"
-                >
-                  <Sparkles className="h-4 w-4 mr-1" />
-                  Seed starter templates
-                </Button>
+              {activeTab === "automation-board" ? (
+                <>
+                  <Zap className="h-10 w-10" />
+                  <p className="font-medium text-foreground" data-testid="text-no-automation-boards">Automation Board Templates</p>
+                  <p className="text-sm text-center max-w-md" data-testid="text-automation-boards-desc">
+                    This section is ready for your custom automation board templates.
+                    Add your own workflow board configurations that will auto-generate
+                    boards with pre-configured columns, groups, automations, and tasks.
+                  </p>
+                  <Button
+                    onClick={() => setShowCreateDialog(true)}
+                    data-testid="button-add-first-automation-board"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Your First Automation Board Template
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-8 w-8" />
+                  <p data-testid="text-no-templates">No templates found</p>
+                  {activeTab === "email" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => seedMutation.mutate()}
+                      disabled={seedMutation.isPending}
+                      data-testid="button-seed-templates-empty"
+                    >
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Seed starter templates
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           ) : (
@@ -499,6 +522,7 @@ function CreateTemplateDialog({ open, onClose, defaultType }: { open: boolean; o
                   <SelectItem value="macro">Macro</SelectItem>
                   <SelectItem value="automation">Automation</SelectItem>
                   <SelectItem value="board">Board</SelectItem>
+                  <SelectItem value="automation-board">Automation Board</SelectItem>
                   <SelectItem value="package">Package</SelectItem>
                 </SelectContent>
               </Select>

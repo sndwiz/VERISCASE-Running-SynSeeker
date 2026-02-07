@@ -152,6 +152,22 @@ export function registerBillingRoutes(app: Express): void {
       };
       const data = insertPaymentSchema.parse(body);
       const payment = await storage.createPayment(data);
+
+      try {
+        const invoice = await storage.getInvoice(payment.invoiceId);
+        if (invoice) {
+          const allPayments = await storage.getPayments({ invoiceId: payment.invoiceId });
+          const totalPaid = allPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+          const balanceDue = Math.max(0, invoice.totalAmount - totalPaid);
+          const newStatus = balanceDue <= 0 ? "paid" as const : invoice.status;
+          await storage.updateInvoice(invoice.id, {
+            paidAmount: totalPaid,
+            balanceDue,
+            status: newStatus,
+          });
+        }
+      } catch (_e) {}
+
       res.status(201).json(payment);
     } catch (error) {
       if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });

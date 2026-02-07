@@ -60,11 +60,9 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
               <Scale className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm leading-tight" data-testid="text-brand-name">VERICASE</span>
-              <span className="text-[10px] text-muted-foreground leading-tight tracking-wider uppercase" data-testid="text-brand-sub">Running SynSeeker</span>
+              <span className="font-bold text-base leading-tight tracking-wide" data-testid="text-brand-org">SYNERGY LAW</span>
+              <span className="text-xs text-muted-foreground leading-tight" data-testid="text-brand-name">VERICASE</span>
             </div>
-            <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
-            <span className="text-xs text-muted-foreground hidden sm:inline" data-testid="text-brand-org">Synergy LAW</span>
           </div>
           <Button onClick={onLogin} data-testid="button-signin">
             <Lock className="h-4 w-4 mr-2" />
@@ -76,19 +74,22 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       <main className="flex-1 flex flex-col">
         <section className="py-16 px-6 flex-shrink-0">
           <div className="container mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-xs font-medium mb-6" data-testid="badge-proprietary">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-xs font-medium mb-8" data-testid="badge-proprietary">
               <Lock className="h-3 w-3" />
               Authorized Access Only
             </div>
             
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-hero-headline">
-              Vericase Running SynSeeker
+            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-2 uppercase" data-testid="text-hero-org">
+              Synergy LAW
             </h1>
-            <p className="text-sm text-muted-foreground mb-2 uppercase tracking-widest font-medium" data-testid="text-hero-org">
-              by Synergy LAW
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-foreground/85" data-testid="text-hero-product">
+              VERICASE
+            </h2>
+            <p className="text-sm text-muted-foreground mb-8 tracking-widest font-medium uppercase" data-testid="text-hero-engine">
+              by SynSeeker
             </p>
             
-            <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto mt-6" data-testid="text-hero-description">
+            <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto" data-testid="text-hero-description">
               Your integrated legal practice operating system. Manage matters, secure evidence,
               automate workflows, and leverage AI-powered document and case analysis — all in one
               secure platform.
