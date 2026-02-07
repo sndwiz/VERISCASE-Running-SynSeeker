@@ -347,21 +347,41 @@ export default function MattersPage() {
               <DialogDescription>Open a new case or matter for a client.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Client</Label>
-                <Select
-                  value={matterForm.clientId}
-                  onValueChange={v => setMatterForm(p => ({ ...p, clientId: v }))}
-                >
-                  <SelectTrigger data-testid="select-client">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Client</Label>
+                  <Select
+                    value={matterForm.clientId}
+                    onValueChange={v => setMatterForm(p => ({ ...p, clientId: v }))}
+                  >
+                    <SelectTrigger data-testid="select-client">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Responsible Attorney</Label>
+                  <Select
+                    value={matterForm.responsiblePartyId}
+                    onValueChange={v => setMatterForm(p => ({ ...p, responsiblePartyId: v }))}
+                  >
+                    <SelectTrigger data-testid="select-responsible-party">
+                      <SelectValue placeholder="Select team member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMembers.map(member => (
+                        <SelectItem key={member.id} value={member.id} data-testid={`option-team-member-${member.id}`}>
+                          {member.firstName} {member.lastName} ({member.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -418,25 +438,6 @@ export default function MattersPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Responsible Attorney</Label>
-                <Select
-                  value={matterForm.responsiblePartyId}
-                  onValueChange={v => setMatterForm(p => ({ ...p, responsiblePartyId: v }))}
-                >
-                  <SelectTrigger data-testid="select-responsible-party">
-                    <SelectValue placeholder="Select team member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teamMembers.map(member => (
-                      <SelectItem key={member.id} value={member.id} data-testid={`option-team-member-${member.id}`}>
-                        {member.firstName} {member.lastName} ({member.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2">

@@ -45,6 +45,10 @@ import {
   Gavel,
   MapPin,
   User,
+  Upload,
+  File,
+  Trash2,
+  X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +71,7 @@ interface Matter {
   status: string;
   description: string;
   practiceArea: string;
+  responsiblePartyId?: string;
   assignedAttorneys?: string[];
   courtName?: string;
   judgeAssigned?: string;
@@ -75,6 +80,22 @@ interface Matter {
   closedDate?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface TeamMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+interface MatterDocument {
+  id: string;
+  matterId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
 }
 
 interface MatterContact {
@@ -134,6 +155,10 @@ export default function MatterDetailPage() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
+  });
+
   const { data: contacts = [] } = useQuery<MatterContact[]>({
     queryKey: ["/api/matters", matterId, "contacts"],
     enabled: !!matterId,
@@ -146,6 +171,11 @@ export default function MatterDetailPage() {
 
   const { data: timeline = [] } = useQuery<TimelineEvent[]>({
     queryKey: ["/api/matters", matterId, "timeline"],
+    enabled: !!matterId,
+  });
+
+  const { data: matterDocuments = [] } = useQuery<MatterDocument[]>({
+    queryKey: ["/api/matters", matterId, "documents"],
     enabled: !!matterId,
   });
 
@@ -213,6 +243,71 @@ export default function MatterDetailPage() {
       toast({ title: "Thread created" });
     },
   });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const formData = new FormData();
+      files.forEach(file => formData.append("files", file));
+      const res = await fetch(`/api/matters/${matterId}/documents`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", matterId, "documents"] });
+      toast({ title: "Files uploaded", description: "Documents have been added to this matter." });
+    },
+    onError: () => {
+      toast({ title: "Upload failed", description: "Could not upload one or more files.", variant: "destructive" });
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (docId: string) => {
+      await apiRequest("DELETE", `/api/matters/${matterId}/documents/${docId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", matterId, "documents"] });
+      toast({ title: "Document removed" });
+    },
+  });
+
+  function handleFileDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      uploadDocumentMutation.mutate(droppedFiles);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      uploadDocumentMutation.mutate(selectedFiles);
+    }
+    e.target.value = "";
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function getResponsiblePartyName(): string | null {
+    if (matter?.responsiblePartyId) {
+      const member = teamMembers.find(tm => tm.id === matter.responsiblePartyId);
+      if (member) return `${member.firstName} ${member.lastName}`;
+    }
+    if (matter?.assignedAttorneys && matter.assignedAttorneys.length > 0) {
+      return matter.assignedAttorneys[0];
+    }
+    return null;
+  }
 
   if (matterLoading) {
     return (
@@ -373,6 +468,7 @@ export default function MatterDetailPage() {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                         <DetailRow label="Matter description" value={matter.name} />
+                        <DetailRow label="Responsible attorney" value={getResponsiblePartyName()} />
                         <DetailRow label="Practice area" value={matter.practiceArea} />
                         <DetailRow label="Matter type" value={matter.matterType} />
                         <DetailRow label="Case number" value={matter.caseNumber} />
@@ -642,18 +738,111 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="documents" className="m-0">
-            <div className="p-6">
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">No documents attached</p>
-                <p className="text-sm">Upload or link documents to this matter</p>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <h3 className="font-semibold">Documents</h3>
+                <label>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    data-testid="input-file-upload"
+                  />
+                  <Button variant="outline" size="sm" asChild>
+                    <span className="cursor-pointer" data-testid="button-upload-document">
+                      <Upload className="h-4 w-4 mr-1" />
+                      Upload Files
+                    </span>
+                  </Button>
+                </label>
               </div>
+
+              <div
+                className="border-2 border-dashed rounded-md p-8 text-center transition-colors"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add("border-primary", "bg-primary/5"); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove("border-primary", "bg-primary/5"); }}
+                onDrop={(e) => { e.currentTarget.classList.remove("border-primary", "bg-primary/5"); handleFileDrop(e); }}
+                data-testid="dropzone-documents"
+              >
+                {uploadDocumentMutation.isPending ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Uploading...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium">Drag and drop files here</p>
+                    <p className="text-xs text-muted-foreground">or click Upload Files above</p>
+                  </div>
+                )}
+              </div>
+
+              {matterDocuments.length > 0 ? (
+                <div className="space-y-2">
+                  {matterDocuments.map(doc => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-md border"
+                      data-testid={`document-row-${doc.id}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <File className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate" data-testid={`text-doc-name-${doc.id}`}>{doc.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(doc.fileSize)} &middot; {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                        data-testid={`button-delete-doc-${doc.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">No documents uploaded yet</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="tasks" className="m-0">
-            <div className="p-6">
-              <div className="text-center py-12 text-muted-foreground">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <h3 className="font-semibold">Tasks</h3>
+              </div>
+
+              <div
+                className="border-2 border-dashed rounded-md p-8 text-center transition-colors"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add("border-primary", "bg-primary/5"); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove("border-primary", "bg-primary/5"); }}
+                onDrop={(e) => { e.currentTarget.classList.remove("border-primary", "bg-primary/5"); handleFileDrop(e); }}
+                data-testid="dropzone-tasks"
+              >
+                {uploadDocumentMutation.isPending ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Uploading...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium">Drop files here to attach to this matter</p>
+                    <p className="text-xs text-muted-foreground">Files will appear in the Documents tab</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-center py-4 text-muted-foreground">
                 <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-50" />
                 <p className="font-medium">No tasks assigned</p>
                 <p className="text-sm">Create tasks to track work on this matter</p>
@@ -769,6 +958,7 @@ export default function MatterDetailPage() {
           <EditMatterForm
             matter={matter}
             clients={clients}
+            teamMembers={teamMembers}
             onSave={(data) => {
               updateMatterMutation.mutate(data);
               setShowEditDialog(false);
@@ -920,9 +1110,10 @@ function AiActionButton({ icon, title, description }: { icon: React.ReactNode; t
   );
 }
 
-function EditMatterForm({ matter, clients, onSave, isPending }: {
+function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
   matter: Matter;
   clients: Client[];
+  teamMembers: TeamMember[];
   onSave: (data: Partial<Matter>) => void;
   isPending: boolean;
 }) {
@@ -933,6 +1124,7 @@ function EditMatterForm({ matter, clients, onSave, isPending }: {
     practiceArea: matter.practiceArea,
     description: matter.description,
     status: matter.status,
+    responsiblePartyId: matter.responsiblePartyId || "",
     courtName: matter.courtName || "",
     judgeAssigned: matter.judgeAssigned || "",
     opposingCounsel: matter.opposingCounsel || "",
@@ -947,6 +1139,21 @@ function EditMatterForm({ matter, clients, onSave, isPending }: {
   return (
     <>
       <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Responsible Attorney</Label>
+          <Select value={form.responsiblePartyId} onValueChange={v => setForm(p => ({ ...p, responsiblePartyId: v }))}>
+            <SelectTrigger data-testid="select-edit-responsible-party">
+              <SelectValue placeholder="Select team member" />
+            </SelectTrigger>
+            <SelectContent>
+              {teamMembers.map(member => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.firstName} {member.lastName} ({member.role})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Matter Name</Label>
@@ -1025,7 +1232,10 @@ function EditMatterForm({ matter, clients, onSave, isPending }: {
       </div>
       <DialogFooter>
         <Button
-          onClick={() => onSave(form)}
+          onClick={() => onSave({
+            ...form,
+            responsiblePartyId: form.responsiblePartyId || undefined,
+          })}
           disabled={isPending}
           data-testid="button-save-edit"
         >

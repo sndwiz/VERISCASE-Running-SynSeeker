@@ -152,6 +152,19 @@ export const matterContacts = pgTable("matter_contacts", {
   index("IDX_matter_contacts_matter_id").on(table.matterId),
 ]);
 
+// ============ MATTER DOCUMENTS ============
+export const matterDocuments = pgTable("matter_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileSize: integer("file_size").notNull().default(0),
+  mimeType: varchar("mime_type", { length: 100 }).notNull().default("application/octet-stream"),
+  filePath: text("file_path").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+}, (table) => [
+  index("IDX_matter_documents_matter_id").on(table.matterId),
+]);
+
 // ============ EVIDENCE VAULT FILES ============
 export const evidenceVaultFiles = pgTable("evidence_vault_files", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

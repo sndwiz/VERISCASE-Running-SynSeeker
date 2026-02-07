@@ -16,6 +16,58 @@ import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
 import { db } from "../db";
 import { users } from "@shared/models/auth";
+import { matterDocuments } from "@shared/models/tables";
+import { eq } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads", "matter-documents");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "text/html",
+  "text/rtf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/tiff",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/json",
+  "application/xml",
+  "message/rfc822",
+]);
+
+const matterUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const sanitized = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `${uniqueSuffix}-${sanitized}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type ${file.mimetype} is not allowed`));
+    }
+  },
+});
 
 export function registerMatterRoutes(app: Express): void {
   app.get("/api/team-members", async (_req, res) => {
@@ -351,6 +403,71 @@ export function registerMatterRoutes(app: Express): void {
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to create research result" });
+    }
+  });
+
+  app.get("/api/matters/:matterId/documents", async (req, res) => {
+    try {
+      const docs = await db.select({
+        id: matterDocuments.id,
+        matterId: matterDocuments.matterId,
+        fileName: matterDocuments.fileName,
+        fileSize: matterDocuments.fileSize,
+        mimeType: matterDocuments.mimeType,
+        uploadedAt: matterDocuments.uploadedAt,
+      }).from(matterDocuments)
+        .where(eq(matterDocuments.matterId, req.params.matterId));
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  app.post("/api/matters/:matterId/documents", matterUpload.array("files", 20), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const inserted = [];
+      for (const file of files) {
+        const [doc] = await db.insert(matterDocuments).values({
+          matterId: req.params.matterId,
+          fileName: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          filePath: file.path,
+        }).returning();
+        inserted.push(doc);
+      }
+
+      res.status(201).json(inserted);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload documents" });
+    }
+  });
+
+  app.delete("/api/matters/:matterId/documents/:docId", async (req, res) => {
+    try {
+      const [doc] = await db.select().from(matterDocuments)
+        .where(eq(matterDocuments.id, req.params.docId));
+
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      try {
+        if (fs.existsSync(doc.filePath)) {
+          fs.unlinkSync(doc.filePath);
+        }
+      } catch {
+      }
+
+      await db.delete(matterDocuments).where(eq(matterDocuments.id, req.params.docId));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document" });
     }
   });
 }

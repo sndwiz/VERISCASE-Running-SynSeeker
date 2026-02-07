@@ -1747,6 +1747,7 @@ export type InsertThreadDecision = z.infer<typeof insertThreadDecisionSchema>;
 export type InsertMatterContact = z.infer<typeof insertMatterContactSchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type InsertMatter = z.infer<typeof insertMatterSchema>;
+export type MatterDocument = typeof import("./models/tables").matterDocuments.$inferSelect;
 export type InsertResearchResult = z.infer<typeof insertResearchResultSchema>;
 export type InsertAutomationRule = z.infer<typeof insertAutomationRuleSchema>;
 export type InsertDetectiveNode = z.infer<typeof insertDetectiveNodeSchema>;
