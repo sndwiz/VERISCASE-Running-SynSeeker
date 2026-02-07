@@ -14,8 +14,24 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
+import { db } from "../db";
+import { users } from "@shared/models/auth";
 
 export function registerMatterRoutes(app: Express): void {
+  app.get("/api/team-members", async (_req, res) => {
+    try {
+      const members = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      }).from(users);
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team members" });
+    }
+  });
+
   app.get("/api/matters", async (req, res) => {
     try {
       const clientId = req.query.clientId as string | undefined;
@@ -40,13 +56,10 @@ export function registerMatterRoutes(app: Express): void {
 
   app.post("/api/matters", async (req, res) => {
     try {
-      // TODO: Wrap matter + board creation in a database transaction.
-      // Currently the storage layer uses the db singleton and doesn't support
-      // passing a transaction handle. Refactor storage to accept an optional
-      // transaction parameter so both operations can be atomic.
       const data = insertMatterSchema.parse(req.body);
       const matter = await storage.createMatter(data);
 
+      const workspaceId = req.body.workspaceId as string | undefined;
       await storage.createBoard({
         name: matter.name,
         description: `Case board for ${matter.name}`,
@@ -54,6 +67,7 @@ export function registerMatterRoutes(app: Express): void {
         icon: "briefcase",
         clientId: matter.clientId,
         matterId: matter.id,
+        workspaceId: workspaceId || undefined,
       });
 
       res.status(201).json(matter);
@@ -62,6 +76,47 @@ export function registerMatterRoutes(app: Express): void {
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to create matter" });
+    }
+  });
+
+  app.post("/api/matters/:id/duplicate", async (req, res) => {
+    try {
+      const original = await storage.getMatter(req.params.id);
+      if (!original) {
+        return res.status(404).json({ error: "Matter not found" });
+      }
+
+      const duplicateData = {
+        clientId: original.clientId,
+        name: `${original.name} (Copy)`,
+        caseNumber: `CASE-${Date.now().toString(36).toUpperCase()}`,
+        matterType: original.matterType,
+        status: "active" as const,
+        description: original.description || "",
+        openedDate: new Date().toISOString().split("T")[0],
+        responsiblePartyId: (original as any).responsiblePartyId || undefined,
+        practiceArea: original.practiceArea,
+        courtName: original.courtName || undefined,
+        judgeAssigned: original.judgeAssigned || undefined,
+        opposingCounsel: original.opposingCounsel || undefined,
+      };
+
+      const newMatter = await storage.createMatter(duplicateData);
+
+      const workspaceId = req.body.workspaceId as string | undefined;
+      await storage.createBoard({
+        name: newMatter.name,
+        description: `Case board for ${newMatter.name}`,
+        color: "#6366f1",
+        icon: "briefcase",
+        clientId: newMatter.clientId,
+        matterId: newMatter.id,
+        workspaceId: workspaceId || undefined,
+      });
+
+      res.status(201).json(newMatter);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to duplicate matter" });
     }
   });
 

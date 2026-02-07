@@ -54,6 +54,9 @@ export async function registerRoutes(
   app.use("/api/groups", isAuthenticated, viewerReadOnly);
   app.use("/api/tasks", isAuthenticated, viewerReadOnly);
   
+  // Team members - any authenticated role can read
+  app.use("/api/team-members", isAuthenticated, requireAnyRole);
+  
   // Clients and matters - viewer can read, member+ can write
   app.use("/api/clients", isAuthenticated, viewerReadOnly);
   app.use("/api/matters", isAuthenticated, viewerReadOnly);

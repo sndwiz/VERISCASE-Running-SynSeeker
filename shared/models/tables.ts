@@ -123,6 +123,7 @@ export const matters = pgTable("matters", {
   description: text("description").default(""),
   openedDate: varchar("opened_date", { length: 50 }).notNull(),
   closedDate: varchar("closed_date", { length: 50 }),
+  responsiblePartyId: varchar("responsible_party_id"),
   assignedAttorneys: jsonb("assigned_attorneys").default([]),
   practiceArea: varchar("practice_area", { length: 100 }).notNull(),
   courtName: varchar("court_name", { length: 255 }),

@@ -1015,6 +1015,7 @@ export const insertMatterSchema = z.object({
   status: z.enum(["active", "pending", "closed", "on_hold", "on-hold", "archived"]).optional().default("active"),
   description: z.string().optional().default(""),
   openedDate: z.string(),
+  responsiblePartyId: z.string().optional(),
   practiceArea: z.string(),
   courtName: z.string().optional(),
   judgeAssigned: z.string().optional(),

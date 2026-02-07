@@ -46,6 +46,8 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Cloudflare Security Hardening:** Comprehensive security layer including scanner tripwire traps, Cloudflare Turnstile verification, dedicated form rate limiters, trust proxy, custom domain CORS support, and CSP directives.
 
 ## Recent Changes
+- **Matters UX Overhaul (Feb 2026):** Sidebar reordered to follow intuitive workflow (Clients -> Matters -> Documents -> Time -> Billing). Added responsible party dropdown (from team members) in matter creation. Auto-board creation now includes workspaceId. Added duplicate matter feature. Timestamps (Created/Updated) added as toggleable columns. Board cache invalidated on matter creation so sidebar updates immediately.
+- **Board Security Hardening (Feb 2026):** All board routes (GET/POST/PATCH/DELETE) enforce workspace ownership via board->workspace->ownerId chain. Default board listing restricted to user's workspaces only. Defense-in-depth auth checks in every handler.
 - **Workspace Architecture (Feb 2026):** Added `workspaces` table with CRUD API routes. Sidebar workspace selector now uses real DB data with create-new-workspace inline. Boards table has `workspaceId` foreign key with index. Sidebar fetches its own boards internally (removed prop dependency from App.tsx).
 - **Investigation Board Redesign (Feb 2026):** 3-column layout with cork board canvas, 4 colored zones, 5 element types, SVG connections, minimap, AI status panel.
 

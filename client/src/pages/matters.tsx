@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkspace } from "@/hooks/use-workspace";
 
 interface Client {
   id: string;
@@ -61,6 +62,13 @@ interface Client {
   createdAt: string;
 }
 
+interface TeamMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 interface Matter {
   id: string;
   clientId: string;
@@ -70,6 +78,7 @@ interface Matter {
   status: string;
   description: string;
   practiceArea: string;
+  responsiblePartyId?: string;
   assignedAttorneys?: string[];
   courtName?: string;
   judgeAssigned?: string;
@@ -117,7 +126,7 @@ const STATUS_TAB_MAP: Record<string, string[]> = {
 
 const PAGE_SIZE = 25;
 
-type ColumnKey = "actions" | "matter" | "client" | "responsibleAttorney" | "practiceArea" | "status" | "caseNumber" | "openedDate" | "matterType" | "courtName" | "opposingCounsel";
+type ColumnKey = "actions" | "matter" | "client" | "responsibleAttorney" | "practiceArea" | "status" | "caseNumber" | "openedDate" | "matterType" | "courtName" | "opposingCounsel" | "createdAt" | "updatedAt";
 
 const ALL_COLUMNS: { key: ColumnKey; label: string; defaultVisible: boolean }[] = [
   { key: "actions", label: "Actions", defaultVisible: true },
@@ -131,11 +140,14 @@ const ALL_COLUMNS: { key: ColumnKey; label: string; defaultVisible: boolean }[] 
   { key: "matterType", label: "Matter Type", defaultVisible: false },
   { key: "courtName", label: "Court", defaultVisible: false },
   { key: "opposingCounsel", label: "Opposing Counsel", defaultVisible: false },
+  { key: "createdAt", label: "Created", defaultVisible: false },
+  { key: "updatedAt", label: "Updated", defaultVisible: false },
 ];
 
 export default function MattersPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { activeWorkspaceId } = useWorkspace();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
@@ -152,7 +164,7 @@ export default function MattersPage() {
     matterType: "",
     description: "",
     practiceArea: "",
-    responsibleAttorney: "",
+    responsiblePartyId: "",
   });
 
   const { data: clients = [] } = useQuery<Client[]>({
@@ -161,6 +173,10 @@ export default function MattersPage() {
 
   const { data: matters = [], isLoading } = useQuery<Matter[]>({
     queryKey: ["/api/matters"],
+  });
+
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["/api/team-members"],
   });
 
   const createMatterMutation = useMutation({
@@ -173,15 +189,17 @@ export default function MattersPage() {
         status: "active",
         description: data.description,
         practiceArea: data.practiceArea,
-        responsibleAttorney: data.responsibleAttorney || undefined,
+        responsiblePartyId: data.responsiblePartyId || undefined,
         openedDate: new Date().toISOString().split("T")[0],
+        workspaceId: activeWorkspaceId,
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       setShowCreateDialog(false);
-      setMatterForm({ clientId: "", name: "", caseNumber: "", matterType: "", description: "", practiceArea: "", responsibleAttorney: "" });
+      setMatterForm({ clientId: "", name: "", caseNumber: "", matterType: "", description: "", practiceArea: "", responsiblePartyId: "" });
       toast({ title: "Matter created", description: "New matter has been opened." });
     },
     onError: () => {
@@ -196,6 +214,21 @@ export default function MattersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
       toast({ title: "Matter deleted" });
+    },
+  });
+
+  const duplicateMatterMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/matters/${id}/duplicate`, { workspaceId: activeWorkspaceId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      toast({ title: "Matter duplicated", description: "A copy of the matter has been created." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to duplicate matter.", variant: "destructive" });
     },
   });
 
@@ -234,6 +267,19 @@ export default function MattersPage() {
     return clients.find(c => c.id === clientId)?.name || "Unknown";
   }
 
+  function getResponsiblePartyName(matter: Matter): string | null {
+    if (matter.responsiblePartyId) {
+      const member = teamMembers.find(tm => tm.id === matter.responsiblePartyId);
+      if (member) {
+        return `${member.firstName} ${member.lastName}`;
+      }
+    }
+    if (matter.assignedAttorneys && matter.assignedAttorneys.length > 0) {
+      return matter.assignedAttorneys[0];
+    }
+    return null;
+  }
+
   function toggleColumn(key: ColumnKey) {
     setVisibleColumns(prev => {
       const next = new Set(prev);
@@ -270,6 +316,15 @@ export default function MattersPage() {
     const client = clients.find(c => c.id === matter.clientId);
     const clientName = client?.name?.split(" ")[0] || "";
     return `${matter.caseNumber}-${clientName}: ${matter.name}`;
+  }
+
+  function formatDateTime(dateStr: string | undefined | null): string {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch {
+      return "";
+    }
   }
 
   return (
@@ -367,12 +422,21 @@ export default function MattersPage() {
 
               <div className="space-y-2">
                 <Label>Responsible Attorney</Label>
-                <Input
-                  value={matterForm.responsibleAttorney}
-                  onChange={e => setMatterForm(p => ({ ...p, responsibleAttorney: e.target.value }))}
-                  placeholder="Name of lead attorney"
-                  data-testid="input-attorney"
-                />
+                <Select
+                  value={matterForm.responsiblePartyId}
+                  onValueChange={v => setMatterForm(p => ({ ...p, responsiblePartyId: v }))}
+                >
+                  <SelectTrigger data-testid="select-responsible-party">
+                    <SelectValue placeholder="Select team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map(member => (
+                      <SelectItem key={member.id} value={member.id} data-testid={`option-team-member-${member.id}`}>
+                        {member.firstName} {member.lastName} ({member.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -536,6 +600,12 @@ export default function MattersPage() {
                 {visibleColumns.has("opposingCounsel") && (
                   <TableHead>Opposing Counsel</TableHead>
                 )}
+                {visibleColumns.has("createdAt") && (
+                  <TableHead>Created</TableHead>
+                )}
+                {visibleColumns.has("updatedAt") && (
+                  <TableHead>Updated</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -544,6 +614,7 @@ export default function MattersPage() {
                   key={matter.id}
                   className="cursor-pointer"
                   data-testid={`matter-row-${matter.id}`}
+                  onClick={() => setLocation(`/matters/${matter.id}`)}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -570,6 +641,13 @@ export default function MattersPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Matter
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => duplicateMatterMutation.mutate(matter.id)}
+                            data-testid={`button-duplicate-${matter.id}`}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-red-600 focus:text-red-600"
@@ -586,7 +664,7 @@ export default function MattersPage() {
                       </DropdownMenu>
                     </TableCell>
                   )}
-                  <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                  <TableCell>
                     <Link
                       href={`/matters/${matter.id}`}
                       className="text-primary hover:underline font-medium"
@@ -597,54 +675,61 @@ export default function MattersPage() {
                     </Link>
                   </TableCell>
                   {visibleColumns.has("client") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       <span className="text-primary">{getClientName(matter.clientId)}</span>
                       <Info className="inline-block h-3.5 w-3.5 ml-1 text-muted-foreground" />
                     </TableCell>
                   )}
                   {visibleColumns.has("responsibleAttorney") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
-                      {(matter.assignedAttorneys && matter.assignedAttorneys.length > 0)
-                        ? matter.assignedAttorneys[0]
-                        : <span className="text-muted-foreground">&mdash;</span>
-                      }
+                    <TableCell data-testid={`text-responsible-party-${matter.id}`}>
+                      {getResponsiblePartyName(matter) || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("practiceArea") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.practiceArea || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("status") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       <Badge variant={matter.status === "active" ? "default" : "secondary"}>
                         {matter.status === "active" ? "Open" : matter.status === "on_hold" ? "On Hold" : matter.status.charAt(0).toUpperCase() + matter.status.slice(1)}
                       </Badge>
                     </TableCell>
                   )}
                   {visibleColumns.has("caseNumber") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.caseNumber || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("openedDate") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.openedDate ? new Date(matter.openedDate).toLocaleDateString() : <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("matterType") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.matterType || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("courtName") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.courtName || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                   {visibleColumns.has("opposingCounsel") && (
-                    <TableCell onClick={() => setLocation(`/matters/${matter.id}`)}>
+                    <TableCell>
                       {matter.opposingCounsel || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("createdAt") && (
+                    <TableCell data-testid={`text-created-at-${matter.id}`}>
+                      {formatDateTime(matter.createdAt) || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has("updatedAt") && (
+                    <TableCell data-testid={`text-updated-at-${matter.id}`}>
+                      {formatDateTime(matter.updatedAt) || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                   )}
                 </TableRow>
