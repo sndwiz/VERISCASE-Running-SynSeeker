@@ -121,7 +121,6 @@ const navigationItems = [
 ];
 
 const aiInvestigationItems = [
-  { title: "AI Assistant", url: "/ai-chat", icon: Bot },
   { title: "Evidence Vault", url: "/evidence", icon: Shield },
   { title: "Detective Board", url: "/detective", icon: Network },
   { title: "Automations", url: "/automations", icon: Zap },
@@ -132,7 +131,7 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [practiceOpen, setPracticeOpen] = useState(true);
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedClients, setExpandedClients] = useState<Set<string> | null>(null);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
@@ -168,18 +167,6 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const { data: matters = [] } = useQuery<Matter[]>({
     queryKey: ["/api/matters"],
   });
-
-  const toggleClient = (clientId: string) => {
-    setExpandedClients(prev => {
-      const next = new Set(prev);
-      if (next.has(clientId)) {
-        next.delete(clientId);
-      } else {
-        next.add(clientId);
-      }
-      return next;
-    });
-  };
 
   const { generalBoards, clientMap } = useMemo(() => {
     const general: Board[] = [];
@@ -219,6 +206,26 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const clientsWithMatters = useMemo(() => {
     return Array.from(clientMap.values()).filter(entry => entry.matters.size > 0);
   }, [clientMap]);
+
+  const effectiveExpandedClients = useMemo(() => {
+    if (expandedClients !== null) return expandedClients;
+    const autoExpand = new Set<string>();
+    clientsWithMatters.forEach(({ client }) => autoExpand.add(client.id));
+    return autoExpand;
+  }, [expandedClients, clientsWithMatters]);
+
+  const toggleClient = (clientId: string) => {
+    setExpandedClients(prev => {
+      const base = prev !== null ? prev : new Set(clientsWithMatters.map(c => c.client.id));
+      const next = new Set(base);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
 
   return (
     <Sidebar>
@@ -308,6 +315,14 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={location === "/ai-chat"} tooltip={getTooltipForTitle("Verbo")}>
+                <Link href="/ai-chat" data-testid="link-verbo">
+                  <Bot className="h-4 w-4" />
+                  <span>Verbo</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={location === "/vibe-code"} tooltip={getTooltipForRoute("/vibe-code")}>
                 <Link href="/vibe-code" data-testid="link-vibe-code">
                   <Sparkles className="h-4 w-4" />
@@ -368,7 +383,7 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
                 {clientsWithMatters.map(({ client, matters: matterMap }) => (
                   <Collapsible
                     key={client.id}
-                    open={expandedClients.has(client.id)}
+                    open={effectiveExpandedClients.has(client.id)}
                     onOpenChange={() => toggleClient(client.id)}
                   >
                     <SidebarMenuItem>
@@ -380,7 +395,7 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
                         >
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="truncate font-medium">{client.name}</span>
-                          <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${expandedClients.has(client.id) ? "rotate-90" : ""}`} />
+                          <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${effectiveExpandedClients.has(client.id) ? "rotate-90" : ""}`} />
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>

@@ -1067,7 +1067,7 @@ function AIOpsDashboard() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : records.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No AI operations recorded yet. Use VeriBot or other AI features to see tracking data.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">No AI operations recorded yet. Use Verbo or other AI features to see tracking data.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

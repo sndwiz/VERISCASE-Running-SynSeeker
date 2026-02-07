@@ -20,7 +20,7 @@ const anthropic = new Anthropic({
   baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
 });
 
-const LEGAL_SYSTEM_PROMPT = `You are VERICASE AI, an expert legal assistant integrated into a comprehensive legal practice management system. You have deep knowledge of:
+const LEGAL_SYSTEM_PROMPT = `You are Verbo, an expert legal assistant integrated into VERICASE - a comprehensive legal practice management system by Synergy Law PLLC. You have deep knowledge of:
 
 **Legal Practice Areas:**
 - Civil litigation, criminal defense, family law, corporate law, real estate, estate planning
@@ -308,6 +308,7 @@ export function registerChatRoutes(app: Express): void {
           openai: getModelsByProvider("openai"),
           gemini: getModelsByProvider("gemini"),
           deepseek: getModelsByProvider("deepseek"),
+          private: getModelsByProvider("private"),
         },
       });
     } catch (error) {
@@ -475,7 +476,7 @@ export function registerChatRoutes(app: Express): void {
         });
       }
 
-      const supportedProviders = ["anthropic", "gemini", "openai"];
+      const supportedProviders = ["anthropic", "gemini", "openai", "private"];
       if (!supportedProviders.includes(modelInfo.provider)) {
         res.setHeader("Content-Type", "application/json");
         return res.status(400).json({ 
@@ -492,7 +493,7 @@ export function registerChatRoutes(app: Express): void {
 
       let fullResponse = "";
 
-      for await (const chunk of streamResponse(chatMessages, config, "veribot_chat")) {
+      for await (const chunk of streamResponse(chatMessages, config, "verbo_chat")) {
         if (chunk.content) {
           fullResponse += chunk.content;
           res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);

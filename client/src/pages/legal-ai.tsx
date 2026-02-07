@@ -328,10 +328,10 @@ export default function LegalAIPage() {
             variant={activeTab === "veribot" ? "secondary" : "ghost"}
             className="w-full justify-start gap-2"
             onClick={() => setActiveTab("veribot")}
-            data-testid="button-tab-veribot"
+            data-testid="button-tab-verbo"
           >
             <Bot className="h-4 w-4" />
-            VeriBot
+            Verbo
           </Button>
           <Button
             variant={activeTab === "library" ? "secondary" : "ghost"}

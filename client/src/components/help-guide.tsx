@@ -107,7 +107,7 @@ function FeatureCard({
                 data-testid={`help-ask-${feature.id}`}
               >
                 <Bot className="h-3 w-3" />
-                Ask VeriBot
+                Ask Verbo
               </Button>
             </Link>
           </div>
@@ -251,10 +251,10 @@ export function HelpGuide() {
                     variant="default"
                     size="sm"
                     className="w-full gap-2"
-                    data-testid="help-ask-veribot-quickstart"
+                    data-testid="help-ask-verbo-quickstart"
                   >
                     <Bot className="h-4 w-4" />
-                    Ask VeriBot for Help
+                    Ask Verbo for Help
                   </Button>
                 </Link>
               </div>
@@ -278,7 +278,7 @@ export function HelpGuide() {
                       className="mt-3 gap-1"
                     >
                       <Bot className="h-3 w-3" />
-                      Ask VeriBot about "{search}"
+                      Ask Verbo about "{search}"
                     </Button>
                   </Link>
                 </div>

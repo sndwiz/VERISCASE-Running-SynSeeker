@@ -330,16 +330,34 @@ export default function AIChatPage() {
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
-                {models.filter(m => m.available).map((model) => (
-                  <SelectItem key={model.id} value={model.id} data-testid={`select-item-model-${model.id}`}>
-                    {model.name}
-                  </SelectItem>
-                ))}
-                {models.filter(m => !m.available).length > 0 && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1 pt-1" data-testid="text-more-providers">
-                    More providers coming soon
-                  </div>
-                )}
+                {(() => {
+                  const available = models.filter(m => m.available);
+                  const providerGroups = new Map<string, AIModel[]>();
+                  const providerLabels: Record<string, string> = {
+                    private: "Synergy Private Server",
+                    anthropic: "Anthropic",
+                    openai: "OpenAI",
+                    gemini: "Google Gemini",
+                    deepseek: "DeepSeek",
+                  };
+                  const providerOrder = ["private", "anthropic", "openai", "gemini", "deepseek"];
+                  available.forEach(m => {
+                    if (!providerGroups.has(m.provider)) providerGroups.set(m.provider, []);
+                    providerGroups.get(m.provider)!.push(m);
+                  });
+                  return providerOrder.filter(p => providerGroups.has(p)).map(provider => (
+                    <div key={provider}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground" data-testid={`text-provider-${provider}`}>
+                        {providerLabels[provider] || provider}
+                      </div>
+                      {providerGroups.get(provider)!.map(model => (
+                        <SelectItem key={model.id} value={model.id} data-testid={`select-item-model-${model.id}`}>
+                          {model.name}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ));
+                })()}
               </SelectContent>
             </Select>
           </div>
@@ -397,7 +415,7 @@ export default function AIChatPage() {
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mb-4 shadow-lg">
                     <Bot className="h-10 w-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">VeriBot</h2>
+                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">Verbo</h2>
                   <p className="text-lg text-muted-foreground mb-1">Your AI Legal Assistant</p>
                   <p className="text-muted-foreground max-w-md" data-testid="text-assistant-description">
                     Ready to help with legal research, case analysis, document drafting, and more.
@@ -487,7 +505,7 @@ export default function AIChatPage() {
                     value={landingMessage}
                     onChange={(e) => setLandingMessage(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLandingSubmit(landingMessage)}
-                    placeholder="Ask VeriBot anything..."
+                    placeholder="Ask Verbo anything..."
                     className="border-0 focus-visible:ring-0 shadow-none flex-1"
                     data-testid="input-landing-message"
                   />

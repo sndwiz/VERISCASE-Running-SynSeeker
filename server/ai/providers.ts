@@ -136,6 +136,33 @@ export const AVAILABLE_MODELS: AIModel[] = [
     contextWindow: 1000000,
     available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
   },
+  {
+    id: "synergy-default",
+    name: "Synergy Private Model",
+    provider: "private",
+    supportsVision: false,
+    maxTokens: 4096,
+    contextWindow: 32000,
+    available: !!process.env.PRIVATE_AI_SERVER_URL,
+  },
+  {
+    id: "synergy-legal",
+    name: "Synergy Legal Assistant",
+    provider: "private",
+    supportsVision: false,
+    maxTokens: 4096,
+    contextWindow: 32000,
+    available: !!process.env.PRIVATE_AI_SERVER_URL,
+  },
+  {
+    id: "synergy-research",
+    name: "Synergy Research",
+    provider: "private",
+    supportsVision: false,
+    maxTokens: 8192,
+    contextWindow: 32000,
+    available: !!process.env.PRIVATE_AI_SERVER_URL,
+  },
 ];
 
 const anthropic = new Anthropic({
@@ -279,6 +306,62 @@ export async function* streamGeminiResponse(
   yield { done: true };
 }
 
+function getPrivateServerClient(): OpenAI {
+  if (!process.env.PRIVATE_AI_SERVER_URL) {
+    throw new Error("Private AI server not configured. Set PRIVATE_AI_SERVER_URL to your server's API endpoint.");
+  }
+  return new OpenAI({
+    apiKey: process.env.PRIVATE_AI_SERVER_KEY || "not-needed",
+    baseURL: process.env.PRIVATE_AI_SERVER_URL,
+  });
+}
+
+export async function* streamPrivateServerResponse(
+  messages: ChatMessage[],
+  config: AIConfig
+): AsyncGenerator<StreamChunk> {
+  const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => {
+    if (typeof m.content === "string") {
+      return { role: m.role, content: m.content } as OpenAI.ChatCompletionMessageParam;
+    }
+    const parts: OpenAI.ChatCompletionContentPart[] = m.content.map((c) => {
+      if (c.type === "text") {
+        return { type: "text" as const, text: c.text || "" };
+      }
+      return {
+        type: "image_url" as const,
+        image_url: {
+          url: `data:${c.source?.media_type || "image/png"};base64,${c.source?.data || ""}`,
+        },
+      };
+    });
+    return { role: m.role as "user", content: parts } as OpenAI.ChatCompletionMessageParam;
+  });
+
+  const privateClient = getPrivateServerClient();
+  const modelId = config.model.startsWith("synergy-") ? (process.env.PRIVATE_AI_MODEL_NAME || config.model) : config.model;
+  
+  try {
+    const stream = await privateClient.chat.completions.create({
+      model: modelId,
+      max_tokens: config.maxTokens || 2048,
+      messages: apiMessages,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        yield { content };
+      }
+    }
+    yield { done: true };
+  } catch (err: any) {
+    yield { error: `Synergy Private Server error: ${err.message}` };
+    yield { done: true };
+  }
+}
+
 export async function* streamResponse(
   messages: ChatMessage[],
   config: AIConfig,
@@ -300,6 +383,9 @@ export async function* streamResponse(
         break;
       case "gemini":
         innerGen = streamGeminiResponse(messages, config);
+        break;
+      case "private":
+        innerGen = streamPrivateServerResponse(messages, config);
         break;
       default:
         completeAIOp(id, startTime, "", "error", `Provider ${config.provider} not supported`);

@@ -13,6 +13,7 @@ import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
 import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
+import { ViewTabs, KanbanView, CalendarView, DashboardView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Board, Group, Task, ColumnType, CustomStatusLabel } from "@shared/schema";
@@ -36,6 +37,7 @@ export default function BoardPage() {
   const [editStatusLabelsOpen, setEditStatusLabelsOpen] = useState(false);
   const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
   const [columnCenterOpen, setColumnCenterOpen] = useState(false);
+  const [activeView, setActiveView] = useState<BoardViewType>("table");
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards/detail", boardId],
@@ -467,58 +469,91 @@ export default function BoardPage() {
         onOpenColumnCenter={() => setColumnCenterOpen(true)}
       />
 
-      <div className="flex-1 overflow-auto p-4">
-        {sortedGroups.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <div className="text-muted-foreground mb-4">
-              <p className="text-lg font-medium">No groups yet</p>
-              <p className="text-sm">Create a group to start adding tasks</p>
+      <ViewTabs activeView={activeView} onViewChange={setActiveView} />
+
+      {activeView === "table" && (
+        <div className="flex-1 overflow-auto p-4">
+          {sortedGroups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="text-muted-foreground mb-4">
+                <p className="text-lg font-medium">No groups yet</p>
+                <p className="text-sm">Create a group to start adding tasks</p>
+              </div>
+              <button
+                onClick={() => setCreateGroupOpen(true)}
+                className="text-primary hover:underline text-sm"
+                data-testid="button-create-first-group"
+              >
+                Create your first group
+              </button>
             </div>
-            <button
-              onClick={() => setCreateGroupOpen(true)}
-              className="text-primary hover:underline text-sm"
-              data-testid="button-create-first-group"
-            >
-              Create your first group
-            </button>
-          </div>
-        ) : (
-          sortedGroups.map((group) => (
-            <TaskGroup
-              key={group.id}
-              group={group}
-              tasks={sortedTasks.filter((t) => t.groupId === group.id)}
-              columns={board.columns.filter((c) => c.visible)}
-              statusLabels={statusLabels}
-              onToggleCollapse={() =>
-                updateGroupMutation.mutate({
-                  groupId: group.id,
-                  updates: { collapsed: !group.collapsed },
-                })
-              }
-              onAddTask={() => handleAddTask(group.id)}
-              onEditGroup={() => {}}
-              onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
-              onTaskClick={handleTaskClick}
-              onTaskUpdate={handleTaskUpdate}
-              onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
-              onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
-              selectedTaskIds={selectedTaskIds}
-              onSelectTask={handleSelectTask}
-              onColumnSort={handleColumnSort}
-              onColumnFilter={handleColumnFilter}
-              onColumnDuplicate={handleColumnDuplicate}
-              onColumnRename={handleColumnRename}
-              onColumnDelete={handleRemoveColumn}
-              onColumnHide={handleColumnHide}
-              onColumnChangeType={handleColumnChangeType}
-              onColumnUpdateDescription={handleColumnUpdateDescription}
-              currentSort={currentSort}
-              onOpenColumnCenter={() => setColumnCenterOpen(true)}
-            />
-          ))
-        )}
-      </div>
+          ) : (
+            sortedGroups.map((group) => (
+              <TaskGroup
+                key={group.id}
+                group={group}
+                tasks={sortedTasks.filter((t) => t.groupId === group.id)}
+                columns={board.columns.filter((c) => c.visible)}
+                statusLabels={statusLabels}
+                onToggleCollapse={() =>
+                  updateGroupMutation.mutate({
+                    groupId: group.id,
+                    updates: { collapsed: !group.collapsed },
+                  })
+                }
+                onAddTask={() => handleAddTask(group.id)}
+                onEditGroup={() => {}}
+                onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
+                onTaskClick={handleTaskClick}
+                onTaskUpdate={handleTaskUpdate}
+                onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+                onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
+                selectedTaskIds={selectedTaskIds}
+                onSelectTask={handleSelectTask}
+                onColumnSort={handleColumnSort}
+                onColumnFilter={handleColumnFilter}
+                onColumnDuplicate={handleColumnDuplicate}
+                onColumnRename={handleColumnRename}
+                onColumnDelete={handleRemoveColumn}
+                onColumnHide={handleColumnHide}
+                onColumnChangeType={handleColumnChangeType}
+                onColumnUpdateDescription={handleColumnUpdateDescription}
+                currentSort={currentSort}
+                onOpenColumnCenter={() => setColumnCenterOpen(true)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {activeView === "kanban" && (
+        <KanbanView
+          board={board}
+          groups={groups}
+          tasks={sortedTasks}
+          statusLabels={statusLabels}
+          onTaskClick={handleTaskClick}
+          onTaskUpdate={handleTaskUpdate}
+          onAddTask={handleAddTask}
+        />
+      )}
+
+      {activeView === "calendar" && (
+        <CalendarView
+          tasks={sortedTasks}
+          onTaskClick={handleTaskClick}
+          statusLabels={statusLabels}
+        />
+      )}
+
+      {activeView === "dashboard" && (
+        <DashboardView
+          board={board}
+          groups={groups}
+          tasks={tasks}
+          statusLabels={statusLabels}
+        />
+      )}
 
       <BulkActionsBar
         selectedCount={selectedTaskIds.size}

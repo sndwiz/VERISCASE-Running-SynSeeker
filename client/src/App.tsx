@@ -176,9 +176,9 @@ function AppLayout() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href="/ai-chat">
-                    <Button variant="default" size="sm" className="gap-2" data-testid="button-veribot">
+                    <Button variant="default" size="sm" className="gap-2" data-testid="button-verbo">
                       <Bot className="h-4 w-4" />
-                      VeriBot
+                      Verbo
                     </Button>
                   </Link>
                 </TooltipTrigger>
