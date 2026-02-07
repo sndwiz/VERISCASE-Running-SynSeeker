@@ -17,7 +17,7 @@ import { maybePageinate } from "../utils/pagination";
 import { db } from "../db";
 import { users } from "@shared/models/auth";
 import { matterDocuments } from "@shared/models/tables";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -416,7 +416,8 @@ export function registerMatterRoutes(app: Express): void {
         mimeType: matterDocuments.mimeType,
         uploadedAt: matterDocuments.uploadedAt,
       }).from(matterDocuments)
-        .where(eq(matterDocuments.matterId, req.params.matterId));
+        .where(eq(matterDocuments.matterId, req.params.matterId))
+        .orderBy(desc(matterDocuments.uploadedAt));
       res.json(docs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch documents" });

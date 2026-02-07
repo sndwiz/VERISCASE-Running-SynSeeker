@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, isNull } from "drizzle-orm";
 import { db } from "./db";
 import * as tables from "@shared/models/tables";
 import type { IStorage } from "./storage";
@@ -230,6 +230,17 @@ export class DbStorage implements IStorage {
   async getBoardsByWorkspace(workspaceId: string): Promise<Board[]> {
     const rows = await db.select().from(tables.boards)
       .where(eq(tables.boards.workspaceId, workspaceId))
+      .orderBy(asc(tables.boards.createdAt));
+    return rows.map(r => this.rowToBoard(r));
+  }
+
+  async getBoardsByWorkspaceIds(workspaceIds: string[]): Promise<Board[]> {
+    const conditions = [isNull(tables.boards.workspaceId)];
+    if (workspaceIds.length > 0) {
+      conditions.push(inArray(tables.boards.workspaceId, workspaceIds));
+    }
+    const rows = await db.select().from(tables.boards)
+      .where(or(...conditions))
       .orderBy(asc(tables.boards.createdAt));
     return rows.map(r => this.rowToBoard(r));
   }

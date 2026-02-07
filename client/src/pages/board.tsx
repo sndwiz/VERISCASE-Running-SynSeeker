@@ -38,17 +38,32 @@ export default function BoardPage() {
   const [columnCenterOpen, setColumnCenterOpen] = useState(false);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
-    queryKey: ["/api/boards", boardId],
+    queryKey: ["/api/boards/detail", boardId],
+    queryFn: async () => {
+      const res = await fetch(`/api/boards/${boardId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch board");
+      return res.json();
+    },
     enabled: !!boardId,
   });
 
   const { data: groups = [], isLoading: groupsLoading } = useQuery<Group[]>({
-    queryKey: ["/api/boards", boardId, "groups"],
+    queryKey: ["/api/boards/detail", boardId, "groups"],
+    queryFn: async () => {
+      const res = await fetch(`/api/boards/${boardId}/groups`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch groups");
+      return res.json();
+    },
     enabled: !!boardId,
   });
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/boards", boardId, "tasks"],
+    queryKey: ["/api/boards/detail", boardId, "tasks"],
+    queryFn: async () => {
+      const res = await fetch(`/api/boards/${boardId}/tasks`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch tasks");
+      return res.json();
+    },
     enabled: !!boardId,
   });
 
@@ -56,7 +71,7 @@ export default function BoardPage() {
     mutationFn: (data: { title: string; color: string }) =>
       apiRequest("POST", `/api/boards/${boardId}/groups`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
       toast({ title: "Group created successfully" });
     },
     onError: () => {
@@ -68,7 +83,7 @@ export default function BoardPage() {
     mutationFn: (data: { title: string; description?: string; groupId: string; priority: string }) =>
       apiRequest("POST", `/api/boards/${boardId}/tasks`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
       toast({ title: "Task created successfully" });
     },
     onError: () => {
@@ -80,8 +95,8 @@ export default function BoardPage() {
     mutationFn: ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) =>
       apiRequest("PATCH", `/api/tasks/${taskId}`, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId] });
     },
     onError: () => {
       toast({ title: "Failed to update task", variant: "destructive" });
@@ -91,7 +106,7 @@ export default function BoardPage() {
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => apiRequest("DELETE", `/api/tasks/${taskId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
       toast({ title: "Task deleted" });
     },
     onError: () => {
@@ -103,7 +118,7 @@ export default function BoardPage() {
     mutationFn: ({ groupId, updates }: { groupId: string; updates: Partial<Group> }) =>
       apiRequest("PATCH", `/api/groups/${groupId}`, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
     },
     onError: () => {
       toast({ title: "Failed to update group", variant: "destructive" });
@@ -114,7 +129,8 @@ export default function BoardPage() {
     mutationFn: (updates: Partial<Board>) =>
       apiRequest("PATCH", `/api/boards/${boardId}`, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
     },
     onError: () => {
       toast({ title: "Failed to update board", variant: "destructive" });
@@ -124,8 +140,8 @@ export default function BoardPage() {
   const deleteGroupMutation = useMutation({
     mutationFn: (groupId: string) => apiRequest("DELETE", `/api/groups/${groupId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
       toast({ title: "Group deleted" });
     },
     onError: () => {

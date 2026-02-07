@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import { storage } from "../storage";
-import { insertBoardSchema, updateBoardSchema } from "@shared/schema";
+import { insertBoardSchema, updateBoardSchema, type Board } from "@shared/schema";
 import { z } from "zod";
 import { db } from "../db";
 import { workspaces, boards } from "@shared/models/tables";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
 
 async function verifyWorkspaceOwnership(userId: string, workspaceId: string): Promise<boolean> {
@@ -33,7 +33,7 @@ export function registerBoardRoutes(app: Express): void {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      let boardList;
+      let boardList: Board[];
 
       if (clientId && typeof clientId === "string") {
         boardList = await storage.getBoardsByClient(clientId);
@@ -47,12 +47,7 @@ export function registerBoardRoutes(app: Express): void {
         boardList = await storage.getBoardsByWorkspace(workspaceId);
       } else {
         const wsIds = await getUserWorkspaceIds(userId);
-        if (wsIds.length > 0) {
-          boardList = await db.select().from(boards)
-            .where(inArray(boards.workspaceId, wsIds));
-        } else {
-          boardList = [];
-        }
+        boardList = await storage.getBoardsByWorkspaceIds(wsIds);
       }
       res.json(boardList);
     } catch (error) {
