@@ -54,7 +54,7 @@ interface TaskRowProps {
   task: Task;
   columns: ColumnDef[];
   statusLabels?: CustomStatusLabel[];
-  isEven: boolean;
+  groupColor: string;
   onClick: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
@@ -67,7 +67,7 @@ export function TaskRow({
   task,
   columns,
   statusLabels,
-  isEven,
+  groupColor,
   onClick,
   onUpdate,
   onDelete,
@@ -112,6 +112,11 @@ export function TaskRow({
     onUpdate({ subtasks: updatedSubtasks });
   };
 
+  const handleToggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSubtasksExpanded(!subtasksExpanded);
+  };
+
   const renderCell = (column: ColumnDef) => {
     const cellProps = {
       onClick: handleCellClick,
@@ -126,7 +131,7 @@ export function TaskRow({
         return (
           <StatusCell
             value={task.status}
-            onChange={(value: StatusType) => onUpdate({ status: value })}
+            onChange={(value: string) => onUpdate({ status: value as StatusType })}
             customLabels={statusLabels}
             onEditLabels={onEditStatusLabels}
             {...cellProps}
@@ -181,233 +186,62 @@ export function TaskRow({
           />
         );
       case "email":
-        return (
-          <EmailCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <EmailCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "phone":
-        return (
-          <PhoneCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <PhoneCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "rating":
-        return (
-          <RatingCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <RatingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "vote":
-        return (
-          <VoteCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <VoteCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "approval":
-        return (
-          <ApprovalCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <ApprovalCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "link":
-        return (
-          <LinkCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <LinkCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "location":
-        return (
-          <LocationCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <LocationCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "checkbox":
-        return (
-          <CheckboxCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <CheckboxCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "dropdown":
-        return (
-          <DropdownCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            options={column.options || []}
-            {...cellProps}
-          />
-        );
+        return <DropdownCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} {...cellProps} />;
       case "tags":
-        return (
-          <TagsCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <TagsCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "number":
       case "numbers":
-        return (
-          <NumberCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <NumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "long-text":
-        return (
-          <LongTextCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <LongTextCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "color-picker":
-        return (
-          <ColorPickerCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <ColorPickerCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "time-tracking":
-        return (
-          <TimeTrackingCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <TimeTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "item-id":
-        return (
-          <ItemIdCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            taskId={task.id}
-            {...cellProps}
-          />
-        );
+        return <ItemIdCell value={getCustomFieldValue()} onChange={setCustomFieldValue} taskId={task.id} {...cellProps} />;
       case "creation-log":
-        return (
-          <CreationLogCell
-            value={{ createdAt: task.createdAt, createdBy: "User" }}
-            onChange={() => {}}
-            {...cellProps}
-          />
-        );
+        return <CreationLogCell value={{ createdAt: task.createdAt, createdBy: "User" }} onChange={() => {}} {...cellProps} />;
       case "last-updated":
-        return (
-          <LastUpdatedCell
-            value={task.updatedAt || task.createdAt}
-            onChange={() => {}}
-            {...cellProps}
-          />
-        );
+        return <LastUpdatedCell value={task.updatedAt || task.createdAt} onChange={() => {}} {...cellProps} />;
       case "auto-number":
-        return (
-          <AutoNumberCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <AutoNumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "dependency":
-        return (
-          <DependencyCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <DependencyCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "country":
-        return (
-          <CountryCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <CountryCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "world-clock":
-        return (
-          <WorldClockCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <WorldClockCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "hour":
-        return (
-          <HourCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <HourCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "week":
-        return (
-          <WeekCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <WeekCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "formula":
-        return (
-          <FormulaCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <FormulaCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "button":
-        return (
-          <ButtonCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <ButtonCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "label":
-        return (
-          <LabelCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            options={column.options || []}
-            {...cellProps}
-          />
-        );
+        return <LabelCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} {...cellProps} />;
       case "timeline":
-        return (
-          <TimelineCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <TimelineCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "progress-tracking":
-        return (
-          <ProgressTrackingCell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            {...cellProps}
-          />
-        );
+        return <ProgressTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
       case "ai-improve":
       case "ai-write":
       case "ai-extract":
@@ -415,14 +249,7 @@ export function TaskRow({
       case "ai-translate":
       case "ai-sentiment":
       case "ai-categorize":
-        return (
-          <AICell
-            value={getCustomFieldValue()}
-            onChange={setCustomFieldValue}
-            aiType={column.type}
-            {...cellProps}
-          />
-        );
+        return <AICell value={getCustomFieldValue()} onChange={setCustomFieldValue} aiType={column.type} {...cellProps} />;
       case "text":
       default:
         return (
@@ -442,42 +269,63 @@ export function TaskRow({
   return (
     <>
     <div
-      className={`flex items-center gap-0 py-1.5 px-0 rounded-md transition-colors cursor-pointer border-b border-border/50 ${
+      className={`flex items-center gap-0 py-1 px-0 transition-colors cursor-pointer border-b border-border/30 ${
         isSelected
           ? "bg-primary/10"
-          : isEven
-          ? "bg-muted/30"
-          : "bg-transparent"
-      } ${isHovered && !isSelected ? "bg-muted/50" : ""}`}
+          : isHovered
+          ? "bg-muted/40"
+          : ""
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}
     >
-      <div className="w-12 flex items-center justify-start flex-shrink-0 gap-1 pl-1">
-        <GripVertical 
-          className="h-4 w-4 text-muted-foreground cursor-move flex-shrink-0" 
-          style={{ visibility: isHovered ? "visible" : "hidden" }}
-        />
+      <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5">
         <Checkbox
           checked={isSelected}
           onCheckedChange={(checked) => onSelect?.(task.id, !!checked)}
           onClick={(e) => e.stopPropagation()}
+          className="h-3.5 w-3.5"
           data-testid={`checkbox-task-${task.id}`}
         />
       </div>
 
       <div
-        className="flex-1 min-w-[200px] px-2 truncate"
+        className="flex-1 min-w-[200px] px-2 flex items-center gap-1"
         onClick={onClick}
         data-testid={`task-title-${task.id}`}
       >
-        <span className="text-sm font-medium">{task.title}</span>
+        {(hasSubtasks || isAddingSubtask) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 shrink-0"
+            onClick={handleToggleExpand}
+            data-testid={`button-expand-subtasks-${task.id}`}
+          >
+            {subtasksExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+          </Button>
+        )}
+        <span className="text-sm truncate">{task.title}</span>
+        {hasSubtasks && (
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded-sm shrink-0"
+            style={{ backgroundColor: `${groupColor}20`, color: groupColor }}
+            data-testid={`badge-subtask-count-${task.id}`}
+          >
+            {completedSubtasks}/{subtasks.length}
+          </span>
+        )}
       </div>
 
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1"
+          className="px-1 border-l border-border/20"
           style={{ width: col.width, minWidth: col.width }}
         >
           {renderCell(col)}
@@ -498,7 +346,7 @@ export function TaskRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onClick}>
+            <DropdownMenuItem onClick={onClick} data-testid={`menu-open-details-${task.id}`}>
               Open Details
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -507,9 +355,10 @@ export function TaskRow({
                 setSubtasksExpanded(true);
                 setIsAddingSubtask(true);
               }}
+              data-testid={`menu-add-subtask-${task.id}`}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Subtask
+              Add Subitem
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={(e) => {
@@ -517,6 +366,7 @@ export function TaskRow({
                 onDelete();
               }}
               className="text-destructive"
+              data-testid={`menu-delete-task-${task.id}`}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Task
@@ -526,103 +376,125 @@ export function TaskRow({
       </div>
     </div>
 
-    {/* Subtasks Section */}
-    {(hasSubtasks || subtasksExpanded) && (
-      <div className="ml-10 border-l-2 border-muted pl-4 py-1">
-        {subtasks.map((subtask) => (
-          <div
-            key={subtask.id}
-            className="flex items-center gap-2 py-1.5 group hover-elevate rounded px-2"
-            data-testid={`subtask-${subtask.id}`}
-          >
-            <button
-              className={`flex items-center justify-center rounded-full transition-colors ${
-                subtask.completed
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-muted-foreground/30 hover:border-primary"
-              }`}
-              style={{ width: 18, height: 18 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleToggleSubtask(subtask.id, !subtask.completed);
-              }}
-              data-testid={`checkbox-subtask-${subtask.id}`}
-            >
-              {subtask.completed && <Check className="h-3 w-3" />}
-            </button>
-            <span
-              className={`flex-1 text-sm ${
-                subtask.completed ? "text-muted-foreground line-through" : ""
-              }`}
-            >
-              {subtask.title}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="invisible group-hover:visible text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteSubtask(subtask.id);
-              }}
-              data-testid={`button-delete-subtask-${subtask.id}`}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+    {subtasksExpanded && (
+      <div
+        className="border-b border-border/30"
+        style={{ borderLeft: `3px solid ${groupColor}40` }}
+        data-testid={`subtasks-panel-${task.id}`}
+      >
+        <div className="bg-muted/20">
+          <div className="flex items-center gap-0 text-[11px] font-medium text-muted-foreground py-1 pl-14 border-b border-border/20">
+            <div className="flex-1 min-w-[180px] px-2">Subitem</div>
+            <div className="w-[120px] px-1 border-l border-border/20">Owner</div>
+            <div className="w-[120px] px-1 border-l border-border/20">Status</div>
           </div>
-        ))}
 
-        {isAddingSubtask ? (
-          <div className="flex items-center gap-2 py-1 px-2">
-            <Circle className="h-4 w-4 text-muted-foreground" />
-            <Input
-              value={newSubtaskTitle}
-              onChange={(e) => setNewSubtaskTitle(e.target.value)}
-              placeholder="Enter subtask title..."
-              className="flex-1 text-sm"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddSubtask();
-                if (e.key === "Escape") {
+          {subtasks.map((subtask) => (
+            <div
+              key={subtask.id}
+              className="flex items-center gap-0 py-1 pl-14 group border-b border-border/15"
+              data-testid={`subtask-row-${subtask.id}`}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-[180px] px-2">
+                <Checkbox
+                  checked={subtask.completed}
+                  onCheckedChange={(checked) => handleToggleSubtask(subtask.id, !!checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-3.5 w-3.5"
+                  data-testid={`checkbox-subtask-${subtask.id}`}
+                />
+                <span
+                  className={`text-sm truncate ${
+                    subtask.completed ? "text-muted-foreground line-through" : ""
+                  }`}
+                  data-testid={`text-subtask-title-${subtask.id}`}
+                >
+                  {subtask.title}
+                </span>
+              </div>
+              <div className="w-[120px] px-1 border-l border-border/20">
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                  ?
+                </div>
+              </div>
+              <div className="w-[120px] px-1 border-l border-border/20">
+                <span className={`text-xs px-2 py-0.5 rounded ${
+                  subtask.completed 
+                    ? "bg-green-500/20 text-green-600 dark:text-green-400" 
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {subtask.completed ? "Done" : "Pending"}
+                </span>
+              </div>
+              <div className="w-8 flex items-center justify-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="invisible group-hover:visible text-destructive h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSubtask(subtask.id);
+                  }}
+                  data-testid={`button-delete-subtask-${subtask.id}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {isAddingSubtask ? (
+            <div className="flex items-center gap-2 py-1.5 pl-14 pr-2 border-b border-border/15">
+              <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <Input
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                placeholder="Enter subitem title..."
+                className="flex-1 text-sm h-7"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddSubtask();
+                  if (e.key === "Escape") {
+                    setIsAddingSubtask(false);
+                    setNewSubtaskTitle("");
+                  }
+                }}
+                data-testid="input-new-subtask"
+              />
+              <Button
+                size="sm"
+                onClick={handleAddSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                data-testid="button-save-subtask"
+              >
+                Add
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
                   setIsAddingSubtask(false);
                   setNewSubtaskTitle("");
-                }
+                }}
+                data-testid="button-cancel-subtask"
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-2 py-1.5 pl-14 px-2 text-sm text-muted-foreground cursor-pointer hover-elevate"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAddingSubtask(true);
               }}
-              data-testid="input-new-subtask"
-            />
-            <Button
-              size="sm"
-              onClick={handleAddSubtask}
-              disabled={!newSubtaskTitle.trim()}
-              data-testid="button-save-subtask"
+              data-testid={`button-add-subtask-${task.id}`}
             >
-              Add
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setIsAddingSubtask(false);
-                setNewSubtaskTitle("");
-              }}
-              data-testid="button-cancel-subtask"
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <button
-            className="flex items-center gap-2 py-1.5 px-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsAddingSubtask(true);
-            }}
-            data-testid="button-add-subtask"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add subtask</span>
-          </button>
-        )}
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add subitem</span>
+            </div>
+          )}
+        </div>
       </div>
     )}
     </>

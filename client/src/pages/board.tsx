@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
@@ -479,13 +480,14 @@ export default function BoardPage() {
                 <p className="text-lg font-medium">No groups yet</p>
                 <p className="text-sm">Create a group to start adding tasks</p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                className="text-primary"
                 onClick={() => setCreateGroupOpen(true)}
-                className="text-primary hover:underline text-sm"
                 data-testid="button-create-first-group"
               >
                 Create your first group
-              </button>
+              </Button>
             </div>
           ) : (
             sortedGroups.map((group) => (

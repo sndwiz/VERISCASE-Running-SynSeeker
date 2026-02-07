@@ -13,7 +13,6 @@ import { ColumnHeader } from "./column-header";
 import type { Group, Task, ColumnDef, ColumnType, CustomStatusLabel, StatusType } from "@shared/schema";
 import { statusConfig } from "@shared/schema";
 
-// Group Summary Row showing aggregated data for columns
 function GroupSummaryRow({ 
   tasks, 
   columns,
@@ -29,10 +28,8 @@ function GroupSummaryRow({
     columns.forEach(col => {
       switch (col.type) {
         case "status": {
-          // Count status occurrences - handle both default status column and custom status columns
           const statusCounts: Record<string, number> = {};
           tasks.forEach(task => {
-            // Default status column uses task.status, custom status columns use customFields
             const statusValue = col.id === "status" 
               ? task.status 
               : (task.customFields?.[col.id] as string) || "not-started";
@@ -42,7 +39,6 @@ function GroupSummaryRow({
           break;
         }
         case "progress": {
-          // Average progress - handle both default progress column and custom progress columns
           const values = tasks.map(t => {
             if (col.id === "progress") return t.progress || 0;
             const val = t.customFields?.[col.id];
@@ -55,7 +51,6 @@ function GroupSummaryRow({
         }
         case "number":
         case "numbers": {
-          // Sum numbers
           const sum = tasks.reduce((total, t) => {
             const val = t.customFields?.[col.id];
             return total + (typeof val === "number" ? val : 0);
@@ -64,7 +59,6 @@ function GroupSummaryRow({
           break;
         }
         case "rating": {
-          // Average rating
           let count = 0;
           const sum = tasks.reduce((total, t) => {
             const val = t.customFields?.[col.id];
@@ -78,7 +72,6 @@ function GroupSummaryRow({
           break;
         }
         case "vote": {
-          // Total votes
           const sum = tasks.reduce((total, t) => {
             const val = t.customFields?.[col.id];
             return total + (typeof val === "number" ? val : 0);
@@ -108,7 +101,7 @@ function GroupSummaryRow({
           "pending-review": "bg-purple-500",
         };
         return (
-          <div className="flex h-6 rounded overflow-hidden w-full" data-testid="status-summary-bar">
+          <div className="flex h-5 rounded overflow-hidden w-full" data-testid="status-summary-bar">
             {Object.entries(data.counts as Record<string, number>).map(([status, count]) => (
               <div
                 key={status}
@@ -139,15 +132,14 @@ function GroupSummaryRow({
 
   return (
     <div 
-      className="flex items-center gap-0 py-2 px-0 border-t-2 mt-1"
-      style={{ borderColor: groupColor }}
+      className="flex items-center gap-0 py-1.5 border-t border-border/30"
       data-testid="group-summary-row"
     >
-      <div className="w-12 flex-shrink-0" />
+      <div className="w-10 flex-shrink-0" style={{ borderLeft: `3px solid ${groupColor}` }} />
       <div className="flex-1 min-w-[200px] px-2">
         <span className="text-xs font-medium text-muted-foreground">
           {tasks.length}
-          <span className="ml-1 opacity-70">sum</span>
+          <span className="ml-1 opacity-70">items</span>
         </span>
       </div>
       {columns.map((col) => (
@@ -222,30 +214,28 @@ export function TaskGroup({
 
   return (
     <div
-      className="mb-4"
+      className="mb-6"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="flex items-center gap-2 py-2 px-2 rounded-md hover-elevate cursor-pointer"
-        style={{ borderLeft: `3px solid ${group.color}` }}
+        className="flex items-center gap-2 py-2.5 px-3 cursor-pointer rounded-t-md"
+        style={{ backgroundColor: `${group.color}15` }}
         onClick={onToggleCollapse}
         data-testid={`group-header-${group.id}`}
       >
-        <GripVertical
-          className="h-4 w-4 text-muted-foreground"
-          style={{ visibility: isHovered ? "visible" : "hidden" }}
-        />
-        {group.collapsed ? (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-        <span className="font-medium" style={{ color: group.color }}>
+        <div className="flex items-center gap-1">
+          {group.collapsed ? (
+            <ChevronRight className="h-4 w-4" style={{ color: group.color }} />
+          ) : (
+            <ChevronDown className="h-4 w-4" style={{ color: group.color }} />
+          )}
+        </div>
+        <span className="font-semibold text-sm" style={{ color: group.color }}>
           {group.title}
         </span>
         <span className="text-xs text-muted-foreground ml-1">
-          {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+          {tasks.length} {tasks.length === 1 ? "item" : "items"}
         </span>
 
         <div className="flex-1" />
@@ -290,11 +280,10 @@ export function TaskGroup({
       </div>
 
       {!group.collapsed && (
-        <div className="mt-2 overflow-x-auto">
+        <div className="overflow-x-auto" style={{ borderLeft: `3px solid ${group.color}` }}>
           <div className="min-w-max">
-            {/* Column Headers */}
-            <div className="flex items-center gap-0 text-xs font-medium text-muted-foreground border-b pb-2 mb-1">
-              <div className="w-12 flex-shrink-0" />
+            <div className="flex items-center gap-0 text-xs font-medium text-muted-foreground py-1.5 bg-muted/40 border-b border-border/40">
+              <div className="w-10 flex-shrink-0" />
               <div className="flex-1 min-w-[200px] px-2">Task</div>
               {visibleColumns.map((col) => (
                 <div
@@ -321,7 +310,6 @@ export function TaskGroup({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-muted-foreground"
                     onClick={onOpenColumnCenter}
                     data-testid="button-add-column-inline"
                     title="Add column"
@@ -333,14 +321,13 @@ export function TaskGroup({
               {!onOpenColumnCenter && <div className="w-8 flex-shrink-0" />}
             </div>
 
-            {/* Task Rows */}
-            {tasks.map((task, index) => (
+            {tasks.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
                 columns={visibleColumns}
                 statusLabels={statusLabels}
-                isEven={index % 2 === 0}
+                groupColor={group.color}
                 onClick={() => onTaskClick(task)}
                 onUpdate={(updates) => onTaskUpdate(task.id, updates)}
                 onDelete={() => onTaskDelete(task.id)}
@@ -351,30 +338,29 @@ export function TaskGroup({
             ))}
 
             {tasks.length === 0 && (
-              <div className="py-8 text-center text-sm text-muted-foreground">
+              <div className="py-6 text-center text-sm text-muted-foreground border-b border-border/30">
                 No tasks in this group.{" "}
-                <button
-                  className="text-primary hover:underline"
+                <Button
+                  variant="ghost"
+                  className="text-primary"
                   onClick={onAddTask}
                   data-testid={`button-add-first-task-${group.id}`}
                 >
                   Add one
-                </button>
+                </Button>
               </div>
             )}
 
-            {/* Add Task Row */}
             <div
-              className="flex items-center gap-2 py-2 px-2 text-sm text-muted-foreground hover-elevate cursor-pointer rounded-md"
+              className="flex items-center gap-2 py-1.5 px-3 text-sm text-muted-foreground cursor-pointer border-b border-border/30 hover-elevate"
               onClick={onAddTask}
               data-testid={`row-add-task-${group.id}`}
             >
-              <div className="w-12 flex-shrink-0" />
-              <Plus className="h-4 w-4" />
-              <span>Add Task</span>
+              <div className="w-7 flex-shrink-0" />
+              <Plus className="h-3.5 w-3.5" />
+              <span>Add task</span>
             </div>
 
-            {/* Group Summary Row */}
             {tasks.length > 0 && (
               <GroupSummaryRow
                 tasks={tasks}
