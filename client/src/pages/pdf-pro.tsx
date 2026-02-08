@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,7 +70,7 @@ interface DocumentVersion {
   documentId: string;
   versionNumber: number;
   storageKey: string;
-  jobType: string;
+  operationType: string;
   createdAt: string;
 }
 
@@ -87,7 +87,7 @@ interface DocumentDetail {
   document: PdfDocument;
   versions: DocumentVersion[];
   jobs: DocumentJob[];
-  ocrText: { text: string } | null;
+  ocrText: { fullText: string } | null;
   washReports: WashReport[];
 }
 
@@ -117,17 +117,17 @@ interface WashReport {
   id: string;
   documentId: string;
   policy: string;
-  detectionMode: string;
-  totalDetections: number;
   detections: WashDetection[];
+  summary: { totalDetections: number; byType: Record<string, number> } | null;
   createdAt: string;
 }
 
 interface WashDetection {
   type: string;
+  label: string;
   value: string;
   page: number;
-  confidence: number;
+  index: number;
 }
 
 function formatFileSize(bytes: number): string {
@@ -858,9 +858,8 @@ export default function PdfProPage() {
                         </TableHeader>
                         <TableBody>
                           {washReports.map((report) => (
-                            <>
+                            <Fragment key={report.id}>
                               <TableRow
-                                key={report.id}
                                 className="cursor-pointer"
                                 onClick={() =>
                                   setExpandedReportId(
@@ -880,11 +879,11 @@ export default function PdfProPage() {
                                   <Badge variant="outline">{report.policy}</Badge>
                                 </TableCell>
                                 <TableCell data-testid={`text-report-mode-${report.id}`}>
-                                  {report.detectionMode}
+                                  regex
                                 </TableCell>
                                 <TableCell data-testid={`text-report-detections-${report.id}`}>
-                                  <Badge variant={report.totalDetections > 0 ? "destructive" : "secondary"}>
-                                    {report.totalDetections} found
+                                  <Badge variant={(report.summary?.totalDetections ?? 0) > 0 ? "destructive" : "secondary"}>
+                                    {report.summary?.totalDetections ?? 0} found
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
@@ -901,7 +900,7 @@ export default function PdfProPage() {
                                             <TableHead>Type</TableHead>
                                             <TableHead>Value</TableHead>
                                             <TableHead>Page</TableHead>
-                                            <TableHead>Confidence</TableHead>
+                                            <TableHead>Label</TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -915,9 +914,7 @@ export default function PdfProPage() {
                                               </TableCell>
                                               <TableCell>{d.page}</TableCell>
                                               <TableCell>
-                                                {d.confidence != null
-                                                  ? `${(d.confidence * 100).toFixed(0)}%`
-                                                  : "-"}
+                                                {d.label || "-"}
                                               </TableCell>
                                             </TableRow>
                                           ))}
@@ -927,7 +924,7 @@ export default function PdfProPage() {
                                   </TableCell>
                                 </TableRow>
                               )}
-                            </>
+                            </Fragment>
                           ))}
                         </TableBody>
                       </Table>
@@ -1002,7 +999,7 @@ export default function PdfProPage() {
                         <TableRow key={v.id} data-testid={`row-version-${v.id}`}>
                           <TableCell>v{v.versionNumber}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{v.jobType}</Badge>
+                            <Badge variant="outline">{v.operationType}</Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {formatDate(v.createdAt)}
@@ -1059,7 +1056,7 @@ export default function PdfProPage() {
                   <h3 className="font-semibold text-sm mb-2">OCR Text</h3>
                   <div className="bg-muted/50 rounded-md p-3 max-h-40 overflow-auto">
                     <pre className="text-xs whitespace-pre-wrap" data-testid="text-ocr-content">
-                      {docDetail.ocrText.text}
+                      {docDetail.ocrText.fullText}
                     </pre>
                   </div>
                 </div>
