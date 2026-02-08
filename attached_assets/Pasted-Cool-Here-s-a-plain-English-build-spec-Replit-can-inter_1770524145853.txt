@@ -1,0 +1,452 @@
+Cool. Here’s a plain-English build spec Replit can “interpret” into code. It’s written like instructions to a dev agent: what to create, where it plugs in, what tables/routes/pages exist, and how security + “wash” works.
+
+⸻
+
+VERICASE “PDF Pro” Module — Plain English Skeleton Spec
+
+Goal
+
+Add a modular “PDF Pro” feature to the existing Monday-meets-Clio app that lets a legal team upload PDFs to a matter, view/search them, and run common litigation operations:
+	•	Bates numbering (batch + presets)
+	•	Confidential / AEO stamping
+	•	OCR (searchable text)
+	•	Document “wash” (PII scrub + safe export to LLMs for revision)
+	•	Versioning + audit trail (chain of custody)
+
+Everything must be workspace-isolated and matter-linked. Originals must remain unchanged.
+
+⸻
+
+High-level UX
+
+Sidebar
+
+Add a new sidebar section: PDF Pro
+	•	Under each matter (or inside the matter view), show:
+	•	Documents
+	•	Productions
+	•	Wash & Export
+	•	OCR Jobs
+	•	Audit Log (optional)
+
+Also: ensure all boards appear in the sidebar, including older ones, by listing boards by workspace and not excluding boards missing a workspace link. If a board has no workspace_id (legacy), treat it as visible to the current workspace admin until re-linked.
+
+⸻
+
+Core Concepts
+
+1) Evidence Vault Document (Immutable Original)
+
+When a user uploads a PDF:
+	•	Store it as an original document record tied to:
+	•	workspace_id
+	•	matter_id
+	•	uploaded_by_user_id
+	•	Save file metadata:
+	•	original_filename
+	•	storage_path or storage_key
+	•	mime_type
+	•	file_size
+	•	sha256_hash (chain-of-custody)
+	•	This original record is read-only forever.
+
+2) Document Versions (Every change creates a new version)
+
+Any operation (Bates, stamp, OCR-flatten, redaction, merge/split, wash export) creates:
+	•	A new version record linked to the original doc (and/or prior version):
+	•	document_id
+	•	parent_version_id (nullable)
+	•	version_number (increment)
+	•	operation_type (BATES / STAMP / OCR / WASH / MERGE / SPLIT / REDACT)
+	•	operation_params (JSON)
+	•	output_storage_key
+	•	output_sha256_hash
+	•	created_by_user_id
+	•	created_at
+	•	Versions are immutable once created.
+
+3) Jobs (Asynchronous processing)
+
+PDF operations can be heavy. Use a jobs table:
+	•	job_id
+	•	workspace_id
+	•	matter_id
+	•	document_id and/or version_id
+	•	job_type (OCR / BATES / STAMP / WASH / MERGE / REDACT)
+	•	status (QUEUED / RUNNING / COMPLETE / FAILED)
+	•	progress_percent
+	•	error_message
+	•	started_at / finished_at
+Jobs never fail silently. Every job reports outcome.
+
+⸻
+
+Data Model (Plain English tables)
+
+Create these tables (names can vary):
+
+Table: documents
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	title (optional)
+	•	original_filename
+	•	storage_key (original file)
+	•	mime_type
+	•	file_size
+	•	sha256_hash
+	•	created_by
+	•	created_at
+
+Table: document_versions
+	•	id
+	•	document_id
+	•	parent_version_id (nullable)
+	•	version_number
+	•	operation_type
+	•	operation_params (JSON)
+	•	storage_key (output file)
+	•	sha256_hash
+	•	created_by
+	•	created_at
+
+Table: document_jobs
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	document_id
+	•	version_id (nullable)
+	•	job_type
+	•	status
+	•	progress_percent
+	•	error_message
+	•	created_by
+	•	created_at
+	•	started_at
+	•	finished_at
+
+Table: document_ocr_text
+	•	id
+	•	document_id
+	•	version_id (the version that was OCR’d)
+	•	full_text (or store in chunks)
+	•	confidence_summary (JSON)
+	•	created_at
+
+Table: bates_sets
+
+Represents a Bates configuration per matter/production:
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	name (e.g., “Plaintiff Production 001”)
+	•	prefix (e.g., “MERCER”)
+	•	padding (e.g., 6 → 000001)
+	•	next_number
+	•	placement (bottom-right, footer-center)
+	•	font_size (optional)
+	•	created_by
+	•	created_at
+
+Table: bates_ranges
+
+Tracks what ranges were applied:
+	•	id
+	•	bates_set_id
+	•	document_id
+	•	version_id (the output)
+	•	start_number
+	•	end_number
+	•	created_at
+
+Table: wash_maps
+
+Stores consistent replacements:
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	entity_type (PERSON / EMAIL / PHONE / ADDRESS / SSN / DOB / ACCOUNT / CASE_ID / etc.)
+	•	original_value_hash (hash of the original text, not plain text)
+	•	surrogate_value (the replacement text)
+	•	created_at
+
+Table: wash_reports
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	document_id
+	•	version_id (washed output or washed text version)
+	•	policy (STRICT/MEDIUM/MINIMAL)
+	•	detections (JSON list)
+	•	summary (JSON)
+	•	created_by
+	•	created_at
+
+Table: audit_log (if you don’t already have it)
+
+Every action writes an audit entry:
+	•	id
+	•	workspace_id
+	•	matter_id
+	•	actor_user_id
+	•	action_type
+	•	entity_id
+	•	details_json
+	•	created_at
+
+⸻
+
+API Routes (Plain English endpoints)
+
+Documents
+	•	POST /api/matters/:matterId/documents/upload
+	•	Accept PDF upload
+	•	Create documents record + compute sha256
+	•	Return doc record
+	•	GET /api/matters/:matterId/documents
+	•	List documents + latest version + OCR status
+	•	GET /api/documents/:docId
+	•	Document details, versions, jobs, OCR availability
+	•	GET /api/document-versions/:versionId/download
+	•	Secure download (checks workspace permissions)
+
+Jobs
+	•	POST /api/documents/:docId/jobs/ocr
+	•	Creates job: OCR
+	•	Returns job_id
+	•	POST /api/documents/:docId/jobs/bates
+	•	Inputs: bates_set_id OR inline config
+	•	Creates job: BATES
+	•	Returns job_id
+	•	POST /api/documents/:docId/jobs/stamp
+	•	Inputs: stamp_type = CONFIDENTIAL | AEO, placement/style
+	•	Creates job: STAMP
+	•	Returns job_id
+	•	POST /api/documents/:docId/jobs/wash
+	•	Inputs: policy, detection_mode (regex/local_ner/llm), preserve_format (yes/no)
+	•	Creates job: WASH
+	•	Returns job_id
+	•	GET /api/jobs/:jobId
+	•	Returns job status/progress + output version link
+
+Bates sets
+	•	POST /api/matters/:matterId/bates-sets
+	•	GET /api/matters/:matterId/bates-sets
+
+Wash export (to Claude/GPT safely)
+	•	POST /api/wash/:washReportId/export
+	•	Exports only the washed text or washed PDF version
+	•	Optional: send to AI provider with “revise” instructions
+	•	Store returned revision as a NEW document_version with operation_type = “AI_REVISION”
+	•	Return version_id
+
+⸻
+
+Worker/Processor (Plain English job runner)
+
+Implement a worker loop that:
+	1.	Polls document_jobs for QUEUED jobs.
+	2.	Marks the next job RUNNING.
+	3.	Executes based on job_type:
+	•	OCR:
+	•	Run OCR engine on the PDF version (original or chosen version)
+	•	Save extracted text to document_ocr_text
+	•	Optionally create a new version with an OCR text layer (if supported)
+	•	BATES:
+	•	Load PDF
+	•	For each page, compute Bates label from bates_set rules
+	•	Overlay label as stamp
+	•	Save output PDF to storage
+	•	Create new document_versions record
+	•	Increment bates_set.next_number
+	•	Create bates_ranges record
+	•	STAMP:
+	•	Overlay CONFIDENTIAL/AEO on all pages
+	•	Save as new version
+	•	WASH:
+	•	Extract text (OCR text if present; else PDF text extraction)
+	•	Detect sensitive entities (details below)
+	•	Replace with surrogates consistently using wash_maps
+	•	Save washed text and/or washed PDF version (if you support re-render)
+	•	Save wash_report (detections + summary)
+	4.	Updates progress_percent while running.
+	5.	Marks COMPLETE or FAILED with error_message.
+
+⸻
+
+“Document Washer” — How it actually washes
+
+What the wash does
+
+The wash takes a document and produces a “safe-to-share” version by:
+	•	detecting sensitive info (PII, protected data, case identifiers)
+	•	replacing it with realistic but fake surrogates
+	•	preserving structure and meaning as much as possible
+	•	producing a report of what was changed
+
+Detection layers (choose mode)
+
+The washer supports three modes:
+	1.	Regex mode (fast + deterministic)
+Detects structured things:
+
+	•	emails, phones, SSNs, credit cards, account numbers, money amounts
+	•	case numbers if they match patterns
+	•	dates (optional)
+
+	2.	Local NER mode (recommended for privacy)
+Run a local named-entity recognizer to find:
+
+	•	people names, orgs, locations
+	•	optionally medical terms (limited)
+This avoids sending raw content to any external AI.
+
+	3.	LLM deep scan mode (optional, expensive, external)
+Only if allowed by admin policy:
+
+	•	Send document text to Claude/GPT with strict instructions:
+“Return a JSON list of sensitive entities with offsets and type.”
+	•	This catches context cases regex misses.
+
+Merging detections
+	•	Combine detections from all sources
+	•	Deduplicate overlapping matches
+	•	Keep the highest-confidence detection per span
+	•	Store every detection in the wash report
+
+Surrogate generation (consistency is the point)
+
+For each sensitive value:
+	•	Create original_value_hash = hash(original_value)
+	•	Look up in wash_maps by workspace + matter + entity_type + original_value_hash
+	•	If it exists, reuse the same surrogate
+	•	If not, generate a surrogate and store it:
+	•	PERSON → “Michael Carter”
+	•	ORG → “North Valley Holdings”
+	•	ADDRESS → “1234 West Pine Ave”
+	•	PHONE → (valid formatted but fake)
+	•	EMAIL → fake domain like example-legal.com
+	•	CASE_ID → “2026-CV-XXXXX” style
+This guarantees: the same real name becomes the same fake name across all docs in the same matter.
+
+Replacement method (to avoid broken offsets)
+	•	Replace from the end of text to the start so earlier replacements don’t shift later indexes.
+	•	Keep formatting of paragraph boundaries where possible.
+
+Output artifacts
+	•	Washed Text (always)
+	•	Washed PDF (optional; only if you can re-render reliably)
+	•	Wash Report listing:
+	•	what types were found
+	•	counts per type
+	•	confidence breakdown
+	•	and a link to the mapping policy (not the real data)
+
+What goes “out” to Claude/GPT
+
+Only one of these is allowed to leave the system:
+	•	the washed text
+	•	or the washed PDF version
+Never the original.
+
+If the user asks for AI revision:
+	•	Send the washed content to the model
+	•	Receive revised washed content back
+	•	Save it as a new document version: operation_type = AI_REVISION
+	•	Store prompt + model metadata (without sensitive originals)
+
+⸻
+
+Security model (what keeps clients safe)
+
+Workspace isolation
+
+Every query for documents, jobs, versions, bates sets, wash maps is filtered by workspace_id.
+No cross-workspace reads, ever.
+
+Permission layers
+
+Roles:
+	•	Admin: can wash/export, run Bates, view audit log
+	•	Member: can view + run allowed operations
+	•	Viewer: view only
+
+Immutable originals + version chain
+	•	Originals never change
+	•	Every derivative is a version with:
+	•	parent_version_id
+	•	sha256 hash
+	•	created_by
+	•	timestamps
+This creates defensible chain of custody.
+
+Encryption (recommended)
+	•	Encrypt stored PDFs at rest via storage provider or app-level encryption.
+	•	Store only hashes of original sensitive values in wash maps.
+	•	Never store raw originals in the mapping table.
+
+Audit trail
+
+Every operation writes an audit event:
+	•	who ran it
+	•	which doc/version
+	•	what params were used
+	•	job status
+This is your “trust story” for paying customers.
+
+Fail loud
+
+If any part fails, job status becomes FAILED and user sees the error.
+No silent partial successes.
+
+⸻
+
+Frontend pages (plain English)
+
+Matter → Documents
+	•	Table of documents in that matter
+	•	Columns: filename, uploaded by, date, latest version, OCR status, actions
+	•	Actions: View, OCR, Bates, Stamp, Wash, Download
+
+Document Viewer
+	•	PDF viewer with thumbnails
+	•	“Operations” panel:
+	•	Run OCR
+	•	Apply Bates (select Bates set)
+	•	Apply stamp (Confidential/AEO)
+	•	Wash (policy + mode)
+	•	Versions list panel showing every derived version
+
+Productions
+	•	Manage Bates sets
+	•	Create production run: select docs → apply Bates → stamp → export zip
+
+Wash & Export
+	•	Run wash
+	•	Preview washed text
+	•	Export washed version
+	•	Optional: “Send washed version to AI for revision”
+	•	returns revised version in versions list
+
+⸻
+
+Republish requirement
+
+When these changes are merged:
+	•	Bump app version
+	•	Run migrations
+	•	Republish on Replit so all users get the updated build
+	•	On first launch after update: show a “What’s New” modal explaining PDF Pro + wash safety
+
+⸻
+
+That’s the spec.
+
+If you paste this into Replit as your “build instruction,” it’ll have enough structure to generate:
+	•	tables
+	•	routes
+	•	UI pages
+	•	a worker loop
+	•	and the security story clients will demand
+
+And it’s consistent with your existing “data linkage/cascade” philosophy: every action creates linked records + audit evidence instead of spooky magic.
