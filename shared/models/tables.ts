@@ -1180,3 +1180,162 @@ export type TemplateContent = typeof templateContents.$inferSelect;
 export type InsertTemplateContent = typeof templateContents.$inferInsert;
 export type TemplateUsageLogEntry = typeof templateUsageLog.$inferSelect;
 export type InsertTemplateUsageLogEntry = typeof templateUsageLog.$inferInsert;
+
+// ============ PDF PRO - DOCUMENTS ============
+export const pdfDocuments = pgTable("pdf_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id"),
+  matterId: varchar("matter_id"),
+  title: varchar("title", { length: 500 }),
+  originalFilename: varchar("original_filename", { length: 500 }).notNull(),
+  storageKey: text("storage_key").notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).default("application/pdf"),
+  fileSize: integer("file_size").default(0),
+  sha256Hash: varchar("sha256_hash", { length: 64 }).notNull(),
+  pageCount: integer("page_count"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_pdf_docs_workspace").on(table.workspaceId),
+  index("IDX_pdf_docs_matter").on(table.matterId),
+  index("IDX_pdf_docs_created_by").on(table.createdBy),
+]);
+
+export type PdfDocument = typeof pdfDocuments.$inferSelect;
+export type InsertPdfDocument = typeof pdfDocuments.$inferInsert;
+
+// ============ PDF PRO - DOCUMENT VERSIONS ============
+export const documentVersions = pgTable("document_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => pdfDocuments.id, { onDelete: "cascade" }),
+  parentVersionId: varchar("parent_version_id"),
+  versionNumber: integer("version_number").notNull().default(1),
+  operationType: varchar("operation_type", { length: 50 }).notNull(),
+  operationParams: jsonb("operation_params").default({}),
+  storageKey: text("storage_key").notNull(),
+  sha256Hash: varchar("sha256_hash", { length: 64 }).notNull(),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_versions_document").on(table.documentId),
+  index("IDX_doc_versions_parent").on(table.parentVersionId),
+]);
+
+export type DocumentVersion = typeof documentVersions.$inferSelect;
+export type InsertDocumentVersion = typeof documentVersions.$inferInsert;
+
+// ============ PDF PRO - DOCUMENT JOBS ============
+export const documentJobs = pgTable("document_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id"),
+  matterId: varchar("matter_id"),
+  documentId: varchar("document_id").notNull().references(() => pdfDocuments.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id"),
+  jobType: varchar("job_type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).default("queued"),
+  progressPercent: integer("progress_percent").default(0),
+  errorMessage: text("error_message"),
+  jobParams: jsonb("job_params").default({}),
+  resultVersionId: varchar("result_version_id"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+}, (table) => [
+  index("IDX_doc_jobs_document").on(table.documentId),
+  index("IDX_doc_jobs_status").on(table.status),
+  index("IDX_doc_jobs_workspace").on(table.workspaceId),
+]);
+
+export type DocumentJob = typeof documentJobs.$inferSelect;
+export type InsertDocumentJob = typeof documentJobs.$inferInsert;
+
+// ============ PDF PRO - OCR TEXT ============
+export const documentOcrText = pgTable("document_ocr_text", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => pdfDocuments.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id"),
+  fullText: text("full_text").default(""),
+  confidenceSummary: jsonb("confidence_summary").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_doc_ocr_document").on(table.documentId),
+]);
+
+export type DocumentOcrText = typeof documentOcrText.$inferSelect;
+export type InsertDocumentOcrText = typeof documentOcrText.$inferInsert;
+
+// ============ PDF PRO - BATES SETS ============
+export const batesSets = pgTable("bates_sets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id"),
+  matterId: varchar("matter_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  prefix: varchar("prefix", { length: 50 }).notNull(),
+  padding: integer("padding").default(6),
+  nextNumber: integer("next_number").default(1),
+  placement: varchar("placement", { length: 50 }).default("bottom-right"),
+  fontSize: integer("font_size").default(10),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_bates_sets_workspace").on(table.workspaceId),
+  index("IDX_bates_sets_matter").on(table.matterId),
+]);
+
+export type BatesSet = typeof batesSets.$inferSelect;
+export type InsertBatesSet = typeof batesSets.$inferInsert;
+
+// ============ PDF PRO - BATES RANGES ============
+export const batesRanges = pgTable("bates_ranges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batesSetId: varchar("bates_set_id").notNull().references(() => batesSets.id, { onDelete: "cascade" }),
+  documentId: varchar("document_id").notNull().references(() => pdfDocuments.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id"),
+  startNumber: integer("start_number").notNull(),
+  endNumber: integer("end_number").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_bates_ranges_set").on(table.batesSetId),
+  index("IDX_bates_ranges_document").on(table.documentId),
+]);
+
+export type BatesRange = typeof batesRanges.$inferSelect;
+export type InsertBatesRange = typeof batesRanges.$inferInsert;
+
+// ============ PDF PRO - WASH MAPS ============
+export const pdfWashMaps = pgTable("pdf_wash_maps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id"),
+  matterId: varchar("matter_id"),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  originalValueHash: varchar("original_value_hash", { length: 64 }).notNull(),
+  surrogateValue: text("surrogate_value").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_wash_maps_workspace_matter").on(table.workspaceId, table.matterId),
+  index("IDX_wash_maps_hash").on(table.originalValueHash),
+]);
+
+export type PdfWashMap = typeof pdfWashMaps.$inferSelect;
+export type InsertPdfWashMap = typeof pdfWashMaps.$inferInsert;
+
+// ============ PDF PRO - WASH REPORTS ============
+export const pdfWashReports = pgTable("pdf_wash_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id"),
+  matterId: varchar("matter_id"),
+  documentId: varchar("document_id").notNull().references(() => pdfDocuments.id, { onDelete: "cascade" }),
+  versionId: varchar("version_id"),
+  policy: varchar("policy", { length: 20 }).default("medium"),
+  detections: jsonb("detections").default([]),
+  summary: jsonb("summary").default({}),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_wash_reports_document").on(table.documentId),
+  index("IDX_wash_reports_workspace").on(table.workspaceId),
+]);
+
+export type PdfWashReport = typeof pdfWashReports.$inferSelect;
+export type InsertPdfWashReport = typeof pdfWashReports.$inferInsert;

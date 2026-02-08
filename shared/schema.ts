@@ -2488,6 +2488,77 @@ export const insertTemplateUsageSchema = z.object({
 });
 export type InsertTemplateUsageInput = z.infer<typeof insertTemplateUsageSchema>;
 
+// ============ PDF PRO SCHEMAS ============
+
+export type PdfDocumentJobType = "ocr" | "bates" | "stamp" | "wash" | "merge" | "split" | "redact";
+export type PdfDocumentJobStatus = "queued" | "running" | "complete" | "failed";
+export type PdfOperationType = "BATES" | "STAMP" | "OCR" | "WASH" | "MERGE" | "SPLIT" | "REDACT" | "AI_REVISION";
+export type PdfStampType = "CONFIDENTIAL" | "AEO" | "PRIVILEGED" | "WORK_PRODUCT" | "DRAFT";
+export type PdfWashPolicy = "strict" | "medium" | "minimal";
+export type PdfWashMode = "regex" | "local_ner" | "llm";
+
+export const insertPdfDocumentSchema = z.object({
+  workspaceId: z.string().optional(),
+  matterId: z.string().optional(),
+  title: z.string().optional(),
+  originalFilename: z.string().min(1),
+  storageKey: z.string().min(1),
+  mimeType: z.string().default("application/pdf"),
+  fileSize: z.number().default(0),
+  sha256Hash: z.string().min(1),
+  pageCount: z.number().optional(),
+  createdBy: z.string().min(1),
+});
+export type InsertPdfDocumentInput = z.infer<typeof insertPdfDocumentSchema>;
+
+export const insertDocumentVersionSchema = z.object({
+  documentId: z.string().min(1),
+  parentVersionId: z.string().optional(),
+  versionNumber: z.number().default(1),
+  operationType: z.string().min(1),
+  operationParams: z.record(z.any()).default({}),
+  storageKey: z.string().min(1),
+  sha256Hash: z.string().min(1),
+  createdBy: z.string().min(1),
+});
+export type InsertDocumentVersionInput = z.infer<typeof insertDocumentVersionSchema>;
+
+export const insertDocumentJobSchema = z.object({
+  workspaceId: z.string().optional(),
+  matterId: z.string().optional(),
+  documentId: z.string().min(1),
+  versionId: z.string().optional(),
+  jobType: z.enum(["ocr", "bates", "stamp", "wash", "merge", "split", "redact"]),
+  jobParams: z.record(z.any()).default({}),
+  createdBy: z.string().min(1),
+});
+export type InsertDocumentJobInput = z.infer<typeof insertDocumentJobSchema>;
+
+export const insertBatesSetSchema = z.object({
+  workspaceId: z.string().optional(),
+  matterId: z.string().optional(),
+  name: z.string().min(1, "Production name is required"),
+  prefix: z.string().min(1, "Bates prefix is required"),
+  padding: z.number().min(1).max(10).default(6),
+  nextNumber: z.number().min(1).default(1),
+  placement: z.enum(["bottom-right", "bottom-left", "bottom-center", "top-right", "top-left", "top-center", "footer-center"]).default("bottom-right"),
+  fontSize: z.number().min(6).max(24).default(10),
+  createdBy: z.string().min(1),
+});
+export type InsertBatesSetInput = z.infer<typeof insertBatesSetSchema>;
+
+export const insertPdfWashReportSchema = z.object({
+  workspaceId: z.string().optional(),
+  matterId: z.string().optional(),
+  documentId: z.string().min(1),
+  versionId: z.string().optional(),
+  policy: z.enum(["strict", "medium", "minimal"]).default("medium"),
+  detections: z.array(z.any()).default([]),
+  summary: z.record(z.any()).default({}),
+  createdBy: z.string().min(1),
+});
+export type InsertPdfWashReportInput = z.infer<typeof insertPdfWashReportSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

@@ -128,6 +128,9 @@ export async function registerRoutes(
   app.use("/api/payments", isAuthenticated, viewerReadOnly);
   app.use("/api/trust-transactions", isAuthenticated, viewerReadOnly);
   
+  // PDF Pro - member or above (document operations)
+  app.use("/api/pdf-pro", isAuthenticated, requireMemberOrAbove);
+
   // Billing Verifier - member or above (financial data)
   app.use("/api/billing-verifier", isAuthenticated, requireMemberOrAbove);
 
