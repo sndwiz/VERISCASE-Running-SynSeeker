@@ -44,7 +44,7 @@ export function registerBoardRoutes(app: Express): void {
         if (!owns) {
           return res.status(403).json({ error: "Workspace not found or access denied" });
         }
-        boardList = await storage.getBoardsByWorkspace(workspaceId);
+        boardList = await storage.getBoardsByWorkspaceIds([workspaceId]);
       } else {
         const wsIds = await getUserWorkspaceIds(userId);
         boardList = await storage.getBoardsByWorkspaceIds(wsIds);
