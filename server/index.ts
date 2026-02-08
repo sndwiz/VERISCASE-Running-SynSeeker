@@ -75,9 +75,14 @@ app.use((req, res, next) => {
       host: "0.0.0.0",
       reusePort: true,
     },
-    () => {
+    async () => {
       logger.info(`Server started`, { port });
       log(`serving on port ${port}`);
+      
+      // Start PDF Pro background worker
+      const { startPdfWorker } = await import("./pdf-worker");
+      startPdfWorker();
+      log(`PDF Pro worker started`);
     },
   );
 

@@ -61,6 +61,7 @@ import ProcessRecorderPage from "@/pages/process-recorder";
 import TeamMembersPage from "@/pages/team-members";
 import MyTasksPage from "@/pages/my-tasks";
 import ProductGuidePage from "@/pages/product-guide";
+import PdfProPage from "@/pages/pdf-pro";
 
 
 function Router() {
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/team-members" component={TeamMembersPage} />
       <Route path="/my-tasks" component={MyTasksPage} />
       <Route path="/product-guide" component={ProductGuidePage} />
+      <Route path="/pdf-pro" component={PdfProPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

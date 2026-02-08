@@ -95,6 +95,7 @@ const navigationItems = [
   { title: "Upload Organizer", url: "/upload-organizer", icon: FolderOpen },
   { title: "Document Builder", url: "/document-maker", icon: FilePlus2 },
   { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
+  { title: "PDF Pro", url: "/pdf-pro", icon: FileText },
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Billing", url: "/billing", icon: DollarSign },
