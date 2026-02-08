@@ -1,0 +1,251 @@
+Perfect — next step is to turn that plain-English spec into one implementable “vertical slice” that proves the whole machine works end-to-end. Don’t try to boil the courthouse ocean on day 1. Build the pipeline once, then add more rule packs + document types.
+
+Here’s the next step implementation plan (still plain English, but structured like a build checklist Replit can execute).
+
+⸻
+
+The Next Step: Build the First Vertical Slice (MVP Automation Loop)
+
+What this MVP must do (end-to-end)
+
+When a PDF is added to a matter, the system should:
+	1.	OCR it (or text extract)
+	2.	classify it as (A) Discovery Request or (B) Motion/Notice/Order
+	3.	extract filed/served/hearing dates if present
+	4.	compute at least 3 deadlines (federal + Utah “good enough” defaults)
+	5.	create board tasks with correct statuses (Draft → Review → Final → File/Serve)
+	6.	generate one draft (a shell) for the next required document
+	7.	show “Next Best Actions” on the matter dashboard
+
+This proves the automations are real.
+
+⸻
+
+Step 1 — Create the “Events” backbone (the anchor for deadlines)
+
+Add a Matter Event record
+
+Every time a document is ingested/classified, create an Event object:
+	•	event_type: DISCOVERY_SERVED | MOTION_FILED | ORDER_ENTERED | HEARING_SET | etc.
+	•	anchor_date: a real date (served_date, filed_date, hearing_date)
+	•	linked_document_id
+	•	extracted_from: OCR / metadata / manual override
+	•	confidence score
+	•	jurisdiction: UT or FED (if unknown, store UNKNOWN)
+
+Why: Deadlines should be derived from events, not from vibes.
+
+⸻
+
+Step 2 — Implement the “Classifier v1” (simple + reliable)
+
+Classifier output format (JSON)
+
+Return a structured classification like:
+	•	doc_type: DISCOVERY_REQUEST | DISCOVERY_RESPONSE | MOTION | NOTICE | ORDER | OTHER
+	•	subtype: RFP | INTERROGATORIES | RFA | MOTION_TO_COMPEL | etc.
+	•	filed_date: maybe null
+	•	served_date: maybe null
+	•	hearing_date: maybe null
+	•	title_guess
+	•	parties (optional)
+	•	confidence
+
+How classifier v1 works (don’t overcomplicate)
+
+Use string rules on:
+	•	document filename
+	•	top of first page text
+	•	common phrases:
+	•	“Requests for Production”
+	•	“Interrogatories”
+	•	“Requests for Admission”
+	•	“Notice of Service”
+	•	“Certificate of Service”
+	•	“Motion to…”
+	•	“Notice of Hearing”
+	•	“Order”
+	•	If “Responses and Objections” appears → response
+
+If multiple match, pick the most specific.
+
+⸻
+
+Step 3 — Implement “Date Extractor v1”
+
+Extract 3 date types:
+	•	filed_date (from “Filed:” “Dated:” court stamp region text)
+	•	served_date (from “served on” “certificate of service”)
+	•	hearing_date (from “hearing set for” “will be heard on”)
+
+If no date found:
+	•	fall back to document uploaded date
+	•	mark date_source = FALLBACK
+
+Store extracted dates with confidence.
+
+⸻
+
+Step 4 — Add Jurisdiction selector + rule packs (Utah + Federal)
+
+Matter has jurisdiction settings
+
+Each matter must store:
+	•	jurisdiction_mode: UT, FED, or DUAL
+	•	court: “US District Court – District of Utah”, “Third District Court”, etc.
+	•	service_method_default: EFILE, EMAIL, MAIL, PERSONAL (optional)
+	•	timezone
+
+Rule pack concept
+
+Create a “RulePack” system:
+	•	RulePack UT_CIVIL_V1
+	•	RulePack FED_CIVIL_V1
+
+Each rule is:
+	•	trigger_event_type
+	•	deadline_name
+	•	offset_days (or business days)
+	•	dependencies (optional)
+	•	creates_task_template (optional)
+
+Important: The rule engine is allowed to be “good enough” V1, with warnings: “Verify deadline under local rules.”
+
+⸻
+
+Step 5 — Implement Deadline Engine v1 (minimum rules that matter)
+
+For Utah (UT) civil (V1 defaults)
+
+When event = DISCOVERY_SERVED:
+	•	Deadline: “Discovery Responses Due” = served_date + (default X days)
+	•	Create tasks:
+	•	Draft Responses
+	•	Attorney Review
+	•	Finalize + Serve
+
+When event = MOTION_FILED:
+	•	Deadline: “Opposition Due” = filed_date + (default X days)
+	•	Deadline: “Reply Due” = opposition_due + (default Y days)
+	•	Create tasks:
+	•	Draft Opposition
+	•	Review
+	•	File
+
+For Federal (FED) civil (V1 defaults)
+
+When event = DISCOVERY_SERVED:
+	•	Deadline: “Discovery Responses Due” = served_date + (default X days)
+
+When event = MOTION_FILED:
+	•	Opposition + Reply schedule defaults similarly
+
+Note: For V1, you can implement defaults as configurable numbers stored in the rule pack (not hardcoded in the code). Later you’ll swap in real court-specific rule tables.
+
+Also implement:
+	•	weekend/holiday adjustment (v1 can be weekend-only: if due date falls Sat/Sun → push to Monday)
+
+⸻
+
+Step 6 — Board Automation Outputs (tasks + statuses)
+
+Create board items automatically
+
+When deadlines are created, also create board tasks:
+	•	task_type: DRAFT / REVIEW / FINAL / FILE / SERVE
+	•	status: Draft / In Review / Ready / Filed/Served / Done
+	•	due_date
+	•	linked_deadline_id
+	•	linked_document_id (source)
+	•	assigned_to (default: matter owner)
+
+Tasks must be attached to:
+	•	Matter Board (master)
+	•	And the specific board: Discovery Board or Motions Board
+
+⸻
+
+Step 7 — Document Builder v1 (draft shell generation)
+
+First draft templates (must exist)
+
+Implement at least 2 templates:
+	1.	Discovery Responses Shell (for RFP/Interrogatories/RFA)
+	2.	Opposition Shell (for a motion)
+
+Each template:
+	•	pulls caption (court, parties, case number, judge)
+	•	lists basic headings
+	•	includes placeholder sections like:
+	•	“General Objections”
+	•	“Responses to Requests”
+	•	“Statement of Facts”
+	•	“Argument”
+	•	includes a “source citations” block linking the triggering doc
+
+When the engine decides “this is next,” it creates:
+	•	a new Draft Document record
+	•	status = Draft
+	•	links it to the event/deadline/task
+
+⸻
+
+Step 8 — “Next Best Actions” panel
+
+On each matter dashboard:
+	•	show top 5 upcoming deadlines
+	•	show top 5 tasks due soonest
+	•	show “Next required filing/service” (sequencing output)
+	•	show warnings:
+	•	missing served_date
+	•	unknown jurisdiction
+	•	“rule verification required”
+
+⸻
+
+Step 9 — Overrides (so lawyers don’t hate you)
+
+Every computed deadline must be editable with:
+	•	“Override due date”
+	•	“Override anchor date”
+	•	“Mark as confirmed”
+Store overrides, and never overwrite confirmed deadlines unless user approves.
+
+⸻
+
+Step 10 — Implementation order Replit should follow (do this in sequence)
+	1.	Add tables: events, deadlines, rule_packs, tasks (or equivalent)
+	2.	Build “Document Ingest pipeline” endpoint that:
+	•	OCR/text extract
+	•	classify
+	•	create event
+	3.	Build deadline engine to consume event → deadlines
+	4.	Build task generator to consume deadlines → tasks/board items
+	5.	Build draft generator to consume tasks → draft doc
+	6.	Add matter dashboard widgets
+	7.	Add manual override UI
+
+That’s the “one loop” that makes your system feel alive.
+
+⸻
+
+Utah + Federal: How to handle “both” without chaos
+
+For jurisdiction_mode = DUAL:
+	•	try to infer based on court name / case number format
+	•	if unsure:
+	•	create both deadline sets but mark them “UNCONFIRMED”
+	•	force user to pick which court rules apply
+This avoids wrong confidence.
+
+⸻
+
+What you should paste into Replit next (copy/paste block)
+
+Here is a single directive you can paste as your “NEXT STEP BUILD INSTRUCTIONS”:
+
+Build MVP Automation Loop: When a document is uploaded to a matter, OCR/extract text, classify it (discovery/motion/notice/order), extract filed/served/hearing dates, create a matter event, run a deadline engine using UT_CIVIL_V1 and FED_CIVIL_V1 rule packs, generate deadlines + board tasks (Draft→Review→Final→File/Serve), generate a draft document shell for the next required document, and show “Next Best Actions” on the matter dashboard. Include manual override + confirmation for any deadline. Use weekend adjustment and store rule source + anchor event for every deadline.
+
+⸻
+
+If you want to make Replit really nail it, the next thing to paste is: your current table names (even just: “we currently have matters, boards, tasks, documents”) so it can map this onto your existing schema instead of inventing new ones. But even without that, the vertical slice above is the correct “next step” to implement this last part.

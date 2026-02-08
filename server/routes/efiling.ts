@@ -1,0 +1,485 @@
+import { Router, Request, Response } from "express";
+import { db } from "../db";
+import {
+  caseFilings,
+  caseDeadlines,
+  caseActions,
+  deadlineRules,
+  jurisdictionProfiles,
+  matters,
+  fileItems,
+} from "@shared/models/tables";
+import { eq, and, desc, asc, or } from "drizzle-orm";
+import { getUserId } from "../utils/auth";
+import { z } from "zod";
+import {
+  insertJurisdictionProfileSchema,
+  insertDeadlineRuleSchema,
+  insertCaseFilingSchema,
+  updateActionStatusSchema,
+  reclassifyFilingSchema,
+} from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { createHash } from "crypto";
+import { classifyDocument, classifyByFileName } from "../services/document-classifier";
+import {
+  computeDeadlinesForFiling,
+  createDeadlinesFromFiling,
+  getJurisdictionForMatter,
+  seedDefaultDeadlineRules,
+} from "../services/deadline-engine";
+import {
+  generateNextActions,
+  createActionsFromDeadlines,
+  createBoardTasksFromActions,
+  updateActionStatus,
+  getCasePhase,
+} from "../services/sequencing-engine";
+
+const router = Router();
+
+const upload = multer({
+  dest: "uploads/efiling/",
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
+
+// ============ JURISDICTION PROFILES ============
+
+router.get("/jurisdictions", async (_req: Request, res: Response) => {
+  try {
+    const profiles = await db.select().from(jurisdictionProfiles).orderBy(asc(jurisdictionProfiles.name));
+    res.json(profiles);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/jurisdictions", async (req: Request, res: Response) => {
+  try {
+    const data = insertJurisdictionProfileSchema.parse(req.body);
+    const [created] = await db.insert(jurisdictionProfiles).values(data).returning();
+    res.status(201).json(created);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/jurisdictions/:id", async (req: Request, res: Response) => {
+  try {
+    const [updated] = await db.update(jurisdictionProfiles)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(jurisdictionProfiles.id, req.params.id))
+      .returning();
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ DEADLINE RULES ============
+
+router.get("/rules", async (_req: Request, res: Response) => {
+  try {
+    const rules = await db.select().from(deadlineRules).orderBy(asc(deadlineRules.name));
+    res.json(rules);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/rules", async (req: Request, res: Response) => {
+  try {
+    const data = insertDeadlineRuleSchema.parse(req.body);
+    const [created] = await db.insert(deadlineRules).values(data).returning();
+    res.status(201).json(created);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/rules/:id", async (req: Request, res: Response) => {
+  try {
+    const [updated] = await db.update(deadlineRules)
+      .set(req.body)
+      .where(eq(deadlineRules.id, req.params.id))
+      .returning();
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/rules/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(deadlineRules).where(eq(deadlineRules.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SEED DEFAULT RULES ============
+
+router.post("/seed-rules", async (_req: Request, res: Response) => {
+  try {
+    await seedDefaultDeadlineRules();
+    const rules = await db.select().from(deadlineRules);
+    const profiles = await db.select().from(jurisdictionProfiles);
+    res.json({ rules: rules.length, jurisdictions: profiles.length, message: "Default rules seeded" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ CASE FILINGS ============
+
+router.get("/matters/:matterId/filings", async (req: Request, res: Response) => {
+  try {
+    const filings = await db.select().from(caseFilings)
+      .where(eq(caseFilings.matterId, req.params.matterId))
+      .orderBy(desc(caseFilings.createdAt));
+    res.json(filings);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/filings/:id", async (req: Request, res: Response) => {
+  try {
+    const [filing] = await db.select().from(caseFilings)
+      .where(eq(caseFilings.id, req.params.id));
+    if (!filing) return res.status(404).json({ error: "Filing not found" });
+    res.json(filing);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Document ingestion - upload + classify + compute deadlines + generate actions
+router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req) || "system";
+    const matterId = req.params.matterId;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const [matter] = await db.select().from(matters).where(eq(matters.id, matterId)).limit(1);
+    if (!matter) {
+      return res.status(404).json({ error: "Matter not found" });
+    }
+
+    // 1. Save original file
+    const destDir = path.join("uploads", "efiling", matterId);
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+    const destPath = path.join(destDir, file.originalname);
+    fs.renameSync(file.path, destPath);
+
+    // 2. Compute hash
+    const fileBuffer = fs.readFileSync(destPath);
+    const sha256 = createHash("sha256").update(fileBuffer).digest("hex");
+
+    // 3. Extract text (basic - for PDFs, use OCR from PDF Pro if needed)
+    let ocrText = "";
+    try {
+      ocrText = fileBuffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ").substring(0, 20000);
+    } catch {
+      ocrText = "";
+    }
+
+    // 4. Classify document
+    const matterContext = {
+      caseNumber: matter.caseNumber || undefined,
+      courtName: matter.courtName || undefined,
+      parties: [],
+    };
+
+    let classification;
+    if (ocrText.length > 100) {
+      classification = await classifyDocument(ocrText, file.originalname, matterContext);
+    } else {
+      const fileNameHint = classifyByFileName(file.originalname);
+      classification = {
+        docType: fileNameHint.docType || "Other",
+        docSubtype: fileNameHint.docSubtype || null,
+        docCategory: fileNameHint.docCategory || "admin-operations",
+        confidence: 0.4,
+        filedDate: null,
+        servedDate: null,
+        hearingDate: null,
+        responseDeadlineAnchor: null,
+        partiesInvolved: [],
+        extractedFacts: {},
+        relatedDocReference: null,
+      };
+    }
+
+    // Use any dates from request body if AI didn't find them
+    const filedDate = classification.filedDate || req.body.filedDate || null;
+    const servedDate = classification.servedDate || req.body.servedDate || null;
+    const hearingDate = classification.hearingDate || req.body.hearingDate || null;
+
+    // 5. Create case filing record
+    const [filing] = await db.insert(caseFilings).values({
+      matterId,
+      originalFileName: file.originalname,
+      filePath: destPath,
+      ocrText,
+      docType: classification.docType,
+      docSubtype: classification.docSubtype,
+      docCategory: classification.docCategory,
+      classificationConfidence: classification.confidence,
+      filedDate,
+      servedDate,
+      hearingDate,
+      responseDeadlineAnchor: classification.responseDeadlineAnchor || servedDate,
+      partiesInvolved: classification.partiesInvolved,
+      extractedFacts: classification.extractedFacts,
+      relatedFilingId: null,
+      filingProof: classification.extractedFacts?.filedTimestamp
+        ? { filedTimestamp: classification.extractedFacts.filedTimestamp, documentTitle: classification.extractedFacts.documentTitleAsFiled }
+        : {},
+      sourceType: req.body.sourceType || "manual",
+      sha256Hash: sha256,
+      classifiedBy: "ai",
+      createdBy: userId,
+    }).returning();
+
+    // 6. Compute and create deadlines
+    const jurisdiction = await getJurisdictionForMatter(matterId);
+    const deadlineIds = await createDeadlinesFromFiling(filing, jurisdiction?.id);
+
+    // 7. Generate and create actions
+    const actionIds = await createActionsFromDeadlines(matterId, undefined);
+
+    // 8. Determine case phase
+    const allFilings = await db.select().from(caseFilings)
+      .where(eq(caseFilings.matterId, matterId));
+    const casePhase = getCasePhase(allFilings);
+
+    res.status(201).json({
+      filing,
+      classification: {
+        docType: classification.docType,
+        docSubtype: classification.docSubtype,
+        confidence: classification.confidence,
+      },
+      deadlinesCreated: deadlineIds.length,
+      actionsCreated: actionIds.length,
+      casePhase,
+    });
+  } catch (error: any) {
+    console.error("[efiling] Ingestion error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/matters/:matterId/filings", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req) || "system";
+    const data = insertCaseFilingSchema.omit({ matterId: true, createdBy: true, classifiedBy: true }).parse(req.body);
+    const [filing] = await db.insert(caseFilings).values({
+      ...data,
+      matterId: req.params.matterId,
+      createdBy: userId,
+      classifiedBy: "manual",
+    }).returning();
+
+    const jurisdiction = await getJurisdictionForMatter(req.params.matterId);
+    const deadlineIds = await createDeadlinesFromFiling(filing, jurisdiction?.id);
+    await createActionsFromDeadlines(req.params.matterId);
+
+    res.status(201).json({ filing, deadlinesCreated: deadlineIds.length });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/filings/:id/reclassify", async (req: Request, res: Response) => {
+  try {
+    const data = reclassifyFilingSchema.parse(req.body);
+    const [filing] = await db.select().from(caseFilings)
+      .where(eq(caseFilings.id, req.params.id));
+    if (!filing) return res.status(404).json({ error: "Filing not found" });
+
+    const [updated] = await db.update(caseFilings)
+      .set({
+        docType: data.docType || filing.docType,
+        docSubtype: data.docSubtype !== undefined ? data.docSubtype : filing.docSubtype,
+        docCategory: data.docCategory || filing.docCategory,
+        filedDate: data.filedDate !== undefined ? data.filedDate : filing.filedDate,
+        servedDate: data.servedDate !== undefined ? data.servedDate : filing.servedDate,
+        hearingDate: data.hearingDate !== undefined ? data.hearingDate : filing.hearingDate,
+        classifiedBy: "manual",
+        updatedAt: new Date(),
+      })
+      .where(eq(caseFilings.id, req.params.id))
+      .returning();
+
+    res.json(updated);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/filings/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(caseFilings).where(eq(caseFilings.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ CASE DEADLINES ============
+
+router.get("/matters/:matterId/deadlines", async (req: Request, res: Response) => {
+  try {
+    const deadlines = await db.select().from(caseDeadlines)
+      .where(eq(caseDeadlines.matterId, req.params.matterId))
+      .orderBy(asc(caseDeadlines.dueDate));
+    res.json(deadlines);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/deadlines/:id", async (req: Request, res: Response) => {
+  try {
+    const [updated] = await db.update(caseDeadlines)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(caseDeadlines.id, req.params.id))
+      .returning();
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/deadlines/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(caseDeadlines).where(eq(caseDeadlines.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ CASE ACTIONS ============
+
+router.get("/matters/:matterId/actions", async (req: Request, res: Response) => {
+  try {
+    const actions = await db.select().from(caseActions)
+      .where(eq(caseActions.matterId, req.params.matterId))
+      .orderBy(asc(caseActions.dueDate));
+    res.json(actions);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/matters/:matterId/next-actions", async (req: Request, res: Response) => {
+  try {
+    const actions = await generateNextActions(req.params.matterId);
+    const allFilings = await db.select().from(caseFilings)
+      .where(eq(caseFilings.matterId, req.params.matterId));
+    const phase = getCasePhase(allFilings);
+    res.json({ phase, actions });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/actions/:id", async (req: Request, res: Response) => {
+  try {
+    if (req.body.status) {
+      const parsed = updateActionStatusSchema.parse({ status: req.body.status });
+      const userId = getUserId(req) || "system";
+      await updateActionStatus(req.params.id, parsed.status, userId);
+    }
+    const updates = { ...req.body };
+    delete updates.status;
+    if (Object.keys(updates).length > 0) {
+      await db.update(caseActions)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(caseActions.id, req.params.id));
+    }
+    const [action] = await db.select().from(caseActions)
+      .where(eq(caseActions.id, req.params.id));
+    res.json(action);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/actions/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(caseActions).where(eq(caseActions.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ MATTER DASHBOARD SUMMARY ============
+
+router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) => {
+  try {
+    const matterId = req.params.matterId;
+
+    const filings = await db.select().from(caseFilings)
+      .where(eq(caseFilings.matterId, matterId))
+      .orderBy(desc(caseFilings.createdAt));
+
+    const deadlines = await db.select().from(caseDeadlines)
+      .where(eq(caseDeadlines.matterId, matterId))
+      .orderBy(asc(caseDeadlines.dueDate));
+
+    const actions = await db.select().from(caseActions)
+      .where(eq(caseActions.matterId, matterId))
+      .orderBy(asc(caseActions.dueDate));
+
+    const phase = getCasePhase(filings);
+
+    const now = new Date().toISOString().split("T")[0];
+    const overdueDeadlines = deadlines.filter(
+      (d) => d.status === "pending" && d.dueDate < now
+    );
+    const upcomingDeadlines = deadlines.filter(
+      (d) => d.status === "pending" && d.dueDate >= now
+    ).slice(0, 10);
+
+    const pendingActions = actions.filter(
+      (a) => a.status !== "served" && a.status !== "confirmed"
+    );
+
+    res.json({
+      casePhase: phase,
+      totalFilings: filings.length,
+      totalDeadlines: deadlines.length,
+      totalActions: actions.length,
+      overdueCount: overdueDeadlines.length,
+      upcomingDeadlines,
+      overdueDeadlines,
+      pendingActions,
+      recentFilings: filings.slice(0, 5),
+      filingsByType: filings.reduce((acc: Record<string, number>, f) => {
+        acc[f.docType] = (acc[f.docType] || 0) + 1;
+        return acc;
+      }, {}),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;

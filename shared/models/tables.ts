@@ -1339,3 +1339,152 @@ export const pdfWashReports = pgTable("pdf_wash_reports", {
 
 export type PdfWashReport = typeof pdfWashReports.$inferSelect;
 export type InsertPdfWashReport = typeof pdfWashReports.$inferInsert;
+
+// ============ E-FILING AUTOMATION BRAIN ============
+
+// Jurisdiction profiles - rules configuration per jurisdiction
+export const jurisdictionProfiles = pgTable("jurisdiction_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  state: varchar("state", { length: 50 }).notNull(),
+  courtType: varchar("court_type", { length: 50 }).notNull(),
+  ruleSet: varchar("rule_set", { length: 100 }).notNull(),
+  discoveryResponseDays: integer("discovery_response_days").default(30),
+  motionOppositionDays: integer("motion_opposition_days").default(14),
+  motionReplyDays: integer("motion_reply_days").default(7),
+  initialDisclosureDays: integer("initial_disclosure_days").default(14),
+  answerDays: integer("answer_days").default(21),
+  mailServiceExtraDays: integer("mail_service_extra_days").default(3),
+  electronicServiceExtraDays: integer("electronic_service_extra_days").default(0),
+  weekendHolidayAdjust: boolean("weekend_holiday_adjust").default(true),
+  holidays: jsonb("holidays").default([]),
+  customRules: jsonb("custom_rules").default([]),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type JurisdictionProfile = typeof jurisdictionProfiles.$inferSelect;
+export type InsertJurisdictionProfile = typeof jurisdictionProfiles.$inferInsert;
+
+// Deadline rules - reusable IF/THEN rules for deadline computation
+export const deadlineRules = pgTable("deadline_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jurisdictionId: varchar("jurisdiction_id").references(() => jurisdictionProfiles.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  triggerDocType: varchar("trigger_doc_type", { length: 100 }).notNull(),
+  anchorDateField: varchar("anchor_date_field", { length: 50 }).notNull(),
+  offsetDays: integer("offset_days").notNull(),
+  offsetDirection: varchar("offset_direction", { length: 10 }).default("after"),
+  resultAction: varchar("result_action", { length: 100 }).notNull(),
+  resultDocType: varchar("result_doc_type", { length: 100 }),
+  criticality: varchar("criticality", { length: 20 }).default("hard"),
+  ruleSource: varchar("rule_source", { length: 100 }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_deadline_rules_jurisdiction").on(table.jurisdictionId),
+  index("IDX_deadline_rules_trigger").on(table.triggerDocType),
+]);
+
+export type DeadlineRule = typeof deadlineRules.$inferSelect;
+export type InsertDeadlineRule = typeof deadlineRules.$inferInsert;
+
+// Case filings - classified documents ingested into a matter
+export const caseFilings = pgTable("case_filings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  fileItemId: varchar("file_item_id").references(() => fileItems.id, { onDelete: "set null" }),
+  originalFileName: varchar("original_file_name", { length: 500 }).notNull(),
+  filePath: text("file_path").notNull(),
+  ocrText: text("ocr_text").default(""),
+  docType: varchar("doc_type", { length: 100 }).notNull(),
+  docSubtype: varchar("doc_subtype", { length: 100 }),
+  docCategory: varchar("doc_category", { length: 50 }),
+  classificationConfidence: real("classification_confidence").default(0),
+  filedDate: varchar("filed_date", { length: 50 }),
+  servedDate: varchar("served_date", { length: 50 }),
+  hearingDate: varchar("hearing_date", { length: 50 }),
+  responseDeadlineAnchor: varchar("response_deadline_anchor", { length: 50 }),
+  partiesInvolved: jsonb("parties_involved").default([]),
+  extractedFacts: jsonb("extracted_facts").default({}),
+  relatedFilingId: varchar("related_filing_id"),
+  filingProof: jsonb("filing_proof").default({}),
+  sourceType: varchar("source_type", { length: 50 }).default("manual"),
+  sha256Hash: varchar("sha256_hash", { length: 64 }),
+  status: varchar("status", { length: 30 }).default("classified"),
+  classifiedBy: varchar("classified_by", { length: 20 }).default("ai"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_case_filings_matter").on(table.matterId),
+  index("IDX_case_filings_type").on(table.docType),
+  index("IDX_case_filings_related").on(table.relatedFilingId),
+]);
+
+export type CaseFiling = typeof caseFilings.$inferSelect;
+export type InsertCaseFiling = typeof caseFilings.$inferInsert;
+
+// Case deadlines - computed deadlines from filings + rules
+export const caseDeadlines = pgTable("case_deadlines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  filingId: varchar("filing_id").references(() => caseFilings.id, { onDelete: "cascade" }),
+  ruleId: varchar("rule_id").references(() => deadlineRules.id, { onDelete: "set null" }),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  dueDate: varchar("due_date", { length: 50 }).notNull(),
+  dueTime: varchar("due_time", { length: 20 }),
+  anchorEvent: varchar("anchor_event", { length: 255 }),
+  anchorDate: varchar("anchor_date", { length: 50 }),
+  ruleSource: varchar("rule_source", { length: 100 }),
+  criticality: varchar("criticality", { length: 20 }).default("hard"),
+  dependsOnDeadlineId: varchar("depends_on_deadline_id"),
+  status: varchar("status", { length: 30 }).default("pending"),
+  requiredAction: varchar("required_action", { length: 255 }),
+  resultDocType: varchar("result_doc_type", { length: 100 }),
+  assignedTo: varchar("assigned_to"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_case_deadlines_matter").on(table.matterId),
+  index("IDX_case_deadlines_filing").on(table.filingId),
+  index("IDX_case_deadlines_due").on(table.dueDate),
+  index("IDX_case_deadlines_status").on(table.status),
+]);
+
+export type CaseDeadline = typeof caseDeadlines.$inferSelect;
+export type InsertCaseDeadline = typeof caseDeadlines.$inferInsert;
+
+// Case actions - sequenced next-best-actions with status pipeline
+export const caseActions = pgTable("case_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  deadlineId: varchar("deadline_id").references(() => caseDeadlines.id, { onDelete: "cascade" }),
+  filingId: varchar("filing_id").references(() => caseFilings.id, { onDelete: "set null" }),
+  taskId: varchar("task_id").references(() => tasks.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description").default(""),
+  actionType: varchar("action_type", { length: 50 }).notNull(),
+  requiredDocType: varchar("required_doc_type", { length: 100 }),
+  templateId: varchar("template_id"),
+  status: varchar("status", { length: 30 }).default("draft"),
+  priority: varchar("priority", { length: 20 }).default("medium"),
+  dueDate: varchar("due_date", { length: 50 }),
+  daysRemaining: integer("days_remaining"),
+  assignedTo: varchar("assigned_to"),
+  dependsOnActionId: varchar("depends_on_action_id"),
+  generatedDocPath: text("generated_doc_path"),
+  auditTrail: jsonb("audit_trail").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_case_actions_matter").on(table.matterId),
+  index("IDX_case_actions_deadline").on(table.deadlineId),
+  index("IDX_case_actions_status").on(table.status),
+]);
+
+export type CaseAction = typeof caseActions.$inferSelect;
+export type InsertCaseAction = typeof caseActions.$inferInsert;

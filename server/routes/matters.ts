@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { db } from "../db";
-import { teamMembers, matterDocuments } from "@shared/models/tables";
+import { teamMembers, matterDocuments, boards, groups, tasks } from "@shared/models/tables";
 import { eq, desc, inArray } from "drizzle-orm";
+import { seedDefaultDeadlineRules } from "../services/deadline-engine";
 import {
   insertMatterSchema,
   updateMatterSchema,
@@ -112,7 +113,7 @@ export function registerMatterRoutes(app: Express): void {
       }
       const boardDesc = `Case board for ${matter.name} | Opened: ${matter.openedDate}${teamNames.length ? ` | Team: ${teamNames.join(", ")}` : ""}`;
 
-      await storage.createBoard({
+      const masterBoard = await storage.createBoard({
         name: matter.name,
         description: boardDesc,
         color: "#6366f1",
@@ -121,6 +122,53 @@ export function registerMatterRoutes(app: Express): void {
         matterId: matter.id,
         workspaceId: workspaceId || undefined,
       });
+
+      const linkedBoards = [
+        { name: `${matter.name} - Filings`, color: "#3b82f6", icon: "file-text" },
+        { name: `${matter.name} - Discovery`, color: "#8b5cf6", icon: "search" },
+        { name: `${matter.name} - Motions`, color: "#ef4444", icon: "gavel" },
+        { name: `${matter.name} - Deadlines`, color: "#f59e0b", icon: "calendar-clock" },
+        { name: `${matter.name} - Evidence/Docs`, color: "#10b981", icon: "folder-archive" },
+      ];
+
+      for (const lb of linkedBoards) {
+        await storage.createBoard({
+          name: lb.name,
+          description: `${lb.name} board for ${matter.name}`,
+          color: lb.color,
+          icon: lb.icon,
+          clientId: matter.clientId,
+          matterId: matter.id,
+          workspaceId: workspaceId || undefined,
+        });
+      }
+
+      const [baselineGroup] = await db.insert(groups).values({
+        title: "Onboarding Tasks",
+        color: "#6366f1",
+        boardId: masterBoard.id,
+        order: 0,
+      }).returning();
+
+      const baselineTasks = [
+        "Confirm service date",
+        "Check for scheduling order",
+        "Set discovery plan / disclosures deadline",
+        "Review opposing counsel filings",
+        "Upload initial case documents",
+      ];
+
+      for (let i = 0; i < baselineTasks.length; i++) {
+        await db.insert(tasks).values({
+          title: baselineTasks[i],
+          status: "not-started",
+          priority: i < 2 ? "high" : "medium",
+          boardId: masterBoard.id,
+          groupId: baselineGroup.id,
+        });
+      }
+
+      seedDefaultDeadlineRules().catch(() => {});
 
       res.status(201).json(matter);
     } catch (error) {

@@ -114,6 +114,7 @@ const aiInvestigationItems = [
   { title: "Evidence Vault", url: "/evidence", icon: Shield },
   { title: "Detective Board", url: "/detective", icon: Network },
   { title: "Automations", url: "/automations", icon: Zap },
+  { title: "E-Filing Brain", url: "/efiling", icon: Scale },
 ];
 
 export function AppSidebar({ onCreateBoard }: AppSidebarProps) {

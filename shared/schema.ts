@@ -2559,6 +2559,103 @@ export const insertPdfWashReportSchema = z.object({
 });
 export type InsertPdfWashReportInput = z.infer<typeof insertPdfWashReportSchema>;
 
+// ============ E-FILING AUTOMATION SCHEMAS ============
+
+export const insertJurisdictionProfileSchema = z.object({
+  name: z.string().min(1),
+  state: z.string().min(1),
+  courtLevel: z.string().min(1),
+  ruleSet: z.string().optional(),
+  defaultServiceMethod: z.string().default("electronic"),
+  settings: z.record(z.any()).default({}),
+});
+export type InsertJurisdictionProfileInput = z.infer<typeof insertJurisdictionProfileSchema>;
+
+export const insertDeadlineRuleSchema = z.object({
+  jurisdictionId: z.string().optional(),
+  name: z.string().min(1),
+  triggerDocType: z.string().min(1),
+  triggerEvent: z.enum(["filed", "served", "hearing", "order_entered"]),
+  offsetDays: z.number().int(),
+  offsetDirection: z.enum(["after", "before"]).default("after"),
+  resultTitle: z.string().min(1),
+  resultDocType: z.string().optional(),
+  criticality: z.enum(["hard", "soft"]).default("hard"),
+  ruleSource: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+export type InsertDeadlineRuleInput = z.infer<typeof insertDeadlineRuleSchema>;
+
+export const insertCaseFilingSchema = z.object({
+  matterId: z.string().min(1),
+  originalFileName: z.string().min(1),
+  storedPath: z.string().optional(),
+  docType: z.string().min(1),
+  docSubtype: z.string().optional(),
+  docCategory: z.string().optional(),
+  classificationConfidence: z.number().min(0).max(1).default(0),
+  filedDate: z.string().optional(),
+  servedDate: z.string().optional(),
+  hearingDate: z.string().optional(),
+  sourceType: z.enum(["upload", "email", "efiling_system", "manual"]).default("upload"),
+  classifiedBy: z.enum(["ai", "manual", "filename"]).default("manual"),
+  fileHash: z.string().optional(),
+  ocrText: z.string().optional(),
+  metadata: z.record(z.any()).default({}),
+  createdBy: z.string().optional(),
+  status: z.string().default("active"),
+});
+export type InsertCaseFilingInput = z.infer<typeof insertCaseFilingSchema>;
+
+export const insertCaseDeadlineSchema = z.object({
+  matterId: z.string().min(1),
+  filingId: z.string().optional(),
+  ruleId: z.string().optional(),
+  title: z.string().min(1),
+  dueDate: z.string().min(1),
+  anchorEvent: z.string().optional(),
+  anchorDate: z.string().optional(),
+  criticality: z.enum(["hard", "soft"]).default("hard"),
+  status: z.enum(["pending", "completed", "waived", "extended"]).default("pending"),
+  requiredAction: z.string().optional(),
+  resultDocType: z.string().optional(),
+  ruleSource: z.string().optional(),
+  assignedTo: z.string().optional(),
+  notes: z.string().optional(),
+});
+export type InsertCaseDeadlineInput = z.infer<typeof insertCaseDeadlineSchema>;
+
+export const insertCaseActionSchema = z.object({
+  matterId: z.string().min(1),
+  deadlineId: z.string().optional(),
+  filingId: z.string().optional(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  actionType: z.enum(["draft", "review", "file", "serve", "respond", "prepare", "research"]).default("draft"),
+  requiredDocType: z.string().optional(),
+  status: z.enum(["draft", "review", "final", "file", "served", "confirmed"]).default("draft"),
+  priority: z.enum(["low", "medium", "high", "urgent", "critical"]).default("medium"),
+  dueDate: z.string().optional(),
+  daysRemaining: z.number().optional(),
+  assignedTo: z.string().optional(),
+  boardTaskId: z.string().optional(),
+  auditTrail: z.array(z.any()).default([]),
+});
+export type InsertCaseActionInput = z.infer<typeof insertCaseActionSchema>;
+
+export const updateActionStatusSchema = z.object({
+  status: z.enum(["draft", "review", "final", "file", "served", "confirmed"]),
+});
+
+export const reclassifyFilingSchema = z.object({
+  docType: z.string().optional(),
+  docSubtype: z.string().optional(),
+  docCategory: z.string().optional(),
+  filedDate: z.string().optional(),
+  servedDate: z.string().optional(),
+  hearingDate: z.string().optional(),
+});
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

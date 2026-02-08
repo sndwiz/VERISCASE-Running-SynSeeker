@@ -1,0 +1,345 @@
+Absolutely. Here’s a plain-English automation spec that’s specifically about e-filing / Green Filing, recognizing discovery, and autobuilding the next motion/document + deadlines—written so Replit can turn it into an implementation plan.
+
+⸻
+
+VERICASE: E-Filing + Green Filing Automation Brain (Plain English Spec)
+
+Goal
+
+When we add a new client and attach a case/matter, the system should automatically:
+	1.	create the correct boards/templates,
+	2.	populate fields from case data,
+	3.	ingest filings + discovery documents (from e-filing/Green Filing uploads or email),
+	4.	recognize what each document is (complaint, summons, RFP, responses, motion, order, notice, etc.),
+	5.	compute all relevant deadlines and dependencies,
+	6.	generate the next required document(s) in draft form,
+	7.	sequence tasks so “this must be filed before that,”
+	8.	keep updating as new filings come in.
+
+This must be running before the attorney starts using the system so onboarding a matter immediately becomes organized + actionable.
+
+⸻
+
+Core User Experience (What the lawyer sees)
+
+Matter creation
+	•	User creates/enters a client
+	•	User creates/attaches a matter/case (case number, court, judge, parties, filing state)
+	•	Immediately, the app:
+	•	creates a “Matter Board”
+	•	creates linked boards (Discovery, Pleadings, Motions, Hearings, Deadlines, Service, Billing)
+	•	fills in case info fields automatically (parties, counsel, court address, case type, deadlines baseline)
+
+Auto-updating workflow
+	•	As soon as documents are uploaded/imported, the app:
+	•	classifies them (what they are)
+	•	extracts key dates (filed date, service date, hearing date)
+	•	calculates deadlines
+	•	creates/updates tasks and statuses (Draft → Review → Final → File → Served)
+	•	generates draft documents where possible
+
+⸻
+
+System Components (Conceptual Modules)
+
+1) Intake Sources (E-filing + Green Filing + Email + Manual)
+
+The system can ingest docs from:
+	•	Green Filing export / upload bundle
+	•	e-filing PDFs (notices, orders, motions, certificates)
+	•	Email attachments (if enabled)
+	•	Manual uploads
+
+Each ingestion creates a “Document Record” linked to the matter.
+
+Ingestion job steps:
+	1.	Save original PDF (immutable).
+	2.	OCR and extract text.
+	3.	Extract metadata (caption, case number, filing date, title, party, attorney, certificate of service).
+	4.	Pass to classifier.
+
+⸻
+
+2) Document Classifier (What is this document?)
+
+For every document, output a structured classification:
+	•	Document Type (one of):
+	•	Complaint / Petition
+	•	Summons
+	•	Proof/Certificate of Service
+	•	Answer
+	•	Motion (with subtype: MSJ, MTD, Compel, Protective Order, etc.)
+	•	Notice (hearing, deposition, appearance, etc.)
+	•	Order (signed/unsigned)
+	•	Discovery Request (RFP, Interrogatories, Requests for Admission)
+	•	Discovery Response
+	•	Disclosure / Initial Disclosures
+	•	Subpoena
+	•	Settlement / Stipulation
+	•	Other
+	•	Key extracted facts:
+	•	filed_date
+	•	served_date (if present)
+	•	response_deadline_anchor_date (usually service date)
+	•	hearing_date (if notice)
+	•	judge/court
+	•	parties involved
+	•	document relationships (e.g., “Response to Plaintiff’s First RFP” links to the “First RFP”)
+
+Important: Discovery detection must recognize:
+	•	“Plaintiff’s First Set of Interrogatories”
+	•	“Requests for Production”
+	•	“Requests for Admission”
+	•	“Notice of Service”
+	•	“Certificate of Service”
+	•	“Responses and Objections”
+
+⸻
+
+3) Deadline Engine (Compute deadlines from events)
+
+The deadline engine is a rules system that turns recognized events into:
+	•	deadlines
+	•	dependent tasks
+	•	filing sequencing
+
+It uses:
+	•	jurisdiction rules (state + court)
+	•	rule templates (Utah, federal, etc.)
+	•	case-type overrides (civil, family, etc.)
+	•	service method rules (mail/electronic/personal)
+	•	weekend/holiday adjustments
+
+Inputs (anchors):
+	•	Filing date (from court stamp / docket)
+	•	Service date (from certificate of service or notice)
+	•	Hearing date (from notice)
+	•	Order signed date
+	•	Scheduling order dates (big one)
+
+Outputs:
+	•	Deadlines with:
+	•	due_date
+	•	due_time (if known)
+	•	rule_source (e.g., “URCP 26”)
+	•	dependency (depends_on_event_id)
+	•	criticality (hard/soft)
+	•	what must happen (draft / file / serve)
+
+Examples:
+	•	If document type = Discovery Request and served_date exists:
+	•	create deadline: “Discovery responses due” = served_date + X days (jurisdiction-dependent)
+	•	If motion filed:
+	•	create deadlines: “Opposition due” and “Reply due” based on rules
+	•	If scheduling order received:
+	•	parse its dates and overwrite baseline deadlines
+
+⸻
+
+4) Sequencing Engine (“What must go out next?”)
+
+This engine decides the next action.
+
+It looks at:
+	•	current case phase (pleadings, discovery, motions, trial prep)
+	•	what has been filed/served
+	•	what is overdue or upcoming
+	•	dependencies (“can’t file reply before opposition”)
+
+It generates a “Next Best Actions” list:
+	•	next document that must be drafted
+	•	next filing that must be served
+	•	prep tasks required before filing
+
+Output objects:
+	•	Action name (e.g., “Draft Responses to RFP Set 1”)
+	•	Required doc template (which generator to use)
+	•	Due date + days remaining
+	•	Status pipeline (Draft → Review → Final → File/Serve)
+	•	Assigned to (Lauren or staff)
+
+⸻
+
+5) Document Builder (Auto-create drafts from matter data)
+
+When the sequencing engine decides a doc needs to exist, it can create a draft:
+
+Draft creation:
+	•	Select template based on:
+	•	doc type
+	•	jurisdiction/court
+	•	party role (plaintiff/defendant)
+	•	Fill caption automatically from case data:
+	•	court, case number, parties, judge
+	•	Pull facts from matter profile:
+	•	party addresses, counsel info, service method, dates
+	•	Pull relevant referenced documents:
+	•	discovery request text to respond to
+	•	motion being opposed for an opposition template
+
+Draft output:
+	•	Creates a “Draft Document Record”
+	•	Adds it to the board with status = Draft
+	•	Links it to the triggering filing/discovery item
+	•	Creates tasks:
+	•	“Review draft”
+	•	“Finalize”
+	•	“File”
+	•	“Serve”
+	•	“Confirm docket entry”
+
+⸻
+
+Automation Triggers (When things happen)
+
+Trigger A: Create new matter/case
+
+When a matter is created or linked:
+	1.	Create boards:
+	•	Master Matter Board
+	•	Discovery Board
+	•	Motions Board
+	•	Deadlines Board
+	•	Filings Board
+	•	Evidence/Docs Board
+	2.	Populate matter fields:
+	•	case number, court, judge, party roles
+	3.	Create baseline tasks:
+	•	“Confirm service date”
+	•	“Check scheduling order”
+	•	“Set disclosures / discovery plan”
+	4.	Turn on watchers:
+	•	Document intake watcher (uploads/email)
+	•	Deadline recalculation watcher
+
+Trigger B: New document ingested
+
+When a document is added:
+	1.	OCR
+	2.	Classify
+	3.	Extract dates + relationships
+	4.	Create timeline event
+	5.	Recompute deadlines
+	6.	Update boards
+	7.	Generate “next actions”
+	8.	If a required document is missing and deadline is near:
+	•	auto-create draft from template
+
+Trigger C: Docket update / e-filing event
+
+When a filing confirmation is added:
+	1.	mark related tasks as “Filed”
+	2.	log confirmation details
+	3.	create next dependency deadlines (opposition/reply, etc.)
+
+⸻
+
+Data Structures (Plain English, for Replit)
+
+Matter Profile
+
+Stores:
+	•	court, case number, judge
+	•	parties (names, roles, addresses)
+	•	attorneys (names, bar #, emails)
+	•	jurisdiction settings (state, rule set)
+	•	service preferences
+	•	discovery rules config
+
+Document Record
+
+Stores:
+	•	original file + OCR text
+	•	type classification
+	•	extracted facts (filed_date, served_date, hearing_date)
+	•	link to matter
+	•	link to board item
+
+Deadline Record
+
+Stores:
+	•	due_date
+	•	source rule
+	•	anchor event (served_date, filed_date, etc.)
+	•	dependency chain
+	•	linked tasks
+
+Action/Task Record
+
+Stores:
+	•	status pipeline (Draft → Review → Final → File → Served)
+	•	assigned_to
+	•	due_date
+	•	linked doc generator template id
+
+⸻
+
+“Green Filing / e-filing” Specific Behavior
+
+Green Filing intake assumptions
+
+Green Filing outputs usually include:
+	•	a PDF
+	•	a filing receipt / confirmation page
+	•	service list or notice
+
+The system should:
+	•	detect the confirmation page
+	•	extract:
+	•	exact filed timestamp
+	•	document title as filed
+	•	served parties list
+	•	attach that to the document record as “filing proof”
+
+Discovery recognition rules
+
+If doc title or first page includes:
+	•	“Interrogatories”
+	•	“Requests for Production”
+	•	“Requests for Admission”
+	•	“Notice of Service”
+then classify as Discovery Request.
+If includes “Responses and Objections” then classify as Discovery Response.
+If both appear, classify as Response and link to the originating request.
+
+⸻
+
+The “Already running” requirement (preloaded automations)
+
+Before attorney uses it, ship with:
+	•	Board templates for civil litigation
+	•	Baseline rules for discovery response deadlines
+	•	Motions/opposition/reply timeline rules
+	•	Scheduling order parser placeholder (can start manual)
+	•	Auto-draft templates:
+	•	Discovery responses shell
+	•	Motion to compel shell
+	•	Notice of hearing shell
+	•	Certificate of service shell
+
+Even if the drafts are “structured shells,” it’s still huge value.
+
+⸻
+
+What counts as success
+
+When a case is added + docs are uploaded:
+	•	the app correctly identifies filings/discovery type
+	•	deadlines appear automatically
+	•	the board fills itself with next tasks
+	•	drafts appear automatically when appropriate
+	•	everything stays linked and updates when new filings arrive
+
+⸻
+
+Important guardrails
+	•	Deadlines must be reviewable: show the anchor event and rule name.
+	•	Never silently auto-file: only move to “Ready to File.”
+	•	Keep audit trail: who approved, what was generated, what rule triggered it.
+	•	If rule set is unknown, create “Needs rules setup” warnings and default to conservative assumptions.
+
+⸻
+
+That’s your “Replit-readable” plain English spec for e-filing + discovery recognition + deadline sequencing + auto-drafting inside a Clio-meets-Monday app.
+
+If you want to go even sharper: you can paste your jurisdiction (Utah? Federal? both) and I’ll write the rule engine inputs/outputs in a cleaner “IF/THEN” format Replit agents tend to nail on the first pass.
