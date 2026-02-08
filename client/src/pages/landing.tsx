@@ -86,7 +86,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
               VERICASE
             </h2>
             <p className="text-sm text-muted-foreground mb-8 tracking-widest font-medium uppercase" data-testid="text-hero-engine">
-              by SynSeeker
+              by SynSeekr
             </p>
             
             <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto" data-testid="text-hero-description">
