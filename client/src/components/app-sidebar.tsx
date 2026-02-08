@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -13,16 +13,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,19 +42,16 @@ import {
   Network,
   Zap,
   ChevronDown,
-  ChevronRight,
   Home,
   Building2,
   ChevronsUpDown,
   FilePlus2,
   FolderOpen,
-  User,
   Mic,
   ShieldCheck,
   Server,
   Sparkles,
   DollarSign,
-  Receipt,
   ClipboardList,
   MessageSquare,
   Wand2,
@@ -76,7 +65,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { Board, Client, Matter, Workspace } from "@shared/schema";
+import type { Board, Workspace } from "@shared/schema";
 import { FEATURE_METADATA } from "@/lib/feature-metadata";
 
 interface AppSidebarProps {
@@ -131,7 +120,6 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [practiceOpen, setPracticeOpen] = useState(true);
-  const [expandedClients, setExpandedClients] = useState<Set<string> | null>(null);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
@@ -159,73 +147,6 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
       return res.json();
     },
   });
-
-  const { data: clients = [] } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
-  });
-
-  const { data: matters = [] } = useQuery<Matter[]>({
-    queryKey: ["/api/matters"],
-  });
-
-  const { generalBoards, clientMap } = useMemo(() => {
-    const general: Board[] = [];
-    const clientBoardMap = new Map<string, { client: Client; matters: Map<string, { matter: Matter; boards: Board[] }> }>();
-
-    clients.forEach(c => {
-      clientBoardMap.set(c.id, {
-        client: c,
-        matters: new Map(),
-      });
-    });
-
-    matters.forEach(m => {
-      const entry = clientBoardMap.get(m.clientId);
-      if (entry) {
-        entry.matters.set(m.id, { matter: m, boards: [] });
-      }
-    });
-
-    boards.forEach(b => {
-      if (b.clientId && b.matterId) {
-        const clientEntry = clientBoardMap.get(b.clientId);
-        if (clientEntry) {
-          const matterEntry = clientEntry.matters.get(b.matterId);
-          if (matterEntry) {
-            matterEntry.boards.push(b);
-            return;
-          }
-        }
-      }
-      general.push(b);
-    });
-
-    return { generalBoards: general, clientMap: clientBoardMap };
-  }, [boards, clients, matters]);
-
-  const clientsWithMatters = useMemo(() => {
-    return Array.from(clientMap.values()).filter(entry => entry.matters.size > 0);
-  }, [clientMap]);
-
-  const effectiveExpandedClients = useMemo(() => {
-    if (expandedClients !== null) return expandedClients;
-    const autoExpand = new Set<string>();
-    clientsWithMatters.forEach(({ client }) => autoExpand.add(client.id));
-    return autoExpand;
-  }, [expandedClients, clientsWithMatters]);
-
-  const toggleClient = (clientId: string) => {
-    setExpandedClients(prev => {
-      const base = prev !== null ? prev : new Set(clientsWithMatters.map(c => c.client.id));
-      const next = new Set(base);
-      if (next.has(clientId)) {
-        next.delete(clientId);
-      } else {
-        next.add(clientId);
-      }
-      return next;
-    });
-  };
 
   return (
     <Sidebar>
@@ -362,7 +283,7 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
           {casesOpen && (
             <SidebarGroupContent>
               <SidebarMenu>
-                {generalBoards.map((board) => (
+                {boards.map((board) => (
                   <SidebarMenuItem key={board.id}>
                     <SidebarMenuButton
                       asChild
@@ -378,77 +299,6 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ))}
-
-                {clientsWithMatters.map(({ client, matters: matterMap }) => (
-                  <Collapsible
-                    key={client.id}
-                    open={effectiveExpandedClients.has(client.id)}
-                    onOpenChange={() => toggleClient(client.id)}
-                  >
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton
-                          data-testid={`toggle-client-${client.id}`}
-                          className="w-full"
-                          tooltip={`View matters and billing for ${client.name}`}
-                        >
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate font-medium">{client.name}</span>
-                          <ChevronRight className={`ml-auto h-3 w-3 text-muted-foreground transition-transform duration-200 ${effectiveExpandedClients.has(client.id) ? "rotate-90" : ""}`} />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          <SidebarMenuSubItem>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={location === `/clients/${client.id}/billing`}
-                            >
-                              <Link href={`/clients/${client.id}/billing`} data-testid={`link-client-billing-${client.id}`}>
-                                <Receipt className="h-3 w-3 text-muted-foreground" />
-                                <span className="truncate text-xs">Billing</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                          {Array.from(matterMap.values()).map(({ matter, boards: matterBoards }) => {
-                            const board = matterBoards[0];
-                            if (board) {
-                              return (
-                                <SidebarMenuSubItem key={board.id}>
-                                  <SidebarMenuSubButton
-                                    asChild
-                                    isActive={location === `/boards/${board.id}`}
-                                  >
-                                    <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
-                                      <Briefcase
-                                        className="h-3 w-3"
-                                        style={{ color: board.color }}
-                                      />
-                                      <span className="truncate text-xs">{matter.name}</span>
-                                    </Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              );
-                            }
-                            return (
-                              <SidebarMenuSubItem key={matter.id}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={false}
-                                >
-                                  <Link href={`/matters`} data-testid={`link-matter-${matter.id}`}>
-                                    <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                                    <span className="truncate text-xs text-muted-foreground">{matter.name}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            );
-                          })}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
                 ))}
 
                 {boards.length === 0 && (
