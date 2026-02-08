@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { insertMeetingSchema } from "@shared/schema";
+import { syncMeetingToCalendar, removeSyncedEvent } from "../services/calendar-sync";
 
 const aiQuerySchema = z.object({
   query: z.string().min(1).max(2000),
@@ -28,16 +29,23 @@ export function registerMeetingRoutes(app: Express): void {
     const parsed = insertMeetingSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
     const meeting = await storage.createMeeting(parsed.data);
+    if (meeting.date) {
+      syncMeetingToCalendar(meeting.id).catch(e => console.error("[meetings] Calendar sync error:", e));
+    }
     res.status(201).json(meeting);
   });
 
   app.patch("/api/meetings/:id", async (req: Request, res: Response) => {
     const meeting = await storage.updateMeeting(req.params.id, req.body);
     if (!meeting) return res.status(404).json({ error: "Meeting not found" });
+    if (meeting.date) {
+      syncMeetingToCalendar(meeting.id).catch(e => console.error("[meetings] Calendar sync error:", e));
+    }
     res.json(meeting);
   });
 
   app.delete("/api/meetings/:id", async (req: Request, res: Response) => {
+    removeSyncedEvent("meeting", req.params.id).catch(e => console.error("[meetings] Calendar unsync error:", e));
     const success = await storage.deleteMeeting(req.params.id);
     if (!success) return res.status(404).json({ error: "Meeting not found" });
     res.json({ success: true });

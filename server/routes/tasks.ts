@@ -6,6 +6,7 @@ import { db } from "../db";
 import { tasks as tasksTable } from "@shared/models/tables";
 import { boards } from "@shared/models/tables";
 import { eq, and, sql, or } from "drizzle-orm";
+import { syncTaskToCalendar, removeSyncedEvent } from "../services/calendar-sync";
 
 function getUserId(req: any): string | null {
   return (req as any).user?.id || (req.session as any)?.passport?.user?.id || null;
@@ -121,6 +122,9 @@ export function registerTaskRoutes(app: Express): void {
         boardId: req.params.boardId,
       });
       const task = await storage.createTask(data);
+      if (task.dueDate || task.startDate) {
+        syncTaskToCalendar(task.id).catch(e => console.error("[tasks] Calendar sync error:", e));
+      }
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -137,6 +141,9 @@ export function registerTaskRoutes(app: Express): void {
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
+      if (task.dueDate || task.startDate || data.dueDate !== undefined || data.startDate !== undefined) {
+        syncTaskToCalendar(task.id).catch(e => console.error("[tasks] Calendar sync error:", e));
+      }
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -148,6 +155,7 @@ export function registerTaskRoutes(app: Express): void {
 
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
+      removeSyncedEvent("board-task", req.params.id).catch(e => console.error("[tasks] Calendar unsync error:", e));
       const deleted = await storage.deleteTask(req.params.id);
       if (!deleted) {
         return res.status(404).json({ error: "Task not found" });

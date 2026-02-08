@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { insertCalendarEventSchema, updateCalendarEventSchema } from "@shared/schema";
 import { z } from "zod";
+import { fullCalendarSync } from "../services/calendar-sync";
+import { getUserId } from "../utils/auth";
 
 export function registerCalendarRoutes(app: Express): void {
   app.get("/api/calendar-events", async (req, res) => {
@@ -16,6 +18,7 @@ export function registerCalendarRoutes(app: Express): void {
 
   app.get("/api/calendar-events/:id", async (req, res) => {
     try {
+      if (req.params.id === "sync") return;
       const event = await storage.getCalendarEvent(req.params.id);
       if (!event) {
         return res.status(404).json({ error: "Calendar event not found" });
@@ -23,6 +26,20 @@ export function registerCalendarRoutes(app: Express): void {
       res.json(event);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch calendar event" });
+    }
+  });
+
+  app.post("/api/calendar-events/sync", async (req, res) => {
+    try {
+      const userId = getUserId(req) || "system";
+      const result = await fullCalendarSync(userId);
+      res.json({
+        message: "Calendar sync complete",
+        ...result,
+      });
+    } catch (error: any) {
+      console.error("[calendar-sync] Error:", error);
+      res.status(500).json({ error: error.message || "Sync failed" });
     }
   });
 
@@ -62,6 +79,13 @@ export function registerCalendarRoutes(app: Express): void {
 
   app.delete("/api/calendar-events/:id", async (req, res) => {
     try {
+      const event = await storage.getCalendarEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      if ((event as any).autoSynced) {
+        return res.status(403).json({ error: "Auto-synced events cannot be deleted manually. Modify the source entity instead." });
+      }
       await storage.deleteCalendarEvent(req.params.id);
       res.status(204).send();
     } catch (error) {

@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { insertExpenseSchema, updateExpenseSchema, insertInvoiceSchema, updateInvoiceSchema, insertPaymentSchema, insertTrustTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
+import { syncInvoiceToCalendar, removeSyncedEvent } from "../services/calendar-sync";
 
 export function registerBillingRoutes(app: Express): void {
   // ============ EXPENSES ============
@@ -100,6 +101,9 @@ export function registerBillingRoutes(app: Express): void {
       };
       const data = insertInvoiceSchema.parse(body);
       const invoice = await storage.createInvoice(data);
+      if (invoice.dueDate) {
+        syncInvoiceToCalendar(invoice.id).catch(e => console.error("[billing] Calendar sync error:", e));
+      }
       res.status(201).json(invoice);
     } catch (error) {
       if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
@@ -112,6 +116,9 @@ export function registerBillingRoutes(app: Express): void {
       const data = updateInvoiceSchema.parse(req.body);
       const invoice = await storage.updateInvoice(req.params.id, data);
       if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+      if (invoice.dueDate || data.dueDate !== undefined) {
+        syncInvoiceToCalendar(invoice.id).catch(e => console.error("[billing] Calendar sync error:", e));
+      }
       res.json(invoice);
     } catch (error) {
       if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
@@ -121,6 +128,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.delete("/api/invoices/:id", async (req, res) => {
     try {
+      removeSyncedEvent("invoice", req.params.id).catch(e => console.error("[billing] Calendar unsync error:", e));
       const deleted = await storage.deleteInvoice(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Invoice not found" });
       res.status(204).send();

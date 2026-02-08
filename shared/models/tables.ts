@@ -468,10 +468,15 @@ export const calendarEvents = pgTable("calendar_events", {
   attendees: jsonb("attendees").default([]),
   reminderMinutes: integer("reminder_minutes"),
   color: varchar("color", { length: 20 }),
+  sourceType: varchar("source_type", { length: 50 }),
+  sourceId: varchar("source_id", { length: 255 }),
+  autoSynced: boolean("auto_synced").default(false),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_calendar_source").on(table.sourceType, table.sourceId),
+]);
 
 // ============ APPROVAL REQUESTS ============
 export const approvalRequests = pgTable("approval_requests", {

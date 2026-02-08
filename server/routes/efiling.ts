@@ -41,6 +41,11 @@ import {
 } from "../services/sequencing-engine";
 import { extractDatesFromText, createFallbackDate } from "../services/date-extractor";
 import { generateDraftForAction } from "../services/document-builder";
+import {
+  syncDeadlineToCalendar,
+  syncActionToCalendar,
+  syncFilingToCalendar,
+} from "../services/calendar-sync";
 
 const router = Router();
 
@@ -319,7 +324,20 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       }
     }
 
-    // 11. Determine case phase
+    // 11. Sync to calendar
+    try {
+      await syncFilingToCalendar(filing.id, userId);
+      for (const dlId of deadlineIds) {
+        await syncDeadlineToCalendar(dlId, userId);
+      }
+      for (const aId of actionIds) {
+        await syncActionToCalendar(aId, userId);
+      }
+    } catch (syncErr) {
+      console.error("[efiling] Calendar sync error (non-fatal):", syncErr);
+    }
+
+    // 12. Determine case phase
     const allFilings = await db.select().from(caseFilings)
       .where(eq(caseFilings.matterId, matterId));
     const casePhase = getCasePhase(allFilings);
@@ -526,6 +544,12 @@ router.patch("/deadlines/:id/override", async (req: Request, res: Response) => {
       .set(updates)
       .where(eq(caseDeadlines.id, req.params.id))
       .returning();
+
+    try {
+      await syncDeadlineToCalendar(req.params.id, userId);
+    } catch (syncErr) {
+      console.error("[efiling] Calendar sync on override (non-fatal):", syncErr);
+    }
 
     res.json(updated);
   } catch (error: any) {
