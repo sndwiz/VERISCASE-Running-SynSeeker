@@ -8,6 +8,8 @@ import {
   jurisdictionProfiles,
   matters,
   fileItems,
+  draftDocuments,
+  boards,
 } from "@shared/models/tables";
 import { eq, and, desc, asc, or } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
@@ -37,6 +39,8 @@ import {
   updateActionStatus,
   getCasePhase,
 } from "../services/sequencing-engine";
+import { extractDatesFromText, createFallbackDate } from "../services/date-extractor";
+import { generateDraftForAction } from "../services/document-builder";
 
 const router = Router();
 
@@ -193,7 +197,10 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       ocrText = "";
     }
 
-    // 4. Classify document
+    // 4. Extract dates from text using regex (fast, reliable)
+    const regexDates = extractDatesFromText(ocrText);
+
+    // 5. Classify document (AI or filename fallback)
     const matterContext = {
       caseNumber: matter.caseNumber || undefined,
       courtName: matter.courtName || undefined,
@@ -220,10 +227,23 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       };
     }
 
-    // Use any dates from request body if AI didn't find them
-    const filedDate = classification.filedDate || req.body.filedDate || null;
-    const servedDate = classification.servedDate || req.body.servedDate || null;
-    const hearingDate = classification.hearingDate || req.body.hearingDate || null;
+    // Merge dates: request body > AI classification > regex extraction > fallback
+    const filedDate = req.body.filedDate || classification.filedDate || regexDates.filedDate?.value || null;
+    const servedDate = req.body.servedDate || classification.servedDate || regexDates.servedDate?.value || null;
+    const hearingDate = req.body.hearingDate || classification.hearingDate || regexDates.hearingDate?.value || null;
+
+    const dateExtractionMeta = {
+      regexDates: {
+        filed: regexDates.filedDate,
+        served: regexDates.servedDate,
+        hearing: regexDates.hearingDate,
+      },
+      aiDates: {
+        filed: classification.filedDate,
+        served: classification.servedDate,
+        hearing: classification.hearingDate,
+      },
+    };
 
     // 5. Create case filing record
     const [filing] = await db.insert(caseFilings).values({
@@ -240,28 +260,75 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       hearingDate,
       responseDeadlineAnchor: classification.responseDeadlineAnchor || servedDate,
       partiesInvolved: classification.partiesInvolved,
-      extractedFacts: classification.extractedFacts,
+      extractedFacts: { ...classification.extractedFacts, dateExtraction: dateExtractionMeta },
       relatedFilingId: null,
-      filingProof: classification.extractedFacts?.filedTimestamp
-        ? { filedTimestamp: classification.extractedFacts.filedTimestamp, documentTitle: classification.extractedFacts.documentTitleAsFiled }
+      filingProof: (classification.extractedFacts as any)?.filedTimestamp
+        ? { filedTimestamp: (classification.extractedFacts as any).filedTimestamp, documentTitle: (classification.extractedFacts as any).documentTitleAsFiled }
         : {},
       sourceType: req.body.sourceType || "manual",
       sha256Hash: sha256,
-      classifiedBy: "ai",
+      classifiedBy: ocrText.length > 100 ? "ai" : "filename",
       createdBy: userId,
     }).returning();
 
-    // 6. Compute and create deadlines
+    // 7. Compute and create deadlines
     const jurisdiction = await getJurisdictionForMatter(matterId);
     const deadlineIds = await createDeadlinesFromFiling(filing, jurisdiction?.id);
 
-    // 7. Generate and create actions
+    // 8. Generate and create actions
     const actionIds = await createActionsFromDeadlines(matterId, undefined);
 
-    // 8. Determine case phase
+    // 9. Route tasks to correct sub-boards (Discovery, Motions, Filings)
+    const category = classification.docCategory || "admin-operations";
+    const subBoardSuffix = category === "discovery" ? "Discovery"
+      : category === "motion" ? "Motions"
+      : "Filings";
+    const matterBoards = await db.select().from(boards)
+      .where(eq(boards.matterId, matterId));
+    const targetBoard = matterBoards.find(b => b.name.includes(subBoardSuffix))
+      || matterBoards[0];
+    if (targetBoard) {
+      await createBoardTasksFromActions(matterId, targetBoard.id);
+    }
+
+    // 10. Generate draft document shell for next required action
+    let draftsCreated = 0;
+    const createdActions = await db.select().from(caseActions)
+      .where(and(eq(caseActions.matterId, matterId), eq(caseActions.status, "draft")));
+    for (const action of createdActions) {
+      const existingDraft = await db.select().from(draftDocuments)
+        .where(eq(draftDocuments.linkedActionId, action.id)).limit(1);
+      if (existingDraft.length > 0) continue;
+
+      const draft = await generateDraftForAction(
+        matterId, action.actionType, action.requiredDocType, action.filingId, action.deadlineId
+      );
+      if (draft) {
+        await db.insert(draftDocuments).values({
+          matterId,
+          title: draft.title,
+          templateType: draft.templateType,
+          content: draft.content,
+          linkedFilingId: draft.linkedFilingId,
+          linkedDeadlineId: draft.linkedDeadlineId,
+          linkedActionId: action.id,
+          createdBy: userId,
+          status: "draft",
+        });
+        draftsCreated++;
+      }
+    }
+
+    // 11. Determine case phase
     const allFilings = await db.select().from(caseFilings)
       .where(eq(caseFilings.matterId, matterId));
     const casePhase = getCasePhase(allFilings);
+
+    // 12. Build warnings
+    const warnings: string[] = [];
+    if (!filedDate && !servedDate) warnings.push("No filed or served date found - dates may need manual entry");
+    if (!jurisdiction) warnings.push("Unknown jurisdiction - deadline rules may be incomplete");
+    if (classification.confidence < 0.5) warnings.push("Low classification confidence - verify document type");
 
     res.status(201).json({
       filing,
@@ -270,9 +337,12 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
         docSubtype: classification.docSubtype,
         confidence: classification.confidence,
       },
+      dateExtraction: dateExtractionMeta,
       deadlinesCreated: deadlineIds.length,
       actionsCreated: actionIds.length,
+      draftsCreated,
       casePhase,
+      warnings,
     });
   } catch (error: any) {
     console.error("[efiling] Ingestion error:", error);
@@ -430,6 +500,90 @@ router.delete("/actions/:id", async (req: Request, res: Response) => {
   }
 });
 
+// ============ DEADLINE OVERRIDES ============
+
+router.patch("/deadlines/:id/override", async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req) || "system";
+    const { dueDate, anchorDate, status, notes } = req.body;
+
+    const [existing] = await db.select().from(caseDeadlines)
+      .where(eq(caseDeadlines.id, req.params.id));
+    if (!existing) return res.status(404).json({ error: "Deadline not found" });
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (dueDate) updates.dueDate = dueDate;
+    if (anchorDate) updates.anchorDate = anchorDate;
+    if (status) updates.status = status;
+    if (notes !== undefined) updates.notes = notes;
+
+    if (status === "confirmed") {
+      updates.confirmedAt = new Date();
+      updates.confirmedBy = userId;
+    }
+
+    const [updated] = await db.update(caseDeadlines)
+      .set(updates)
+      .where(eq(caseDeadlines.id, req.params.id))
+      .returning();
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ DRAFT DOCUMENTS ============
+
+router.get("/matters/:matterId/drafts", async (req: Request, res: Response) => {
+  try {
+    const drafts = await db.select().from(draftDocuments)
+      .where(eq(draftDocuments.matterId, req.params.matterId))
+      .orderBy(desc(draftDocuments.createdAt));
+    res.json(drafts);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/drafts/:id", async (req: Request, res: Response) => {
+  try {
+    const [draft] = await db.select().from(draftDocuments)
+      .where(eq(draftDocuments.id, req.params.id));
+    if (!draft) return res.status(404).json({ error: "Draft not found" });
+    res.json(draft);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/drafts/:id", async (req: Request, res: Response) => {
+  try {
+    const { content, title, status } = req.body;
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (content !== undefined) updates.content = content;
+    if (title !== undefined) updates.title = title;
+    if (status !== undefined) updates.status = status;
+
+    const [updated] = await db.update(draftDocuments)
+      .set(updates)
+      .where(eq(draftDocuments.id, req.params.id))
+      .returning();
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/drafts/:id", async (req: Request, res: Response) => {
+  try {
+    await db.delete(draftDocuments).where(eq(draftDocuments.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ MATTER DASHBOARD SUMMARY ============
 
 router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) => {
@@ -448,6 +602,10 @@ router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) =
       .where(eq(caseActions.matterId, matterId))
       .orderBy(asc(caseActions.dueDate));
 
+    const drafts = await db.select().from(draftDocuments)
+      .where(eq(draftDocuments.matterId, matterId))
+      .orderBy(desc(draftDocuments.createdAt));
+
     const phase = getCasePhase(filings);
 
     const now = new Date().toISOString().split("T")[0];
@@ -462,20 +620,39 @@ router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) =
       (a) => a.status !== "served" && a.status !== "confirmed"
     );
 
+    const jurisdiction = await getJurisdictionForMatter(matterId);
+
+    const warnings: string[] = [];
+    const filingsWithoutDates = filings.filter(f => !f.filedDate && !f.servedDate);
+    if (filingsWithoutDates.length > 0) {
+      warnings.push(`${filingsWithoutDates.length} filing(s) have no filed or served date`);
+    }
+    if (!jurisdiction) {
+      warnings.push("No jurisdiction profile matched - verify court/jurisdiction settings");
+    }
+    const unconfirmedDeadlines = deadlines.filter(d => d.status === "pending" && !d.confirmedAt);
+    if (unconfirmedDeadlines.length > 0) {
+      warnings.push(`${unconfirmedDeadlines.length} deadline(s) need verification/confirmation`);
+    }
+
     res.json({
       casePhase: phase,
       totalFilings: filings.length,
       totalDeadlines: deadlines.length,
       totalActions: actions.length,
+      totalDrafts: drafts.length,
       overdueCount: overdueDeadlines.length,
       upcomingDeadlines,
       overdueDeadlines,
       pendingActions,
       recentFilings: filings.slice(0, 5),
+      recentDrafts: drafts.slice(0, 5),
       filingsByType: filings.reduce((acc: Record<string, number>, f) => {
         acc[f.docType] = (acc[f.docType] || 0) + 1;
         return acc;
       }, {}),
+      jurisdiction: jurisdiction ? { id: jurisdiction.id, name: jurisdiction.name, state: jurisdiction.state } : null,
+      warnings,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

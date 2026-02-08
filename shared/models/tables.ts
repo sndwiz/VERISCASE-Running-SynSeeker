@@ -1446,6 +1446,9 @@ export const caseDeadlines = pgTable("case_deadlines", {
   resultDocType: varchar("result_doc_type", { length: 100 }),
   assignedTo: varchar("assigned_to"),
   completedAt: timestamp("completed_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  confirmedBy: varchar("confirmed_by"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -1488,3 +1491,23 @@ export const caseActions = pgTable("case_actions", {
 
 export type CaseAction = typeof caseActions.$inferSelect;
 export type InsertCaseAction = typeof caseActions.$inferInsert;
+
+export const draftDocuments = pgTable("draft_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  templateType: varchar("template_type", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  status: varchar("status", { length: 50 }).default("draft"),
+  linkedFilingId: varchar("linked_filing_id").references(() => caseFilings.id, { onDelete: "set null" }),
+  linkedDeadlineId: varchar("linked_deadline_id").references(() => caseDeadlines.id, { onDelete: "set null" }),
+  linkedActionId: varchar("linked_action_id").references(() => caseActions.id, { onDelete: "set null" }),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_draft_docs_matter").on(table.matterId),
+]);
+
+export type DraftDocument = typeof draftDocuments.$inferSelect;
+export type InsertDraftDocument = typeof draftDocuments.$inferInsert;

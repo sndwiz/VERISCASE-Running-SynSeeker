@@ -75,6 +75,22 @@ interface CaseDeadline {
   requiredAction: string | null;
   resultDocType: string | null;
   assignedTo: string | null;
+  confirmedAt: string | null;
+  confirmedBy: string | null;
+  notes: string | null;
+}
+
+interface DraftDocument {
+  id: string;
+  matterId: string;
+  title: string;
+  templateType: string;
+  content: string;
+  status: string;
+  linkedFilingId: string | null;
+  linkedDeadlineId: string | null;
+  linkedActionId: string | null;
+  createdAt: string;
 }
 
 interface CaseAction {
@@ -97,12 +113,16 @@ interface DashboardSummary {
   totalFilings: number;
   totalDeadlines: number;
   totalActions: number;
+  totalDrafts: number;
   overdueCount: number;
   upcomingDeadlines: CaseDeadline[];
   overdueDeadlines: CaseDeadline[];
   pendingActions: CaseAction[];
   recentFilings: CaseFiling[];
+  recentDrafts: DraftDocument[];
   filingsByType: Record<string, number>;
+  jurisdiction: { id: string; name: string; state: string } | null;
+  warnings: string[];
 }
 
 function getDaysRemaining(dueDate: string | null): number {
@@ -173,6 +193,36 @@ export default function EFilingDashboard() {
     enabled: !!selectedMatterId && activeTab === "actions",
   });
 
+  const { data: drafts = [] } = useQuery<DraftDocument[]>({
+    queryKey: ["/api/efiling", "matters", selectedMatterId, "drafts"],
+    enabled: !!selectedMatterId && activeTab === "drafts",
+  });
+
+  const overrideDeadlineMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; dueDate?: string; status?: string; notes?: string }) => {
+      return apiRequest("PATCH", `/api/efiling/deadlines/${id}/override`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/efiling"] });
+      toast({ title: "Deadline Updated" });
+    },
+  });
+
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/efiling/drafts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/efiling"] });
+      toast({ title: "Draft Deleted" });
+    },
+  });
+
+  const [overrideDeadlineId, setOverrideDeadlineId] = useState<string | null>(null);
+  const [overrideDate, setOverrideDate] = useState("");
+  const [overrideNotes, setOverrideNotes] = useState("");
+  const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
+
   const ingestMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
@@ -185,10 +235,23 @@ export default function EFilingDashboard() {
       return response.json();
     },
     onSuccess: (data) => {
+      const parts = [
+        `Classified as ${data.classification.docType} (${Math.round(data.classification.confidence * 100)}%)`,
+        `${data.deadlinesCreated} deadline(s)`,
+        `${data.actionsCreated} action(s)`,
+        `${data.draftsCreated} draft(s)`,
+      ];
       toast({
         title: "Document Ingested",
-        description: `Classified as ${data.classification.docType} (${Math.round(data.classification.confidence * 100)}% confidence). ${data.deadlinesCreated} deadline(s) created.`,
+        description: parts.join(" | "),
       });
+      if (data.warnings?.length > 0) {
+        toast({
+          title: "Warnings",
+          description: data.warnings.join("; "),
+          variant: "destructive",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/efiling"] });
     },
     onError: (error: any) => {
@@ -305,6 +368,7 @@ export default function EFilingDashboard() {
             <TabsTrigger value="filings" data-testid="tab-filings">Filings</TabsTrigger>
             <TabsTrigger value="deadlines" data-testid="tab-deadlines">Deadlines</TabsTrigger>
             <TabsTrigger value="actions" data-testid="tab-actions">Actions</TabsTrigger>
+            <TabsTrigger value="drafts" data-testid="tab-drafts">Drafts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -360,6 +424,29 @@ export default function EFilingDashboard() {
                     </CardContent>
                   </Card>
                 </div>
+
+                {dashboard.warnings && dashboard.warnings.length > 0 && (
+                  <Card className="border-yellow-500/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-2">
+                        <Shield className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm">Attention Required</p>
+                          {dashboard.warnings.map((w, i) => (
+                            <p key={i} className="text-sm text-muted-foreground" data-testid={`text-warning-${i}`}>{w}</p>
+                          ))}
+                        </div>
+                      </div>
+                      {dashboard.jurisdiction && (
+                        <div className="mt-2 pt-2 border-t">
+                          <p className="text-xs text-muted-foreground">
+                            Jurisdiction: {dashboard.jurisdiction.name} ({dashboard.jurisdiction.state})
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {dashboard.overdueDeadlines.length > 0 && (
                   <Card className="border-destructive">
@@ -610,40 +697,131 @@ export default function EFilingDashboard() {
                           <TableHead>Anchor</TableHead>
                           <TableHead>Criticality</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {deadlines.map((d) => {
                           const days = getDaysRemaining(d.dueDate);
+                          const isOverriding = overrideDeadlineId === d.id;
                           return (
-                            <TableRow
-                              key={d.id}
-                              className={days <= 0 && d.status === "pending" ? "bg-destructive/5" : ""}
-                              data-testid={`deadline-row-${d.id}`}
-                            >
-                              <TableCell className="font-medium">{d.title}</TableCell>
-                              <TableCell className="font-mono">{d.dueDate}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={days <= 0 ? "destructive" : days <= 7 ? "default" : "secondary"}
-                                >
-                                  {days <= 0 ? `${Math.abs(days)}d overdue` : `${days}d`}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-sm">{d.ruleSource || "-"}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
-                                {d.anchorEvent || "-"}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  {getCriticalityIcon(d.criticality)}
-                                  <span className="text-sm">{d.criticality}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={getStatusColor(d.status) as any}>{d.status}</Badge>
-                              </TableCell>
-                            </TableRow>
+                            <>
+                              <TableRow
+                                key={d.id}
+                                className={days <= 0 && d.status === "pending" ? "bg-destructive/5" : ""}
+                                data-testid={`deadline-row-${d.id}`}
+                              >
+                                <TableCell className="font-medium">
+                                  {d.title}
+                                  {d.confirmedAt && (
+                                    <CheckCircle2 className="w-3 h-3 text-green-500 inline ml-1" />
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-mono">{d.dueDate}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={days <= 0 ? "destructive" : days <= 7 ? "default" : "secondary"}
+                                  >
+                                    {days <= 0 ? `${Math.abs(days)}d overdue` : `${days}d`}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">{d.ruleSource || "-"}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                                  {d.anchorEvent || "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    {getCriticalityIcon(d.criticality)}
+                                    <span className="text-sm">{d.criticality}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={getStatusColor(d.status) as any}>{d.status}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (isOverriding) {
+                                          setOverrideDeadlineId(null);
+                                        } else {
+                                          setOverrideDeadlineId(d.id);
+                                          setOverrideDate(d.dueDate);
+                                          setOverrideNotes(d.notes || "");
+                                        }
+                                      }}
+                                      data-testid={`button-override-${d.id}`}
+                                    >
+                                      Override
+                                    </Button>
+                                    {!d.confirmedAt && d.status === "pending" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => overrideDeadlineMutation.mutate({ id: d.id, status: "confirmed" })}
+                                        data-testid={`button-confirm-${d.id}`}
+                                      >
+                                        <CheckCircle2 className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              {isOverriding && (
+                                <TableRow key={`override-${d.id}`}>
+                                  <TableCell colSpan={8} className="bg-muted/30 p-3">
+                                    <div className="flex items-end gap-3 flex-wrap">
+                                      <div>
+                                        <label className="text-xs text-muted-foreground block mb-1">New Due Date</label>
+                                        <input
+                                          type="date"
+                                          value={overrideDate}
+                                          onChange={(e) => setOverrideDate(e.target.value)}
+                                          className="border rounded-md px-2 py-1 text-sm bg-background"
+                                          data-testid={`input-override-date-${d.id}`}
+                                        />
+                                      </div>
+                                      <div className="flex-1 min-w-[200px]">
+                                        <label className="text-xs text-muted-foreground block mb-1">Notes</label>
+                                        <input
+                                          type="text"
+                                          value={overrideNotes}
+                                          onChange={(e) => setOverrideNotes(e.target.value)}
+                                          placeholder="Reason for override..."
+                                          className="border rounded-md px-2 py-1 text-sm w-full bg-background"
+                                          data-testid={`input-override-notes-${d.id}`}
+                                        />
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
+                                          overrideDeadlineMutation.mutate({
+                                            id: d.id,
+                                            dueDate: overrideDate,
+                                            notes: overrideNotes,
+                                          });
+                                          setOverrideDeadlineId(null);
+                                        }}
+                                        disabled={overrideDeadlineMutation.isPending}
+                                        data-testid={`button-save-override-${d.id}`}
+                                      >
+                                        Save Override
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setOverrideDeadlineId(null)}
+                                        data-testid={`button-cancel-override-${d.id}`}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </>
                           );
                         })}
                       </TableBody>
@@ -716,6 +894,75 @@ export default function EFilingDashboard() {
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>Type: {a.actionType}</span>
                           {a.requiredDocType && <span>| Doc: {a.requiredDocType}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="drafts" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle>Draft Documents</CardTitle>
+                <Badge variant="outline">{drafts.length} total</Badge>
+              </CardHeader>
+              <CardContent>
+                {drafts.length === 0 ? (
+                  <p className="text-center text-muted-foreground p-4">
+                    No draft documents yet. Drafts are auto-generated when documents are ingested and actions created.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {drafts.map((d) => (
+                      <div
+                        key={d.id}
+                        className="p-3 rounded-md border space-y-2"
+                        data-testid={`draft-card-${d.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                            <h3 className="font-medium truncate">{d.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Badge variant="secondary">{d.templateType}</Badge>
+                            <Badge variant={d.status === "draft" ? "outline" : "default"}>
+                              {d.status}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExpandedDraftId(expandedDraftId === d.id ? null : d.id)}
+                              data-testid={`button-expand-draft-${d.id}`}
+                            >
+                              {expandedDraftId === d.id ? "Collapse" : "View"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteDraftMutation.mutate(d.id)}
+                              data-testid={`button-delete-draft-${d.id}`}
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {expandedDraftId === d.id && (
+                          <div className="bg-muted/50 rounded-md p-3 mt-2">
+                            <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed" data-testid={`draft-content-${d.id}`}>
+                              {d.content}
+                            </pre>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Created: {new Date(d.createdAt).toLocaleDateString()}</span>
+                          {d.linkedFilingId && <span>| Filing linked</span>}
+                          {d.linkedDeadlineId && <span>| Deadline linked</span>}
                         </div>
                       </div>
                     ))}
