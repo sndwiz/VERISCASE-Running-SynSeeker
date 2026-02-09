@@ -40,7 +40,7 @@ export function registerLegalResearchRoutes(app: Express): void {
       const planText = await generateCompletion(
         [{ role: "user", content: query }],
         {
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-5",
           maxTokens: 1024,
           system: `You are a legal research planner for a Utah law firm (Synergy Law PLLC). Given a legal research query, break it down into exactly 5 discrete research steps. Each step should be a specific, actionable research task.
 
@@ -103,7 +103,7 @@ Example: ["Search Utah Code Title 76 for relevant criminal statutes", "Review Ut
           const result = await generateCompletion(
             [{ role: "user", content: `Execute this research step: ${steps[i].title}` }],
             {
-              model: "claude-sonnet-4-20250514",
+              model: "claude-sonnet-4-5",
               maxTokens: 2048,
               system: `You are a senior legal researcher at a Utah law firm (Synergy Law PLLC). You are performing a specific research step as part of a larger legal research project.
 
@@ -145,7 +145,7 @@ You are now executing this specific step. Provide your findings in 2-4 paragraph
           content: `Research query: "${query}"\n\nResearch findings from ${steps.length} steps:\n\n${stepResults.map((r, i) => `### Step ${i + 1}: ${steps[i].title}\n${r}`).join("\n\n")}`,
         }],
         {
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-5",
           maxTokens: 4096,
           system: `You are a senior legal researcher compiling a comprehensive research memo for a Utah law firm. Take the results from multiple research steps and compile them into a well-organized legal research summary.
 

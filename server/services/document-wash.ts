@@ -105,7 +105,7 @@ ${truncatedText}`;
   try {
     const content = await generateCompletion(
       [{ role: "user", content: prompt }],
-      { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "document_wash_pii" }
+      { model: "claude-sonnet-4-5", maxTokens: 4096, caller: "document_wash_pii" }
     );
 
     const jsonMatch = content.match(/\[[\s\S]*\]/);

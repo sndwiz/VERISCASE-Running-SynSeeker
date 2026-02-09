@@ -586,7 +586,7 @@ export async function generateCompletion(
     caller?: string;
   } = {}
 ): Promise<string> {
-  const model = options.model || "claude-sonnet-4-20250514";
+  const model = options.model || "claude-sonnet-4-5";
   const maxTokens = options.maxTokens || 2048;
   const caller = options.caller || "generateCompletion";
   const { id, startTime } = startAIOp("anthropic", model, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);

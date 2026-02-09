@@ -218,7 +218,7 @@ Respond ONLY with a valid JSON array, no markdown fences.`;
   try {
     const text = await generateCompletion(
       [{ role: "user", content: prompt }],
-      { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "upload_organizer" }
+      { model: "claude-sonnet-4-5", maxTokens: 4096, caller: "upload_organizer" }
     );
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);

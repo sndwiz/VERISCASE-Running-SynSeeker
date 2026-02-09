@@ -87,7 +87,7 @@ Action Items: ${JSON.stringify(meeting.actionItems)}`;
 
       const responseText = await generateCompletion(
         [{ role: "user", content: `You are a legal meeting assistant. Based on the following meeting data, answer this question concisely and helpfully:\n\n${meetingContext}\n\nQuestion: ${query}` }],
-        { model: "claude-sonnet-4-20250514", maxTokens: 1024, caller: "meeting_ai_query" }
+        { model: "claude-sonnet-4-5", maxTokens: 1024, caller: "meeting_ai_query" }
       );
 
       res.json({ response: responseText || "No response generated." });

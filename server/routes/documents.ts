@@ -223,7 +223,7 @@ Output only the completed document content, ready for review.`;
 
     const generatedContent = await generateCompletion(
       [{ role: "user", content: userPrompt }],
-      { model: "claude-sonnet-4-20250514", maxTokens: 4096, system: systemPrompt, caller: "document_generation" }
+      { model: "claude-sonnet-4-5", maxTokens: 4096, system: systemPrompt, caller: "document_generation" }
     );
 
     const formatCompliance = {

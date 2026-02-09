@@ -975,7 +975,7 @@ Guidelines:
 
   const responseText = await generateCompletion(
     [{ role: "user", content: `Generate a board configuration for: ${prompt}` }],
-    { model: "claude-sonnet-4-20250514", maxTokens: 4096, system: systemPrompt, caller: "vibe_code_board_gen" }
+    { model: "claude-sonnet-4-5", maxTokens: 4096, system: systemPrompt, caller: "vibe_code_board_gen" }
   );
 
   if (!responseText) {

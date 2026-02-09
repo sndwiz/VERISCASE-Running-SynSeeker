@@ -151,7 +151,7 @@ ${text.substring(0, 8000)}`;
 
     const responseText = await generateCompletion(
       [{ role: "user", content: userPrompt }],
-      { model: "claude-sonnet-4-20250514", maxTokens: 1024, system: systemPrompt, caller: "document_classifier" }
+      { model: "claude-sonnet-4-5", maxTokens: 1024, system: systemPrompt, caller: "document_classifier" }
     );
 
     let parsed: any;

@@ -586,7 +586,7 @@ Provide your analysis in JSON format with fields: summary, keyClauses[], risks[]
 
       const responseText = await generateCompletion(
         [{ role: "user", content: prompt }],
-        { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "legal_document_analysis" }
+        { model: "claude-sonnet-4-5", maxTokens: 4096, caller: "legal_document_analysis" }
       );
 
       try {
