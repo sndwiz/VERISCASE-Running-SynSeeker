@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -23,47 +23,56 @@ import { HelpGuide } from "@/components/help-guide";
 import { WorkspaceProvider, useWorkspace } from "@/hooks/use-workspace";
 
 import NotFound from "@/pages/not-found";
-import HomePage from "@/pages/home";
-import BoardPage from "@/pages/board";
-import SettingsPage from "@/pages/settings";
-import AIChatPage from "@/pages/ai-chat";
-import ClawbotPage from "@/pages/clawbot";
 import LandingPage from "@/pages/landing";
-import TimeTrackingPage from "@/pages/time-tracking";
-import CalendarPage from "@/pages/calendar-page";
-import ApprovalsPage from "@/pages/approvals-page";
-import MattersPage from "@/pages/matters";
-import ClientsPage from "@/pages/clients";
-import EvidenceVaultPage from "@/pages/evidence-vault";
-import DetectiveBoardPage from "@/pages/detective-board";
-import AutomationsPage from "@/pages/automations";
-import FilingCabinetPage from "@/pages/filing-cabinet";
-import DailyBriefingPage from "@/pages/daily-briefing";
-import DocumentMakerPage from "@/pages/document-maker";
-import MeetingNotesPage from "@/pages/meeting-notes";
-import ClientDashboardPage from "@/pages/client-dashboard";
-import ClientDetailDashboard from "@/pages/client-detail-dashboard";
-import VibeCodePage from "@/pages/vibe-code";
-import SecurityDashboardPage from "@/pages/security-dashboard";
-import MatterDetailPage from "@/pages/matter-detail";
-import BillingDashboard from "@/pages/billing-dashboard";
-import ClientBillingPage from "@/pages/client-billing";
-import MatterBillingPage from "@/pages/matter-billing";
-import LegalAIPage from "@/pages/legal-ai";
-import IntakeFormsPage from "@/pages/intake-forms";
-import CommunicationsPage from "@/pages/communications";
-import UploadOrganizerPage from "@/pages/upload-organizer";
-import MasterChatPage from "@/pages/master-chat";
-import DocumentWashPage from "@/pages/document-wash";
-import BillingVerifierPage from "@/pages/billing-verifier";
-import TemplatesPage from "@/pages/templates";
-import ProcessRecorderPage from "@/pages/process-recorder";
-import TeamMembersPage from "@/pages/team-members";
-import MyTasksPage from "@/pages/my-tasks";
-import ProductGuidePage from "@/pages/product-guide";
-import PdfProPage from "@/pages/pdf-pro";
-import EFilingDashboard from "@/pages/efiling-dashboard";
-import LegalResearchPage from "@/pages/legal-research";
+
+const HomePage = lazy(() => import("@/pages/home"));
+const BoardPage = lazy(() => import("@/pages/board"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const AIChatPage = lazy(() => import("@/pages/ai-chat"));
+const ClawbotPage = lazy(() => import("@/pages/clawbot"));
+const TimeTrackingPage = lazy(() => import("@/pages/time-tracking"));
+const CalendarPage = lazy(() => import("@/pages/calendar-page"));
+const ApprovalsPage = lazy(() => import("@/pages/approvals-page"));
+const MattersPage = lazy(() => import("@/pages/matters"));
+const ClientsPage = lazy(() => import("@/pages/clients"));
+const EvidenceVaultPage = lazy(() => import("@/pages/evidence-vault"));
+const DetectiveBoardPage = lazy(() => import("@/pages/detective-board"));
+const AutomationsPage = lazy(() => import("@/pages/automations"));
+const FilingCabinetPage = lazy(() => import("@/pages/filing-cabinet"));
+const DailyBriefingPage = lazy(() => import("@/pages/daily-briefing"));
+const DocumentMakerPage = lazy(() => import("@/pages/document-maker"));
+const MeetingNotesPage = lazy(() => import("@/pages/meeting-notes"));
+const ClientDashboardPage = lazy(() => import("@/pages/client-dashboard"));
+const ClientDetailDashboard = lazy(() => import("@/pages/client-detail-dashboard"));
+const VibeCodePage = lazy(() => import("@/pages/vibe-code"));
+const SecurityDashboardPage = lazy(() => import("@/pages/security-dashboard"));
+const MatterDetailPage = lazy(() => import("@/pages/matter-detail"));
+const BillingDashboard = lazy(() => import("@/pages/billing-dashboard"));
+const ClientBillingPage = lazy(() => import("@/pages/client-billing"));
+const MatterBillingPage = lazy(() => import("@/pages/matter-billing"));
+const LegalAIPage = lazy(() => import("@/pages/legal-ai"));
+const IntakeFormsPage = lazy(() => import("@/pages/intake-forms"));
+const CommunicationsPage = lazy(() => import("@/pages/communications"));
+const UploadOrganizerPage = lazy(() => import("@/pages/upload-organizer"));
+const MasterChatPage = lazy(() => import("@/pages/master-chat"));
+const DocumentWashPage = lazy(() => import("@/pages/document-wash"));
+const BillingVerifierPage = lazy(() => import("@/pages/billing-verifier"));
+const TemplatesPage = lazy(() => import("@/pages/templates"));
+const ProcessRecorderPage = lazy(() => import("@/pages/process-recorder"));
+const TeamMembersPage = lazy(() => import("@/pages/team-members"));
+const MyTasksPage = lazy(() => import("@/pages/my-tasks"));
+const ProductGuidePage = lazy(() => import("@/pages/product-guide"));
+const PdfProPage = lazy(() => import("@/pages/pdf-pro"));
+const EFilingDashboard = lazy(() => import("@/pages/efiling-dashboard"));
+const LegalResearchPage = lazy(() => import("@/pages/legal-research"));
+
+function PageLoader() {
+  return (
+    <div className="h-full w-full flex items-center justify-center p-8">
+      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+    </div>
+  );
+}
 
 
 function Router() {
@@ -244,7 +253,9 @@ function AppLayout() {
             </div>
           </header>
           <main className="flex-1 overflow-auto">
-            <Router />
+            <Suspense fallback={<PageLoader />}>
+              <Router />
+            </Suspense>
           </main>
         </SidebarInset>
       </div>
