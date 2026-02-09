@@ -59,18 +59,16 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Investigation Board Redesign (Feb 2026):** 3-column layout with cork board canvas, 4 colored zones, 5 element types, SVG connections, minimap, AI status panel.
 - **E-Filing Automation Brain (Feb 2026):** Comprehensive legal document automation system at `/efiling`. 5 new database tables (jurisdictionProfiles, deadlineRules, caseFilings, caseDeadlines, caseActions). AI-powered document classifier (Anthropic Claude, 15+ legal doc types). Rules-based deadline engine with 10 seeded rules (Utah URCP + Federal FRCP). Sequencing engine for next-best-actions with 6-stage status pipeline (draft→review→final→file→served→confirmed). Full ingestion pipeline: upload → classify → compute deadlines → generate actions. Matter creation auto-creates 6 linked boards and 5 baseline onboarding tasks. 20+ API endpoints with Zod validation. 4-tab frontend dashboard (Overview, Filings, Deadlines, Actions).
 
-## KISS Audit Findings (Feb 2026)
-**Key Issues Identified:**
-1. **Dead MemStorage class (~1500 lines):** `server/storage.ts` contains a full `MemStorage` implementation that is never used - only `DbStorage` from `server/dbStorage.ts` is instantiated. The `IStorage` interface (366 methods) adds unnecessary abstraction for a single implementation.
-2. **Storage file sizes:** storage.ts (2642 lines) + dbStorage.ts (4758 lines) = 7400 lines of storage code. Consolidating to just DbStorage without the interface would remove ~2600 lines.
-3. **Inconsistent data access patterns:** Some routes (billing-verifier, workspaces) access DB directly via Drizzle; others go through the storage interface. The direct DB pattern is simpler and recommended.
-4. **Large page components:** automations.tsx (2923 lines), billing-verifier.tsx (2066 lines) could benefit from component extraction.
-5. **Schema size:** shared/schema.ts at 2473 lines is large but functional - mostly type definitions and Zod schemas.
-
-**Recommended Next Steps:**
-- Remove MemStorage class and IStorage interface, use DbStorage class directly
-- Migrate remaining storage-interface routes to direct DB access pattern
-- Extract sub-components from largest page files
+## Code Quality Improvements (Feb 2026)
+**Completed from KISS Audit:**
+1. **MemStorage & IStorage removal:** Removed ~2370 lines of dead MemStorage class and IStorage interface. `server/storage.ts` is now 2 lines re-exporting DbStorage directly.
+2. **AI consolidation:** All AI calls route through `server/ai/providers.ts` with unified `generateCompletion()` and `streamResponse()`. Centralized logging via `startAIOp`/`completeAIOp`. 8 files migrated from direct Anthropic SDK calls.
+3. **SSE disconnect handling:** Both legal-research and chat SSE endpoints now track `clientDisconnected` to prevent wasted AI tokens when client navigates away.
+4. **Database indexes:** Added indexes on `aiConversations.matterId`, `aiMessages.conversationId`, `calendarEvents.matterId`, `calendarEvents.startDate`.
+5. **Pagination:** Boards and calendar-events list endpoints now support optional `?limit=N&offset=M` via `maybePageinate()` utility.
+6. **Component extraction:** `automations.tsx` split from 2923→997 lines (extracted `automation-templates.ts`, `automation-components.tsx`). `billing-verifier.tsx` split from 2066→603 lines (extracted `billing-types.ts`, `billing-utils.ts`, `billing-tabs.tsx`).
+7. **React.lazy() code splitting:** All 40 page imports use `lazy()` with `Suspense` fallback for route-level code splitting, reducing initial bundle size.
+8. **Schema split deferred:** `shared/schema.ts` (2663 lines) is large but functional - mostly type definitions. Splitting would risk breaking dozens of dependents with minimal benefit.
 
 ## External Dependencies
 - **Replit Auth:** For multi-user authentication.
