@@ -1,13 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateCompletion } from "../ai/providers";
 import { db } from "../db";
 import { washJobs, washEntities, washMappings } from "@shared/models/tables";
 import { eq, and } from "drizzle-orm";
 import type { WashPolicy, WashEntityType, WashPiiReport } from "@shared/schema";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
 
 interface DetectedEntity {
   type: WashEntityType;
@@ -108,13 +103,11 @@ Text to analyze:
 ${truncatedText}`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const content = await generateCompletion(
+      [{ role: "user", content: prompt }],
+      { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "document_wash_pii" }
+    );
 
-    const content = response.content[0].type === "text" ? response.content[0].text : "";
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return [];
 

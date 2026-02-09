@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateCompletion } from "../ai/providers";
 import { db } from "../db";
 import {
   incomingFiles,
@@ -216,19 +216,11 @@ Respond ONLY with a valid JSON array, no markdown fences.`;
   }> = [];
 
   try {
-    const anthropic = new Anthropic({
-      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-    });
+    const text = await generateCompletion(
+      [{ role: "user", content: prompt }],
+      { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "upload_organizer" }
+    );
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250514",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = response.content.find((b: any) => b.type === "text");
-    const text = (textBlock as any)?.text || "";
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       aiSuggestions = JSON.parse(jsonMatch[0]);

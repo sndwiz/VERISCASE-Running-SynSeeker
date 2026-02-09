@@ -11,16 +11,11 @@ import {
   utahDocumentFormatDefaults,
   utahBilingualNotice,
 } from "@shared/schema";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateCompletion } from "../ai/providers";
 import { formSubmissionLimiter, verifyTurnstileToken } from "../security/middleware";
 import { getClientIp, logSecurityEvent } from "../security/audit";
 
 const router = Router();
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
 
 // ============ DOCUMENT TEMPLATES ============
 
@@ -226,16 +221,10 @@ ${template.bilingualNoticeRequired ? `Include this bilingual notice at the top f
 
 Output only the completed document content, ready for review.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 4096,
-      messages: [
-        { role: "user", content: userPrompt }
-      ],
-      system: systemPrompt,
-    });
-
-    const generatedContent = message.content[0].type === 'text' ? message.content[0].text : '';
+    const generatedContent = await generateCompletion(
+      [{ role: "user", content: userPrompt }],
+      { model: "claude-sonnet-4-20250514", maxTokens: 4096, system: systemPrompt, caller: "document_generation" }
+    );
 
     const formatCompliance = {
       isCompliant: true,

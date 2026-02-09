@@ -1,10 +1,5 @@
 import type { Express, Request, Response } from "express";
-import Anthropic from "@anthropic-ai/sdk";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
+import { generateCompletion } from "../ai/providers";
 
 interface ResearchStep {
   id: number;
@@ -42,17 +37,18 @@ export function registerLegalResearchRoutes(app: Express): void {
     try {
       send("status", { message: "Analyzing research query..." });
 
-      const planResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: `You are a legal research planner for a Utah law firm (Synergy Law PLLC). Given a legal research query, break it down into exactly 5 discrete research steps. Each step should be a specific, actionable research task.
+      const planText = await generateCompletion(
+        [{ role: "user", content: query }],
+        {
+          model: "claude-sonnet-4-20250514",
+          maxTokens: 1024,
+          system: `You are a legal research planner for a Utah law firm (Synergy Law PLLC). Given a legal research query, break it down into exactly 5 discrete research steps. Each step should be a specific, actionable research task.
 
 Return ONLY a JSON array of 5 strings, each being a research step title. No other text.
 Example: ["Search Utah Code Title 76 for relevant criminal statutes", "Review Utah Rules of Civil Procedure for applicable procedural requirements", "Check Utah State Bar ethics opinions on the topic", "Survey recent Utah appellate decisions and case law", "Compile findings into organized legal summary with citations"]`,
-        messages: [{ role: "user", content: query }],
-      });
-
-      const planText = planResponse.content[0]?.type === "text" ? planResponse.content[0].text : "[]";
+          caller: "legal_research_plan",
+        }
+      );
       let stepTitles: string[];
       try {
         stepTitles = JSON.parse(planText.replace(/```json?\n?/g, "").replace(/```/g, "").trim());
@@ -104,10 +100,12 @@ Example: ["Search Utah Code Title 76 for relevant criminal statutes", "Review Ut
 
         try {
           if (clientDisconnected) { clearInterval(progressInterval); break; }
-          const stepResponse = await anthropic.messages.create({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 2048,
-            system: `You are a senior legal researcher at a Utah law firm (Synergy Law PLLC). You are performing a specific research step as part of a larger legal research project.
+          const result = await generateCompletion(
+            [{ role: "user", content: `Execute this research step: ${steps[i].title}` }],
+            {
+              model: "claude-sonnet-4-20250514",
+              maxTokens: 2048,
+              system: `You are a senior legal researcher at a Utah law firm (Synergy Law PLLC). You are performing a specific research step as part of a larger legal research project.
 
 Your research must be:
 - Specific to Utah law when applicable (Utah Code, Utah Rules, Utah State Bar)
@@ -118,12 +116,11 @@ Your research must be:
 The overall research query is: "${query}"
 
 You are now executing this specific step. Provide your findings in 2-4 paragraphs. Include specific statute citations (e.g., Utah Code Ann. section 76-5-102), rule numbers (e.g., URCP Rule 26), and case names where applicable.`,
-            messages: [{ role: "user", content: `Execute this research step: ${steps[i].title}` }],
-          });
+              caller: "legal_research_step",
+            }
+          );
 
           clearInterval(progressInterval);
-
-          const result = stepResponse.content[0]?.type === "text" ? stepResponse.content[0].text : "No results found.";
           stepResults.push(result);
           searchCount += Math.floor(Math.random() * 15) + 10;
 
@@ -142,10 +139,15 @@ You are now executing this specific step. Provide your findings in 2-4 paragraph
 
       send("status", { message: "Compiling final research summary..." });
 
-      const compilationResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: `You are a senior legal researcher compiling a comprehensive research memo for a Utah law firm. Take the results from multiple research steps and compile them into a well-organized legal research summary.
+      const finalSummary = await generateCompletion(
+        [{
+          role: "user",
+          content: `Research query: "${query}"\n\nResearch findings from ${steps.length} steps:\n\n${stepResults.map((r, i) => `### Step ${i + 1}: ${steps[i].title}\n${r}`).join("\n\n")}`,
+        }],
+        {
+          model: "claude-sonnet-4-20250514",
+          maxTokens: 4096,
+          system: `You are a senior legal researcher compiling a comprehensive research memo for a Utah law firm. Take the results from multiple research steps and compile them into a well-organized legal research summary.
 
 Format the output as a professional legal research memo with:
 1. **Research Question** - Restate the query
@@ -156,13 +158,9 @@ Format the output as a professional legal research memo with:
 6. **Recommendations** - Next steps or actions to consider
 
 Use markdown formatting. Include specific Utah Code sections, URCP rules, and case citations throughout.`,
-        messages: [{
-          role: "user",
-          content: `Research query: "${query}"\n\nResearch findings from ${steps.length} steps:\n\n${stepResults.map((r, i) => `### Step ${i + 1}: ${steps[i].title}\n${r}`).join("\n\n")}`,
-        }],
-      });
-
-      const finalSummary = compilationResponse.content[0]?.type === "text" ? compilationResponse.content[0].text : "Unable to compile summary.";
+          caller: "legal_research_compile",
+        }
+      );
       searchCount += 5;
 
       send("summary", { content: finalSummary, totalSearches: searchCount });

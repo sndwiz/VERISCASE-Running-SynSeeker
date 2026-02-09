@@ -1,5 +1,4 @@
 import type { Express, Request, Response } from "express";
-import Anthropic from "@anthropic-ai/sdk";
 import { chatStorage } from "./storage";
 import { storage } from "../../storage";
 import {
@@ -11,14 +10,10 @@ import {
   getModelsByProvider,
   getVisionModels,
   analyzeEvidenceImage,
+  generateCompletion,
   type AIConfig,
   type ChatMessage,
 } from "../../ai/providers";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
 
 const LEGAL_SYSTEM_PROMPT = `You are Verbo, an expert legal assistant integrated into VERICASE - a comprehensive legal practice management system by Synergy Law PLLC. You have deep knowledge of:
 
@@ -457,10 +452,12 @@ export function registerChatRoutes(app: Express): void {
         }
       });
 
-      // Set up SSE
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
+
+      let clientDisconnected = false;
+      req.on("close", () => { clientDisconnected = true; });
 
       const modelInfo = getModelInfo(selectedModel);
       
@@ -494,12 +491,13 @@ export function registerChatRoutes(app: Express): void {
       let fullResponse = "";
 
       for await (const chunk of streamResponse(chatMessages, config, "verbo_chat")) {
+        if (clientDisconnected) break;
         if (chunk.content) {
           fullResponse += chunk.content;
-          res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
+          try { res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`); } catch {}
         }
         if (chunk.error) {
-          res.write(`data: ${JSON.stringify({ error: chunk.error })}\n\n`);
+          try { res.write(`data: ${JSON.stringify({ error: chunk.error })}\n\n`); } catch {}
           break;
         }
         if (chunk.done) {
@@ -586,14 +584,10 @@ ${text}
 
 Provide your analysis in JSON format with fields: summary, keyClauses[], risks[], missingElements[], recommendations[]`;
 
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
-        max_tokens: 4096,
-        messages: [{ role: "user", content: prompt }],
-      });
-
-      const textBlock = response.content.find((block) => block.type === "text");
-      const responseText = textBlock?.type === "text" ? textBlock.text : "";
+      const responseText = await generateCompletion(
+        [{ role: "user", content: prompt }],
+        { model: "claude-sonnet-4-20250514", maxTokens: 4096, caller: "legal_document_analysis" }
+      );
 
       try {
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);

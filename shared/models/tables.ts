@@ -106,7 +106,9 @@ export const aiConversations = pgTable("ai_conversations", {
   boardId: varchar("board_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_ai_conversations_matter_id").on(table.matterId),
+]);
 
 // ============ AI MESSAGES ============
 export const aiMessages = pgTable("ai_messages", {
@@ -117,7 +119,9 @@ export const aiMessages = pgTable("ai_messages", {
   attachments: jsonb("attachments"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_ai_messages_conversation_id").on(table.conversationId),
+]);
 
 // ============ CLIENTS ============
 export const clients = pgTable("clients", {
@@ -476,6 +480,8 @@ export const calendarEvents = pgTable("calendar_events", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("IDX_calendar_source").on(table.sourceType, table.sourceId),
+  index("IDX_calendar_matter_id").on(table.matterId),
+  index("IDX_calendar_start_date").on(table.startDate),
 ]);
 
 // ============ APPROVAL REQUESTS ============

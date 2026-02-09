@@ -61,8 +61,7 @@ export function registerMeetingRoutes(app: Express): void {
     const { query } = parsed.data;
 
     try {
-      const { default: Anthropic } = await import("@anthropic-ai/sdk");
-      const anthropic = new Anthropic();
+      const { generateCompletion } = await import("../ai/providers");
 
       const topicsSummary = Array.isArray(meeting.topics)
         ? (meeting.topics as any[]).map((t: any) => `- ${t.title}: ${truncateContext(t.content || "", 300)}`).join("\n")
@@ -86,19 +85,12 @@ Transcript Excerpt:
 ${transcriptSummary}
 Action Items: ${JSON.stringify(meeting.actionItems)}`;
 
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: `You are a legal meeting assistant. Based on the following meeting data, answer this question concisely and helpfully:\n\n${meetingContext}\n\nQuestion: ${query}`,
-          },
-        ],
-      });
+      const responseText = await generateCompletion(
+        [{ role: "user", content: `You are a legal meeting assistant. Based on the following meeting data, answer this question concisely and helpfully:\n\n${meetingContext}\n\nQuestion: ${query}` }],
+        { model: "claude-sonnet-4-20250514", maxTokens: 1024, caller: "meeting_ai_query" }
+      );
 
-      const textContent = response.content.find((c: any) => c.type === "text");
-      res.json({ response: textContent ? (textContent as any).text : "No response generated." });
+      res.json({ response: responseText || "No response generated." });
     } catch (error: any) {
       console.error("AI query error:", error.message);
       res.status(500).json({ error: "AI query failed. Please try again." });

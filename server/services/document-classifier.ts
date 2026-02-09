@@ -1,7 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { startAIOp, completeAIOp } from "../ai/ai-ops";
-
-const anthropic = new Anthropic();
+import { generateCompletion } from "../ai/providers";
 
 export interface ClassificationResult {
   docType: string;
@@ -86,9 +83,6 @@ export async function classifyDocument(
   fileName: string,
   matterContext?: { caseNumber?: string; courtName?: string; parties?: string[] }
 ): Promise<ClassificationResult> {
-  const inputContent = `${fileName}\n${text.substring(0, 8000)}`;
-  const op = startAIOp("anthropic", "claude-sonnet-4-5", "document_classification", inputContent, "document-classifier", { fileName });
-
   try {
     const systemPrompt = `You are a legal document classifier. Analyze the provided document text and classify it.
 
@@ -155,14 +149,10 @@ ${contextInfo}
 DOCUMENT TEXT (first 8000 chars):
 ${text.substring(0, 8000)}`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: userPrompt }],
-      system: systemPrompt,
-    });
-
-    const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+    const responseText = await generateCompletion(
+      [{ role: "user", content: userPrompt }],
+      { model: "claude-sonnet-4-20250514", maxTokens: 1024, system: systemPrompt, caller: "document_classifier" }
+    );
 
     let parsed: any;
     try {
@@ -197,11 +187,8 @@ ${text.substring(0, 8000)}`;
       relatedDocReference: parsed.relatedDocReference || null,
     };
 
-    completeAIOp(op.id, op.startTime, responseText, "success");
-
     return result;
   } catch (error: any) {
-    completeAIOp(op.id, op.startTime, "", "error", error.message);
     return {
       docType: "Other",
       docSubtype: null,

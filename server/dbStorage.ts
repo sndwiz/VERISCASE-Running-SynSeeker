@@ -1,7 +1,6 @@
 import { eq, desc, asc, and, or, sql, inArray, isNull } from "drizzle-orm";
 import { db } from "./db";
 import * as tables from "@shared/models/tables";
-import type { IStorage } from "./storage";
 import type {
   Board,
   Group,
@@ -101,7 +100,7 @@ function toISOString(date: Date | null): string | null {
   return date ? date.toISOString() : null;
 }
 
-export class DbStorage implements IStorage {
+export class DbStorage {
   private initialized = false;
 
   async ensureInitialized(): Promise<void> {

@@ -577,6 +577,38 @@ Return your analysis in this JSON format:
   };
 }
 
+export async function generateCompletion(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  options: {
+    model?: string;
+    maxTokens?: number;
+    system?: string;
+    caller?: string;
+  } = {}
+): Promise<string> {
+  const model = options.model || "claude-sonnet-4-20250514";
+  const maxTokens = options.maxTokens || 2048;
+  const caller = options.caller || "generateCompletion";
+  const { id, startTime } = startAIOp("anthropic", model, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+
+  try {
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: maxTokens,
+      ...(options.system ? { system: options.system } : {}),
+      messages,
+    });
+
+    const textBlock = response.content.find((block) => block.type === "text");
+    const result = textBlock?.type === "text" ? textBlock.text : "";
+    completeAIOp(id, startTime, result.slice(0, 500), "success");
+    return result;
+  } catch (err: any) {
+    completeAIOp(id, startTime, "", "error", err.message || "Completion failed");
+    throw err;
+  }
+}
+
 export function getModelInfo(modelId: string): AIModel | undefined {
   return AVAILABLE_MODELS.find((m) => m.id === modelId);
 }

@@ -4,13 +4,14 @@ import { insertCalendarEventSchema, updateCalendarEventSchema } from "@shared/sc
 import { z } from "zod";
 import { fullCalendarSync } from "../services/calendar-sync";
 import { getUserId } from "../utils/auth";
+import { maybePageinate } from "../utils/pagination";
 
 export function registerCalendarRoutes(app: Express): void {
   app.get("/api/calendar-events", async (req, res) => {
     try {
       const { matterId } = req.query;
       const events = await storage.getCalendarEvents(matterId as string | undefined);
-      res.json(events);
+      res.json(maybePageinate(events, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch calendar events" });
     }

@@ -1,11 +1,6 @@
 import type { Express } from "express";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateCompletion } from "../ai/providers";
 import { storage } from "../storage";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
 
 interface TemplateColumn {
   id: string;
@@ -978,24 +973,16 @@ Guidelines:
 - Use visually distinct hex colors for groups
 - Column widths should be between 100 and 250 based on content type`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        content: `Generate a board configuration for: ${prompt}`,
-      },
-    ],
-    system: systemPrompt,
-  });
+  const responseText = await generateCompletion(
+    [{ role: "user", content: `Generate a board configuration for: ${prompt}` }],
+    { model: "claude-sonnet-4-20250514", maxTokens: 4096, system: systemPrompt, caller: "vibe_code_board_gen" }
+  );
 
-  const textContent = response.content.find((block) => block.type === "text");
-  if (!textContent || textContent.type !== "text") {
+  if (!responseText) {
     throw new Error("No text response from AI");
   }
 
-  let jsonStr = textContent.text.trim();
+  let jsonStr = responseText.trim();
   const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     jsonStr = fenceMatch[1].trim();

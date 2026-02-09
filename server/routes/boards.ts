@@ -6,6 +6,7 @@ import { db } from "../db";
 import { workspaces, boards } from "@shared/models/tables";
 import { eq, and, inArray, asc } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
+import { maybePageinate } from "../utils/pagination";
 
 async function verifyWorkspaceOwnership(userId: string, workspaceId: string): Promise<boolean> {
   const [ws] = await db.select().from(workspaces)
@@ -49,7 +50,7 @@ export function registerBoardRoutes(app: Express): void {
         const wsIds = await getUserWorkspaceIds(userId);
         boardList = await storage.getBoardsByWorkspaceIds(wsIds);
       }
-      res.json(boardList);
+      res.json(maybePageinate(boardList, req.query));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch boards" });
     }
