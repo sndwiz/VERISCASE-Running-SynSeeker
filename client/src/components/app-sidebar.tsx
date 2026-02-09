@@ -62,6 +62,7 @@ import {
   ListTodo,
   UserCheck,
   BookOpen,
+  Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ const navigationItems = [
   { title: "Communications", url: "/communications", icon: MessageSquare },
   { title: "Master Chat", url: "/master-chat", icon: MessageSquare },
   { title: "Legal AI", url: "/legal-ai", icon: Wand2 },
+  { title: "Legal Research", url: "/legal-research", icon: Search },
   { title: "Approvals", url: "/approvals", icon: Gavel },
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Template Library", url: "/templates", icon: Library },

@@ -137,6 +137,9 @@ export async function registerRoutes(
   // Insights - member or above (evidence analysis)
   app.use("/api/insights", isAuthenticated, requireMemberOrAbove);
 
+  // Legal Research - member or above (AI-powered research)
+  app.use("/api/legal-research", isAuthenticated, requireMemberOrAbove);
+
   // Seed data - admin only
   app.use("/api/seed", isAuthenticated, requireAdmin);
 

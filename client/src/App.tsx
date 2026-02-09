@@ -63,6 +63,7 @@ import MyTasksPage from "@/pages/my-tasks";
 import ProductGuidePage from "@/pages/product-guide";
 import PdfProPage from "@/pages/pdf-pro";
 import EFilingDashboard from "@/pages/efiling-dashboard";
+import LegalResearchPage from "@/pages/legal-research";
 
 
 function Router() {
@@ -106,6 +107,7 @@ function Router() {
       <Route path="/product-guide" component={ProductGuidePage} />
       <Route path="/pdf-pro" component={PdfProPage} />
       <Route path="/efiling" component={EFilingDashboard} />
+      <Route path="/legal-research" component={LegalResearchPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

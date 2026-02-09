@@ -34,6 +34,7 @@ import { registerTeamMemberRoutes } from "./team-members";
 import { registerDataLinkageRoutes } from "./data-linkage";
 import pdfProRouter from "./pdf-pro";
 import efilingRouter from "./efiling";
+import { registerLegalResearchRoutes } from "./legal-research";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -75,4 +76,5 @@ export function registerAllRoutes(app: Express): void {
   app.use(aiOpsRouter);
   app.use('/api/pdf-pro', pdfProRouter);
   app.use('/api/efiling', efilingRouter);
+  registerLegalResearchRoutes(app);
 }
