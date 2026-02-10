@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ interface KillSwitchState {
 
 export function KillSwitch() {
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -35,7 +37,8 @@ export function KillSwitch() {
 
   const { data: state } = useQuery<KillSwitchState>({
     queryKey: ["/api/security/kill-switch"],
-    refetchInterval: 5000,
+    refetchInterval: isAuthenticated ? 5000 : false,
+    enabled: isAuthenticated,
   });
 
   const activateMutation = useMutation({
