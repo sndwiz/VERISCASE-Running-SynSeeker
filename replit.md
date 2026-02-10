@@ -12,10 +12,10 @@ VERICASE is a comprehensive legal practice management system designed to streaml
 VERICASE is built with a modern web stack, featuring React 18 with TypeScript for the frontend, and Node.js with Express for the backend. PostgreSQL with Drizzle ORM handles data persistence.
 
 **UI/UX Decisions:**
-The system adopts a Monday.com-style board architecture, offering highly customizable boards with over 15 column types and dynamic column management. It includes an "Approval Column" for legal verification workflows, a collapsible sidebar, and theme support (dark/light mode with teal accents). The interface is responsive and utilizes Shadcn/ui and Radix UI components, styled with Tailwind CSS, for a consistent and modern aesthetic.
+The system adopts a Monday.com-style board architecture, offering highly customizable boards with over 15 column types and dynamic column management. It includes an "Approval Column" for legal verification workflows, a collapsible sidebar with hierarchical Client→Matter→Boards tree navigation, and theme support (dark/light mode with teal accents). The interface is responsive and utilizes Shadcn/ui and Radix UI components, styled with Tailwind CSS, for a consistent and modern aesthetic. The board view features a single horizontal scroller with frozen left columns (checkbox + task title), a global sticky header, scroll navigation tools (nudge buttons + jump-to-column), per-group workflow status filters, and three density modes (Comfort/Compact/Ultra-compact). The sidebar includes board search, pin-to-top, and recent boards tracking.
 
 **Technical Implementations:**
-- **Board System:** Customizable boards with task groups, various column types, and automations for status-based group movement. Supports optional `clientId` and `matterId`.
+- **Board System:** Customizable boards with task groups, various column types, and automations for status-based group movement. Supports optional `clientId` and `matterId`. Board view uses single horizontal scroller with frozen left columns via CSS sticky positioning, density modes stored in localStorage.
 - **Vibe Code (AI App Builder):** An AI-powered board builder allowing natural language prompts or selection from 18 pre-built legal templates.
 - **AI Integration (VeriBot):** A multi-model AI assistant for legal document analysis, content generation, and summarization with matter-specific context.
 - **Clawbot Gateway Integration:** Connects to OpenClaw/Clawbot for autonomous computer control.
