@@ -2776,6 +2776,26 @@ export const ragResponseSchema = z.object({
 });
 export type RagResponse = z.infer<typeof ragResponseSchema>;
 
+// ── Email Intelligence Schemas ──
+
+export const analyzeEmailSchema = z.object({
+  subject: z.string().optional().default(""),
+  body: z.string().min(1, "Email body is required"),
+  sender: z.string().optional().default(""),
+  recipients: z.union([z.string(), z.array(z.string())]).optional().default([]),
+  cc: z.union([z.string(), z.array(z.string())]).optional().default([]),
+  direction: z.enum(["inbound", "outbound"]).optional().default("inbound"),
+  date: z.string().optional(),
+});
+
+export const linkEmailSchema = z.object({
+  matterId: z.string().min(1, "Matter ID required"),
+});
+
+export const acknowledgeAlertSchema = z.object({
+  acknowledgedBy: z.string().optional().default("Lauren"),
+});
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

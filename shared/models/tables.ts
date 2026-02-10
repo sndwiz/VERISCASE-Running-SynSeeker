@@ -1658,3 +1658,104 @@ export const videoPipelineJobs = pgTable("video_pipeline_jobs", {
 
 export type VideoPipelineJob = typeof videoPipelineJobs.$inferSelect;
 export type InsertVideoPipelineJob = typeof videoPipelineJobs.$inferInsert;
+
+// ============ EMAIL INTELLIGENCE ============
+
+export const analyzedEmails = pgTable("analyzed_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  subject: varchar("subject", { length: 500 }).notNull().default("(No Subject)"),
+  sender: varchar("sender", { length: 500 }).notNull(),
+  senderName: varchar("sender_name", { length: 255 }),
+  senderDomain: varchar("sender_domain", { length: 255 }),
+  recipients: jsonb("recipients").default([]),
+  cc: jsonb("cc").default([]),
+  direction: varchar("direction", { length: 20 }).default("inbound"),
+  emailDate: timestamp("email_date"),
+  bodyText: text("body_text").default(""),
+  bodyPreview: varchar("body_preview", { length: 500 }).default(""),
+  attachments: jsonb("attachments").default([]),
+  threadId: varchar("thread_id", { length: 255 }),
+  urgency: varchar("urgency", { length: 20 }).default("normal"),
+  urgencyScore: integer("urgency_score").default(0),
+  sentiment: varchar("sentiment", { length: 30 }).default("formal_neutral"),
+  sentimentScores: jsonb("sentiment_scores").default({}),
+  deceptionFlags: jsonb("deception_flags").default([]),
+  deceptionScore: integer("deception_score").default(0),
+  datesMentioned: jsonb("dates_mentioned").default([]),
+  deadlines: jsonb("deadlines").default([]),
+  caseNumbers: jsonb("case_numbers").default([]),
+  moneyAmounts: jsonb("money_amounts").default([]),
+  isLawyerComm: boolean("is_lawyer_comm").default(false),
+  actionItems: jsonb("action_items").default([]),
+  keyPhrases: jsonb("key_phrases").default([]),
+  psychologicalProfile: jsonb("psychological_profile").default({}),
+  riskLevel: varchar("risk_level", { length: 20 }).default("low"),
+  matterId: varchar("matter_id"),
+  clientId: varchar("client_id"),
+  autoLinked: boolean("auto_linked").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_analyzed_emails_matter_id").on(table.matterId),
+  index("IDX_analyzed_emails_client_id").on(table.clientId),
+  index("IDX_analyzed_emails_sender").on(table.sender),
+  index("IDX_analyzed_emails_urgency").on(table.urgency),
+  index("IDX_analyzed_emails_sentiment").on(table.sentiment),
+  index("IDX_analyzed_emails_risk_level").on(table.riskLevel),
+  index("IDX_analyzed_emails_email_date").on(table.emailDate),
+]);
+
+export type AnalyzedEmail = typeof analyzedEmails.$inferSelect;
+export type InsertAnalyzedEmail = typeof analyzedEmails.$inferInsert;
+
+export const adminAlerts = pgTable("admin_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailId: varchar("email_id").notNull(),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  priority: varchar("priority", { length: 20 }).notNull(),
+  message: text("message").notNull(),
+  triggers: jsonb("triggers").default([]),
+  senderName: varchar("sender_name", { length: 255 }),
+  senderEmail: varchar("sender_email", { length: 255 }),
+  emailSubject: varchar("email_subject", { length: 500 }),
+  matterId: varchar("matter_id"),
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedBy: varchar("acknowledged_by", { length: 255 }),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_admin_alerts_email_id").on(table.emailId),
+  index("IDX_admin_alerts_acknowledged").on(table.acknowledged),
+  index("IDX_admin_alerts_priority").on(table.priority),
+  index("IDX_admin_alerts_matter_id").on(table.matterId),
+]);
+
+export type AdminAlert = typeof adminAlerts.$inferSelect;
+export type InsertAdminAlert = typeof adminAlerts.$inferInsert;
+
+export const emailContacts = pgTable("email_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  names: jsonb("names").default([]),
+  domains: jsonb("domains").default([]),
+  isLawyer: boolean("is_lawyer").default(false),
+  totalEmails: integer("total_emails").default(0),
+  matterIds: jsonb("matter_ids").default([]),
+  clientId: varchar("client_id"),
+  dominantSentiment: varchar("dominant_sentiment", { length: 30 }),
+  avgDeceptionScore: real("avg_deception_score").default(0),
+  alertCount: integer("alert_count").default(0),
+  riskAssessment: varchar("risk_assessment", { length: 20 }).default("low"),
+  behaviorTimeline: jsonb("behavior_timeline").default([]),
+  firstSeen: timestamp("first_seen"),
+  lastSeen: timestamp("last_seen"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_email_contacts_email").on(table.email),
+  index("IDX_email_contacts_client_id").on(table.clientId),
+  index("IDX_email_contacts_is_lawyer").on(table.isLawyer),
+]);
+
+export type EmailContact = typeof emailContacts.$inferSelect;
+export type InsertEmailContact = typeof emailContacts.$inferInsert;

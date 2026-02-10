@@ -39,6 +39,7 @@ import { registerModelIntelligenceRoutes } from "./model-intelligence";
 import legalVideoRouter from "./legal-video";
 import pdfForensicsRouter from "./pdf-forensics";
 import caseInsightsRouter from "./case-insights";
+import { registerEmailIntelRoutes } from "./email-intel";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -91,4 +92,7 @@ export function registerAllRoutes(app: Express): void {
 
   // Case Insights & Analysis Modules API (Plug-and-Play Spec)
   app.use(caseInsightsRouter);
+
+  // Email Intelligence Module
+  registerEmailIntelRoutes(app);
 }
