@@ -325,7 +325,7 @@ export function registerMatterRoutes(app: Express): void {
             eventType: "status_changed",
             title: `Matter status changed to ${matter.status}`,
             description: `Status changed from "${originalMatter.status}" to "${matter.status}"`,
-            createdBy: (req as any).dbUser?.id || "system",
+            createdBy: req.dbUser?.id || "system",
             eventDate: new Date().toISOString(),
             metadata: {
               previousStatus: originalMatter.status,
@@ -364,7 +364,7 @@ export function registerMatterRoutes(app: Express): void {
 
       const callData = callSchema.parse(req.body);
       const client = await storage.getClient(matter.clientId);
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
 
       const hours = callData.duration / 60;
       const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User";

@@ -67,7 +67,7 @@ const upload = multer({
 });
 
 async function verifyMatterAccess(req: Request, _res: Response, next: NextFunction) {
-  if (!(req as any).user) {
+  if (!req.user) {
     return next(new AppError(401, "Authentication required"));
   }
   const matterId = req.params.matterId;
@@ -169,7 +169,7 @@ router.post(
       throw new AppError(400, `Uploading these files would exceed the maximum of ${INSIGHTS_CONFIG.upload.maxFilesPerMatter} files per matter`);
     }
 
-    const userId = (req as any).user?.id || (req as any).user?.claims?.sub;
+    const userId = req.user?.id || req.user?.claims?.sub;
     const { docType, custodian, confidentiality } = req.body || {};
 
     const assets = [];
@@ -261,7 +261,7 @@ router.post(
       }
     }
 
-    const userId = (req as any).user?.id || (req as any).user?.claims?.sub;
+    const userId = req.user?.id || req.user?.claims?.sub;
 
     const run = await insightsStorage.createInsightRun({
       matterId,

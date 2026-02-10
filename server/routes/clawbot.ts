@@ -27,7 +27,7 @@ function isValidGatewayUrl(url: string): boolean {
 }
 
 async function isAdmin(req: Request): Promise<boolean> {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user?.id) return false;
   
   try {
@@ -111,7 +111,7 @@ router.post('/config', isAuthenticated, async (req: Request, res: Response) => {
  */
 router.post('/sessions', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id || 'anonymous';
+    const userId = req.user?.id || 'anonymous';
     const session = await clawbotService.createSession(userId);
     
     if (!session) {
@@ -205,7 +205,7 @@ router.get('/sessions/:sessionId', isAuthenticated, async (req: Request, res: Re
  */
 router.get('/sessions', isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id || 'anonymous';
+    const userId = req.user?.id || 'anonymous';
     const sessions = clawbotService.getUserSessions(userId);
     
     res.json({

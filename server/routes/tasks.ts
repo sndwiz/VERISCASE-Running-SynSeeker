@@ -19,7 +19,7 @@ const taskUpload = multer({
 });
 
 function getUserId(req: any): string | null {
-  return (req as any).user?.id || (req.session as any)?.passport?.user?.id || null;
+  return req.user?.id || (req.session as any)?.passport?.user?.id || null;
 }
 
 const mirrorMoveSchema = z.object({
@@ -197,7 +197,7 @@ export function registerTaskRoutes(app: Express): void {
 
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
-      const userRole = (req as any).user?.claims?.metadata?.role;
+      const userRole = req.user?.claims?.metadata?.role;
       if (userRole !== "admin") {
         return res.status(403).json({ error: "Only admins can delete tasks" });
       }
@@ -214,13 +214,14 @@ export function registerTaskRoutes(app: Express): void {
 
   app.post("/api/tasks/:taskId/files", taskUpload.single("file"), async (req, res) => {
     try {
-      const task = await storage.getTask(req.params.taskId);
+      const taskId = req.params.taskId as string;
+      const task = await storage.getTask(taskId);
       if (!task) return res.status(404).json({ error: "Task not found" });
 
       const file = req.file;
       if (!file) return res.status(400).json({ error: "No file uploaded" });
 
-      const destDir = path.join("uploads", "task-files", task.boardId, req.params.taskId);
+      const destDir = path.join("uploads", "task-files", task.boardId, taskId);
       if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
       const destPath = path.join(destDir, file.originalname);
       fs.renameSync(file.path, destPath);
@@ -239,7 +240,7 @@ export function registerTaskRoutes(app: Express): void {
       };
 
       const existingFiles = (task.files as any[]) || [];
-      await storage.updateTask(req.params.taskId, {
+      await storage.updateTask(taskId, {
         files: [...existingFiles, fileRecord],
       });
 

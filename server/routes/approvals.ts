@@ -28,7 +28,7 @@ export function registerApprovalRoutes(app: Express): void {
 
   app.post("/api/approvals", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User";
       const body = {
         ...req.body,
@@ -73,7 +73,7 @@ export function registerApprovalRoutes(app: Express): void {
 
   app.post("/api/approvals/:id/comments", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         approvalId: req.params.id,

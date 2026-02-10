@@ -33,7 +33,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.post("/api/expenses", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         createdBy: dbUser?.id || req.body.createdBy || "unknown",
@@ -95,7 +95,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.post("/api/invoices", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         createdBy: dbUser?.id || req.body.createdBy || "unknown",
@@ -154,7 +154,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.post("/api/payments", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         createdBy: dbUser?.id || req.body.createdBy || "unknown",
@@ -200,7 +200,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.post("/api/trust-transactions", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         createdBy: dbUser?.id || req.body.createdBy || "unknown",

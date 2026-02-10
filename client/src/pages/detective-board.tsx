@@ -80,6 +80,34 @@ interface Matter {
   caseNumber: string;
 }
 
+const BADGE_STYLE: React.CSSProperties = { padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600 };
+
+function ConfidenceBadge({ score }: { score: number }) {
+  const bg = score >= 0.7 ? "#dcfce7" : score >= 0.4 ? "#fef9c3" : "#fee2e2";
+  const fg = score >= 0.7 ? "#166534" : score >= 0.4 ? "#854d0e" : "#991b1b";
+  return <span style={{ ...BADGE_STYLE, background: bg, color: fg }}>{Math.round(score * 100)}%</span>;
+}
+
+function ReliabilityBadge({ level }: { level: string }) {
+  const bg = level === "strong" ? "#dcfce7" : level === "moderate" ? "#dbeafe" : "#fee2e2";
+  const fg = level === "strong" ? "#166534" : level === "moderate" ? "#1e40af" : "#991b1b";
+  return <span style={{ ...BADGE_STYLE, background: bg, color: fg, textTransform: "uppercase" }}>{level}</span>;
+}
+
+function InferredBadge() {
+  return <span style={{ ...BADGE_STYLE, background: "#fef3c7", color: "#92400e" }}>INFERRED</span>;
+}
+
+function DoctrineBadges({ node }: { node: DetectiveNode }) {
+  return (
+    <>
+      {node.confidenceScore !== undefined && <ConfidenceBadge score={node.confidenceScore} />}
+      {node.reliabilityLevel && <ReliabilityBadge level={node.reliabilityLevel} />}
+      {node.isInferred && <InferredBadge />}
+    </>
+  );
+}
+
 const NODE_TYPES = {
   evidence: { icon: FileText, label: "Evidence", defaultColor: "#3b82f6" },
   person: { icon: User, label: "Person", defaultColor: "#8b5cf6" },
@@ -377,19 +405,7 @@ function EvidenceCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode
         )}
         <div style={{ fontSize: 10, color: "#999", marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span>Added {new Date(node.createdAt).toLocaleDateString()}</span>
-          {node.confidenceScore !== undefined && (
-            <span style={{ background: node.confidenceScore >= 0.7 ? "#dcfce7" : node.confidenceScore >= 0.4 ? "#fef9c3" : "#fee2e2", color: node.confidenceScore >= 0.7 ? "#166534" : node.confidenceScore >= 0.4 ? "#854d0e" : "#991b1b", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600 }}>
-              {Math.round(node.confidenceScore * 100)}%
-            </span>
-          )}
-          {node.reliabilityLevel && (
-            <span style={{ background: node.reliabilityLevel === "strong" ? "#dcfce7" : node.reliabilityLevel === "moderate" ? "#dbeafe" : "#fee2e2", color: node.reliabilityLevel === "strong" ? "#166534" : node.reliabilityLevel === "moderate" ? "#1e40af" : "#991b1b", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600, textTransform: "uppercase" }}>
-              {node.reliabilityLevel}
-            </span>
-          )}
-          {node.isInferred && (
-            <span style={{ background: "#fef3c7", color: "#92400e", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600 }}>INFERRED</span>
-          )}
+          <DoctrineBadges node={node} />
         </div>
       </div>
     </div>

@@ -13,6 +13,14 @@ import {
 } from "@shared/schema";
 import { generateCompletion } from "../ai/providers";
 import { formSubmissionLimiter, verifyTurnstileToken } from "../security/middleware";
+
+function getUserDisplayName(req: Request): string {
+  const claims = req.user?.claims as Record<string, any> | undefined;
+  if (claims?.first_name) {
+    return `${claims.first_name} ${claims.last_name || ""}`.trim();
+  }
+  return claims?.email || "System";
+}
 import { getClientIp, logSecurityEvent } from "../security/audit";
 import { logger } from "../utils/logger";
 
@@ -155,7 +163,7 @@ router.delete("/documents/:id", isAuthenticated, async (req: Request, res: Respo
 router.post("/generate", isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { templateId, fieldValues, matterId, customInstructions } = req.body;
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!templateId) {
       return res.status(400).json({ error: "Template ID is required" });
@@ -254,7 +262,7 @@ Output only the completed document content, ready for review.`;
       aiGenerationResponse: generatedContent,
       formatCompliance,
       createdBy: user?.id || "system",
-      createdByName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "System",
+      createdByName: getUserDisplayName(req),
     });
 
     await storage.updateGeneratedDocument(document.id, { status: "ai-generated" });
@@ -302,7 +310,7 @@ router.post("/approvals", isAuthenticated, async (req: Request, res: Response) =
       return res.status(400).json({ error: parsed.error.errors });
     }
 
-    const user = (req as any).user;
+    const user = req.user;
     const approval = await storage.createDocumentApproval(parsed.data);
 
     await storage.addDocumentApprovalAudit({
@@ -310,7 +318,7 @@ router.post("/approvals", isAuthenticated, async (req: Request, res: Response) =
       approvalId: approval.id,
       action: "created",
       performedBy: user?.id || "system",
-      performedByName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "System",
+      performedByName: getUserDisplayName(req),
       newStatus: "pending-review",
     });
 
@@ -330,7 +338,7 @@ router.patch("/approvals/:id", isAuthenticated, async (req: Request, res: Respon
       return res.status(400).json({ error: parsed.error.errors });
     }
 
-    const user = (req as any).user;
+    const user = req.user;
     const existingApproval = await storage.getDocumentApproval(req.params.id as string);
     if (!existingApproval) {
       return res.status(404).json({ error: "Approval not found" });
@@ -353,7 +361,7 @@ router.patch("/approvals/:id", isAuthenticated, async (req: Request, res: Respon
         previousStatus: previousStatus as any,
         newStatus: parsed.data.status as any,
         performedBy: user?.id || "system",
-        performedByName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "System",
+        performedByName: getUserDisplayName(req),
         notes: parsed.data.legalReviewNotes || parsed.data.revisionNotes,
       });
 
@@ -371,7 +379,7 @@ router.patch("/approvals/:id", isAuthenticated, async (req: Request, res: Respon
         approvalId: req.params.id as string,
         action: "initialed",
         performedBy: user?.id || "system",
-        performedByName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "System",
+        performedByName: getUserDisplayName(req),
         notes: `Initialed: ${parsed.data.lawyerInitials}`,
       });
     }

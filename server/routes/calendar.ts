@@ -47,7 +47,7 @@ export function registerCalendarRoutes(app: Express): void {
 
   app.post("/api/calendar-events", async (req, res) => {
     try {
-      const dbUser = (req as any).dbUser;
+      const dbUser = req.dbUser;
       const body = {
         ...req.body,
         createdBy: req.body.createdBy || (dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "Unknown User"),
