@@ -223,8 +223,8 @@ export function classifyByFileName(fileName: string): Partial<ClassificationResu
   if (/notice.?of.?hearing/i.test(lower)) return { docType: "Notice", docSubtype: "Notice of Hearing", docCategory: "correspondence" };
   if (/notice.?of.?depo/i.test(lower)) return { docType: "Notice", docSubtype: "Notice of Deposition", docCategory: "correspondence" };
   if (/notice/i.test(lower)) return { docType: "Notice", docCategory: "correspondence" };
-  if (/order/i.test(lower)) return { docType: "Order", docCategory: "order-ruling" };
   if (/scheduling.?order/i.test(lower)) return { docType: "Scheduling Order", docCategory: "order-ruling" };
+  if (/order/i.test(lower)) return { docType: "Order", docCategory: "order-ruling" };
   if (/subpoena/i.test(lower)) return { docType: "Subpoena", docCategory: "discovery" };
   if (/stipulat|settlem/i.test(lower)) return { docType: "Settlement/Stipulation", docCategory: "pleading" };
   if (/disclosure/i.test(lower)) return { docType: "Disclosure/Initial Disclosures", docCategory: "discovery" };

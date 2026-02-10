@@ -21,25 +21,6 @@ export interface ComputedDeadline {
   ruleId: string;
 }
 
-function addBusinessDays(dateStr: string, days: number, adjustWeekends: boolean): string {
-  const date = new Date(dateStr);
-  if (!adjustWeekends) {
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split("T")[0];
-  }
-
-  let remaining = Math.abs(days);
-  const direction = days >= 0 ? 1 : -1;
-  while (remaining > 0) {
-    date.setDate(date.getDate() + direction);
-    const day = date.getDay();
-    if (day !== 0 && day !== 6) {
-      remaining--;
-    }
-  }
-  return date.toISOString().split("T")[0];
-}
-
 function addCalendarDays(dateStr: string, days: number): string {
   const date = new Date(dateStr);
   date.setDate(date.getDate() + days);
@@ -121,7 +102,6 @@ export async function computeDeadlinesForFiling(
     const anchorDate = anchorFieldMap[rule.anchorDateField] || filing.servedDate || filing.filedDate;
     if (!anchorDate) continue;
 
-    const adjustWeekends = profile?.weekendHolidayAdjust ?? true;
     const dueDate = addCalendarDays(anchorDate, rule.offsetDays);
 
     results.push({

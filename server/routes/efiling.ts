@@ -7,11 +7,10 @@ import {
   deadlineRules,
   jurisdictionProfiles,
   matters,
-  fileItems,
   draftDocuments,
   boards,
 } from "@shared/models/tables";
-import { eq, and, desc, asc, or } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
 import { z } from "zod";
 import {
@@ -27,7 +26,6 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { classifyDocument, classifyByFileName } from "../services/document-classifier";
 import {
-  computeDeadlinesForFiling,
   createDeadlinesFromFiling,
   getJurisdictionForMatter,
   seedDefaultDeadlineRules,
@@ -39,7 +37,7 @@ import {
   updateActionStatus,
   getCasePhase,
 } from "../services/sequencing-engine";
-import { extractDatesFromText, createFallbackDate } from "../services/date-extractor";
+import { extractDatesFromText } from "../services/date-extractor";
 import { generateDraftForAction } from "../services/document-builder";
 import {
   syncDeadlineToCalendar,
@@ -68,7 +66,7 @@ router.get("/jurisdictions", async (_req: Request, res: Response) => {
 router.post("/jurisdictions", async (req: Request, res: Response) => {
   try {
     const data = insertJurisdictionProfileSchema.parse(req.body);
-    const [created] = await db.insert(jurisdictionProfiles).values(data).returning();
+    const [created] = await db.insert(jurisdictionProfiles).values(data as any).returning();
     res.status(201).json(created);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
@@ -76,12 +74,18 @@ router.post("/jurisdictions", async (req: Request, res: Response) => {
   }
 });
 
-router.patch("/jurisdictions/:id", async (req: Request, res: Response) => {
+router.patch("/jurisdictions/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
+    const allowed = ["name", "state", "courtType", "ruleSet", "discoveryResponseDays", "motionOppositionDays", "motionReplyDays", "initialDisclosureDays", "answerDays", "mailServiceExtraDays", "electronicServiceExtraDays", "weekendHolidayAdjust", "holidays", "customRules", "isDefault"] as const;
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
     const [updated] = await db.update(jurisdictionProfiles)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set(updates)
       .where(eq(jurisdictionProfiles.id, req.params.id))
       .returning();
+    if (!updated) return res.status(404).json({ error: "Jurisdiction not found" });
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -102,7 +106,7 @@ router.get("/rules", async (_req: Request, res: Response) => {
 router.post("/rules", async (req: Request, res: Response) => {
   try {
     const data = insertDeadlineRuleSchema.parse(req.body);
-    const [created] = await db.insert(deadlineRules).values(data).returning();
+    const [created] = await db.insert(deadlineRules).values(data as any).returning();
     res.status(201).json(created);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
@@ -110,19 +114,26 @@ router.post("/rules", async (req: Request, res: Response) => {
   }
 });
 
-router.patch("/rules/:id", async (req: Request, res: Response) => {
+router.patch("/rules/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
+    const allowed = ["name", "triggerDocType", "anchorDateField", "offsetDays", "resultAction", "resultDocType", "criticality", "ruleSource", "isActive", "jurisdictionId"] as const;
+    const updates: Record<string, any> = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No valid fields to update" });
     const [updated] = await db.update(deadlineRules)
-      .set(req.body)
+      .set(updates)
       .where(eq(deadlineRules.id, req.params.id))
       .returning();
+    if (!updated) return res.status(404).json({ error: "Rule not found" });
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.delete("/rules/:id", async (req: Request, res: Response) => {
+router.delete("/rules/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     await db.delete(deadlineRules).where(eq(deadlineRules.id, req.params.id));
     res.json({ success: true });
@@ -146,7 +157,7 @@ router.post("/seed-rules", async (_req: Request, res: Response) => {
 
 // ============ CASE FILINGS ============
 
-router.get("/matters/:matterId/filings", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/filings", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const filings = await db.select().from(caseFilings)
       .where(eq(caseFilings.matterId, req.params.matterId))
@@ -157,7 +168,7 @@ router.get("/matters/:matterId/filings", async (req: Request, res: Response) => 
   }
 });
 
-router.get("/filings/:id", async (req: Request, res: Response) => {
+router.get("/filings/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const [filing] = await db.select().from(caseFilings)
       .where(eq(caseFilings.id, req.params.id));
@@ -169,7 +180,7 @@ router.get("/filings/:id", async (req: Request, res: Response) => {
 });
 
 // Document ingestion - upload + classify + compute deadlines + generate actions
-router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Request, res: Response) => {
+router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const userId = getUserId(req) || "system";
     const matterId = req.params.matterId;
@@ -337,13 +348,11 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       console.error("[efiling] Calendar sync error (non-fatal):", syncErr);
     }
 
-    // 13. Trigger document automations
     try {
-      const { triggerAutomation } = await import("../automation-engine");
-
       if (targetBoard) {
+        const { triggerAutomation } = await import("../automation-engine");
         await triggerAutomation({
-          type: "document_uploaded",
+          type: "file_classified",
           boardId: targetBoard.id,
           taskId: undefined,
           field: "docType",
@@ -356,21 +365,7 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
             docCategory: classification.docCategory,
             confidence: classification.confidence,
             fileName: file.originalname,
-            sha256: sha256,
-          },
-        });
-
-        await triggerAutomation({
-          type: "file_classified",
-          boardId: targetBoard.id,
-          taskId: undefined,
-          field: "docCategory",
-          newValue: classification.docCategory,
-          metadata: {
-            filingId: filing.id,
-            matterId,
-            docType: classification.docType,
-            classification: classification,
+            sha256,
           },
         });
       }
@@ -409,7 +404,7 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
   }
 });
 
-router.post("/matters/:matterId/filings", async (req: Request, res: Response) => {
+router.post("/matters/:matterId/filings", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const userId = getUserId(req) || "system";
     const data = insertCaseFilingSchema.omit({ matterId: true, createdBy: true, classifiedBy: true }).parse(req.body);
@@ -418,7 +413,7 @@ router.post("/matters/:matterId/filings", async (req: Request, res: Response) =>
       matterId: req.params.matterId,
       createdBy: userId,
       classifiedBy: "manual",
-    }).returning();
+    } as any).returning();
 
     const jurisdiction = await getJurisdictionForMatter(req.params.matterId);
     const deadlineIds = await createDeadlinesFromFiling(filing, jurisdiction?.id);
@@ -431,7 +426,7 @@ router.post("/matters/:matterId/filings", async (req: Request, res: Response) =>
   }
 });
 
-router.post("/filings/:id/reclassify", async (req: Request, res: Response) => {
+router.post("/filings/:id/reclassify", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const data = reclassifyFilingSchema.parse(req.body);
     const [filing] = await db.select().from(caseFilings)
@@ -459,7 +454,7 @@ router.post("/filings/:id/reclassify", async (req: Request, res: Response) => {
   }
 });
 
-router.delete("/filings/:id", async (req: Request, res: Response) => {
+router.delete("/filings/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     await db.delete(caseFilings).where(eq(caseFilings.id, req.params.id));
     res.json({ success: true });
@@ -470,7 +465,7 @@ router.delete("/filings/:id", async (req: Request, res: Response) => {
 
 // ============ CASE DEADLINES ============
 
-router.get("/matters/:matterId/deadlines", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/deadlines", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const deadlines = await db.select().from(caseDeadlines)
       .where(eq(caseDeadlines.matterId, req.params.matterId))
@@ -481,19 +476,25 @@ router.get("/matters/:matterId/deadlines", async (req: Request, res: Response) =
   }
 });
 
-router.patch("/deadlines/:id", async (req: Request, res: Response) => {
+router.patch("/deadlines/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
+    const allowed = ["title", "dueDate", "dueTime", "anchorEvent", "anchorDate", "ruleSource", "criticality", "status", "requiredAction", "resultDocType", "assignedTo", "notes"] as const;
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
     const [updated] = await db.update(caseDeadlines)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set(updates)
       .where(eq(caseDeadlines.id, req.params.id))
       .returning();
+    if (!updated) return res.status(404).json({ error: "Deadline not found" });
     res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.delete("/deadlines/:id", async (req: Request, res: Response) => {
+router.delete("/deadlines/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     await db.delete(caseDeadlines).where(eq(caseDeadlines.id, req.params.id));
     res.json({ success: true });
@@ -504,7 +505,7 @@ router.delete("/deadlines/:id", async (req: Request, res: Response) => {
 
 // ============ CASE ACTIONS ============
 
-router.get("/matters/:matterId/actions", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/actions", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const actions = await db.select().from(caseActions)
       .where(eq(caseActions.matterId, req.params.matterId))
@@ -515,7 +516,7 @@ router.get("/matters/:matterId/actions", async (req: Request, res: Response) => 
   }
 });
 
-router.get("/matters/:matterId/next-actions", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/next-actions", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const actions = await generateNextActions(req.params.matterId);
     const allFilings = await db.select().from(caseFilings)
@@ -527,22 +528,27 @@ router.get("/matters/:matterId/next-actions", async (req: Request, res: Response
   }
 });
 
-router.patch("/actions/:id", async (req: Request, res: Response) => {
+router.patch("/actions/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     if (req.body.status) {
       const parsed = updateActionStatusSchema.parse({ status: req.body.status });
       const userId = getUserId(req) || "system";
       await updateActionStatus(req.params.id, parsed.status, userId);
     }
-    const updates = { ...req.body };
-    delete updates.status;
+    const allowed = ["title", "description", "actionType", "requiredDocType", "priority", "dueDate", "assignedTo", "generatedDocPath"] as const;
+    const updates: Record<string, any> = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
     if (Object.keys(updates).length > 0) {
+      updates.updatedAt = new Date();
       await db.update(caseActions)
-        .set({ ...updates, updatedAt: new Date() })
+        .set(updates)
         .where(eq(caseActions.id, req.params.id));
     }
     const [action] = await db.select().from(caseActions)
       .where(eq(caseActions.id, req.params.id));
+    if (!action) return res.status(404).json({ error: "Action not found" });
     res.json(action);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
@@ -550,7 +556,7 @@ router.patch("/actions/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.delete("/actions/:id", async (req: Request, res: Response) => {
+router.delete("/actions/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     await db.delete(caseActions).where(eq(caseActions.id, req.params.id));
     res.json({ success: true });
@@ -561,7 +567,7 @@ router.delete("/actions/:id", async (req: Request, res: Response) => {
 
 // ============ DEADLINE OVERRIDES ============
 
-router.patch("/deadlines/:id/override", async (req: Request, res: Response) => {
+router.patch("/deadlines/:id/override", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const userId = getUserId(req) || "system";
     const { dueDate, anchorDate, status, notes } = req.body;
@@ -600,7 +606,7 @@ router.patch("/deadlines/:id/override", async (req: Request, res: Response) => {
 
 // ============ DRAFT DOCUMENTS ============
 
-router.get("/matters/:matterId/drafts", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/drafts", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const drafts = await db.select().from(draftDocuments)
       .where(eq(draftDocuments.matterId, req.params.matterId))
@@ -611,7 +617,7 @@ router.get("/matters/:matterId/drafts", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/drafts/:id", async (req: Request, res: Response) => {
+router.get("/drafts/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const [draft] = await db.select().from(draftDocuments)
       .where(eq(draftDocuments.id, req.params.id));
@@ -622,7 +628,7 @@ router.get("/drafts/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.patch("/drafts/:id", async (req: Request, res: Response) => {
+router.patch("/drafts/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const { content, title, status } = req.body;
     const updates: Record<string, any> = { updatedAt: new Date() };
@@ -640,7 +646,7 @@ router.patch("/drafts/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.delete("/drafts/:id", async (req: Request, res: Response) => {
+router.delete("/drafts/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     await db.delete(draftDocuments).where(eq(draftDocuments.id, req.params.id));
     res.json({ success: true });
@@ -651,7 +657,7 @@ router.delete("/drafts/:id", async (req: Request, res: Response) => {
 
 // ============ MATTER DASHBOARD SUMMARY ============
 
-router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) => {
+router.get("/matters/:matterId/dashboard", async (req: Request<{ matterId: string }>, res: Response) => {
   try {
     const matterId = req.params.matterId;
 
