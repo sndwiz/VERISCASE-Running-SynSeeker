@@ -227,6 +227,12 @@ class AutomationEngine {
       case "synseekr_timeline_events":
         return this.actionSynSeekrTimelineEvents(event, actionConfig);
       
+      case "route_to_detective":
+        return this.actionRouteToDetective(event, actionConfig);
+      
+      case "assign_reviewer":
+        return this.actionAssignReviewer(event, actionConfig);
+      
       default:
         return { message: `Action type "${rule.actionType}" executed (stub)` };
     }
@@ -319,15 +325,106 @@ class AutomationEngine {
   }
 
   private async actionAISummarize(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    return { message: "AI summary generated (stub - integrate with AI provider)" };
+    if (!event.taskId) {
+      return { message: "AI summarization skipped — no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI summarization skipped — task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Task Title: "${task.title}"\nTask Description: "${task.description || 'No description provided'}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 300,
+          system: "You are a legal task summarizer. Given a task title and description, produce a concise 1-3 sentence summary that captures the key action items, deadlines, and parties involved. Return ONLY the summary text, no JSON wrapping.",
+          caller: "automation-ai-summarize",
+        }
+      );
+      const summary = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      await storage.updateTask(event.taskId, {
+        description: `${task.description || ''}\n\n--- AI Summary ---\n${summary}`,
+      });
+      return { message: `AI summary generated: "${summary.substring(0, 120)}..."` };
+    } catch (e: any) {
+      return { message: `AI summarization failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionAIExtract(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    return { message: "AI data extraction completed (stub - integrate with AI provider)" };
+    if (!event.taskId) {
+      return { message: "AI extraction skipped — no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI extraction skipped — task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Task Title: "${task.title}"\nTask Description: "${task.description || 'No description provided'}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 400,
+          system: "You are a legal entity extractor. Given a task title and description, extract key entities and return a JSON object with: { dates: string[], names: string[], amounts: string[], locations: string[], caseNumbers: string[] }. Only include fields that have extracted values. Return ONLY the JSON.",
+          caller: "automation-ai-extract",
+        }
+      );
+      const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      const extractedTags: string[] = [];
+      if (parsed.dates) extractedTags.push(...parsed.dates.map((d: string) => `date:${d}`));
+      if (parsed.names) extractedTags.push(...parsed.names.map((n: string) => `name:${n}`));
+      if (parsed.amounts) extractedTags.push(...parsed.amounts.map((a: string) => `amount:${a}`));
+      if (parsed.locations) extractedTags.push(...parsed.locations.map((l: string) => `location:${l}`));
+      if (parsed.caseNumbers) extractedTags.push(...parsed.caseNumbers.map((c: string) => `case:${c}`));
+      await storage.updateTask(event.taskId, {
+        tags: [...(task.tags || []), ...extractedTags],
+      });
+      return { message: `AI extracted ${extractedTags.length} entities: [${extractedTags.slice(0, 5).join(", ")}${extractedTags.length > 5 ? '...' : ''}]` };
+    } catch (e: any) {
+      return { message: `AI extraction failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionAISentiment(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    return { message: "AI sentiment analysis completed (stub - integrate with AI provider)" };
+    if (!event.taskId) {
+      return { message: "AI sentiment analysis skipped — no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI sentiment analysis skipped — task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Task Title: "${task.title}"\nTask Description: "${task.description || 'No description provided'}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 200,
+          system: "You are a sentiment analyzer for legal tasks. Analyze the sentiment and urgency of the given task content. Return a JSON object with: { sentiment: 'positive'|'neutral'|'negative'|'urgent', confidence: number (0-1), summary: string }. Return ONLY the JSON.",
+          caller: "automation-ai-sentiment",
+        }
+      );
+      const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      const sentimentTag = `sentiment:${parsed.sentiment}`;
+      const existingTags = (task.tags || []).filter((t: string) => !t.startsWith("sentiment:"));
+      await storage.updateTask(event.taskId, {
+        tags: [...existingTags, sentimentTag],
+      });
+      return { message: `AI sentiment: ${parsed.sentiment} (confidence: ${parsed.confidence}) — ${parsed.summary}` };
+    } catch (e: any) {
+      return { message: `AI sentiment analysis failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionAITranslate(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
@@ -336,12 +433,66 @@ class AutomationEngine {
   }
 
   private async actionAIWrite(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    return { message: "AI content generated (stub - integrate with AI provider)" };
+    if (!event.taskId) {
+      return { message: "AI content generation skipped — no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI content generation skipped — task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const contentType = config.contentType || "legal memo";
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Task Title: "${task.title}"\nTask Description: "${task.description || 'No description provided'}"\nRequested Content Type: ${contentType}` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 1500,
+          system: `You are a legal content writer. Based on the task context provided, generate professional ${contentType} content. Write clear, formal legal language appropriate for the task. Return the generated content directly as plain text.`,
+          caller: "automation-ai-write",
+        }
+      );
+      const content = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      await storage.updateTask(event.taskId, {
+        description: `${task.description || ''}\n\n--- AI Generated ${contentType} ---\n${content}`,
+      });
+      return { message: `AI generated ${contentType} content (${content.length} chars) for task "${task.title}"` };
+    } catch (e: any) {
+      return { message: `AI content generation failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionAIFillColumn(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
     const column = config.column || "unknown";
-    return { message: `AI filled column "${column}" (stub - integrate with AI provider)` };
+    if (!event.taskId) {
+      return { message: `AI fill column "${column}" skipped — no task provided` };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: `AI fill column "${column}" skipped — task not found` };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Task Title: "${task.title}"\nTask Description: "${task.description || 'No description provided'}"\nCurrent Status: "${task.status || 'unknown'}"\nCurrent Priority: "${task.priority || 'unknown'}"\nColumn to fill: "${column}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 200,
+          system: `You are a legal task assistant. Based on the task context, suggest the best value for the column "${column}". For status columns use values like: not-started, in-progress, completed, blocked, on-hold. For priority columns use: low, medium, high, critical. For text columns provide a brief appropriate value. Return a JSON object with: { value: string, reasoning: string }. Return ONLY the JSON.`,
+          caller: "automation-ai-fill-column",
+        }
+      );
+      const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      await storage.updateTask(event.taskId, { [column]: parsed.value });
+      return { message: `AI filled column "${column}" with "${parsed.value}" — ${parsed.reasoning}` };
+    } catch (e: any) {
+      return { message: `AI fill column "${column}" failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionRequestApproval(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
@@ -571,6 +722,39 @@ class AutomationEngine {
       return { message: `Retrieved ${count} timeline events for case ${caseId}` };
     }
     return { message: `SynSeekr timeline retrieval failed: ${result.error}` };
+  }
+
+  private async actionRouteToDetective(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    const matterId = config.matterId || event.metadata?.matterId;
+    if (!matterId) return { message: "Route to detective skipped — no matter ID" };
+
+    const node = await storage.createDetectiveNode({
+      matterId,
+      type: "evidence",
+      title: config.title || event.metadata?.fileName || "Uploaded Document",
+      description: `Auto-routed: ${event.metadata?.docType || "unknown type"} - ${event.metadata?.docCategory || "uncategorized"}`,
+      position: { x: Math.random() * 800, y: Math.random() * 600 },
+      color: "#f59e0b",
+    });
+    return { message: `Created detective node "${node.title}" [${node.id}]` };
+  }
+
+  private async actionAssignReviewer(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    const boardId = config.boardId || event.boardId;
+    const groups = await storage.getGroups(boardId);
+    if (groups.length === 0) return { message: "Assign reviewer skipped — no groups" };
+
+    const reviewerName = config.reviewer || config.assignee || "Senior Attorney";
+    const task = await storage.createTask({
+      title: `Review: ${event.metadata?.fileName || event.metadata?.docType || "Document"}`,
+      description: `Assigned to ${reviewerName} for review.\nDocument type: ${event.metadata?.docType || "unknown"}\nCategory: ${event.metadata?.docCategory || "unknown"}\nFiling ID: ${event.metadata?.filingId || "N/A"}`,
+      boardId,
+      groupId: groups[0].id,
+      status: "not-started",
+      priority: config.priority || "high",
+      assignee: reviewerName,
+    });
+    return { message: `Review task created for ${reviewerName}: "${task.title}" [${task.id}]` };
   }
 
   private addToLog(result: AutomationExecutionResult): void {

@@ -182,6 +182,7 @@ export function TaskRow({
           <FileCell
             value={task.files || []}
             onChange={(value: FileAttachment[]) => onUpdate({ files: value })}
+            taskId={task.id}
             {...cellProps}
           />
         );

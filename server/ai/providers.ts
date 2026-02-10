@@ -577,6 +577,32 @@ Return your analysis in this JSON format:
   };
 }
 
+async function generateCompletionViaSynSeekr(
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  options: { model?: string; maxTokens?: number; system?: string; caller?: string } = {}
+): Promise<string | null> {
+  try {
+    const { synseekrClient } = await import("../services/synseekr-client");
+    if (!synseekrClient.isEnabled()) return null;
+
+    const result = await synseekrClient.proxy("POST", "/api/v1/completions", {
+      messages,
+      model: options.model || "default",
+      max_tokens: options.maxTokens || 2048,
+      system: options.system,
+    });
+
+    if (result.success && result.data?.content) {
+      return typeof result.data.content === "string" 
+        ? result.data.content 
+        : result.data.content?.[0]?.text || JSON.stringify(result.data.content);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateCompletion(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   options: {
@@ -590,6 +616,12 @@ export async function generateCompletion(
   const maxTokens = options.maxTokens || 2048;
   const caller = options.caller || "generateCompletion";
   const { id, startTime } = startAIOp("anthropic", model, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+
+  const synseekrResult = await generateCompletionViaSynSeekr(messages, options);
+  if (synseekrResult !== null) {
+    completeAIOp(id, startTime, synseekrResult.slice(0, 500), "success");
+    return synseekrResult;
+  }
 
   try {
     const response = await anthropic.messages.create({
@@ -619,4 +651,13 @@ export function getModelsByProvider(provider: AIProvider): AIModel[] {
 
 export function getVisionModels(): AIModel[] {
   return AVAILABLE_MODELS.filter((m) => m.supportsVision);
+}
+
+export function getActiveAIProvider(): string {
+  try {
+    const { synseekrClient } = require("../services/synseekr-client");
+    return synseekrClient.isEnabled() ? "synseekr" : "anthropic";
+  } catch {
+    return "anthropic";
+  }
 }

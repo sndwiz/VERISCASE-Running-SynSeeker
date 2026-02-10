@@ -337,12 +337,53 @@ router.post("/matters/:matterId/ingest", upload.single("file"), async (req: Requ
       console.error("[efiling] Calendar sync error (non-fatal):", syncErr);
     }
 
-    // 12. Determine case phase
+    // 13. Trigger document automations
+    try {
+      const { triggerAutomation } = await import("../automation-engine");
+
+      if (targetBoard) {
+        await triggerAutomation({
+          type: "document_uploaded",
+          boardId: targetBoard.id,
+          taskId: undefined,
+          field: "docType",
+          newValue: classification.docType,
+          metadata: {
+            filingId: filing.id,
+            matterId,
+            docType: classification.docType,
+            docSubtype: classification.docSubtype,
+            docCategory: classification.docCategory,
+            confidence: classification.confidence,
+            fileName: file.originalname,
+            sha256: sha256,
+          },
+        });
+
+        await triggerAutomation({
+          type: "file_classified",
+          boardId: targetBoard.id,
+          taskId: undefined,
+          field: "docCategory",
+          newValue: classification.docCategory,
+          metadata: {
+            filingId: filing.id,
+            matterId,
+            docType: classification.docType,
+            classification: classification,
+          },
+        });
+      }
+    } catch (autoErr) {
+      console.error("[efiling] Automation trigger error (non-fatal):", autoErr);
+    }
+
+    // 14. Determine case phase
     const allFilings = await db.select().from(caseFilings)
       .where(eq(caseFilings.matterId, matterId));
     const casePhase = getCasePhase(allFilings);
 
-    // 12. Build warnings
+    // 15. Build warnings
     const warnings: string[] = [];
     if (!filedDate && !servedDate) warnings.push("No filed or served date found - dates may need manual entry");
     if (!jurisdiction) warnings.push("Unknown jurisdiction - deadline rules may be incomplete");

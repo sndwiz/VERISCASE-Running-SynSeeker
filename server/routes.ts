@@ -8,6 +8,9 @@ import { auditMiddleware } from "./security/audit";
 import { sessionIpTracking } from "./security/session";
 import { errorHandler } from "./utils/errors";
 import { setupSocketIO } from "./socket";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import { matters, timeEntries, evidenceVaultFiles, caseFilings, clients } from "@shared/models/tables";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -30,6 +33,28 @@ export async function registerRoutes(
         database: "disconnected",
         error: "Database connection failed",
       });
+    }
+  });
+
+  app.get("/api/dashboard/stats", async (_req, res) => {
+    try {
+      const [activeMatters, hoursLogged, evidenceCount, filingsCount, activeClients] = await Promise.all([
+        db.execute(sql`SELECT count(*)::int AS count FROM matters WHERE status = 'active' OR status IS NULL`),
+        db.execute(sql`SELECT COALESCE(SUM(hours), 0)::numeric AS total FROM time_entries WHERE created_at >= date_trunc('month', CURRENT_DATE)`),
+        db.execute(sql`SELECT count(*)::int AS count FROM evidence_vault_files`),
+        db.execute(sql`SELECT count(*)::int AS count FROM case_filings`),
+        db.execute(sql`SELECT count(*)::int AS count FROM clients`),
+      ]);
+
+      res.json({
+        activeMatters: activeMatters.rows[0]?.count ?? 0,
+        hoursLogged: Math.round(Number(hoursLogged.rows[0]?.total ?? 0)),
+        documents: (evidenceCount.rows[0]?.count ?? 0) + (filingsCount.rows[0]?.count ?? 0),
+        activeClients: activeClients.rows[0]?.count ?? 0,
+      });
+    } catch (error) {
+      console.error("Dashboard stats error:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard stats" });
     }
   });
 

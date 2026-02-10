@@ -37,6 +37,40 @@ export function registerEvidenceRoutes(app: Express): void {
         matterId: req.params.matterId,
       });
       const file = await storage.createEvidenceVaultFile(data);
+
+      try {
+        await storage.createDetectiveNode({
+          matterId: req.params.matterId,
+          type: "evidence",
+          title: file.originalName || "Evidence File",
+          description: `Auto-linked evidence: ${file.evidenceType || "document"} — ${file.originalMimeType || "unknown type"}`,
+          linkedEvidenceId: file.id,
+          position: { x: 100 + Math.random() * 600, y: 100 + Math.random() * 400 },
+          color: "#10b981",
+        });
+      } catch (nodeErr) {
+        console.error("[evidence] Detective node creation (non-fatal):", nodeErr);
+      }
+
+      try {
+        const { triggerAutomation } = await import("../automation-engine");
+        const boards = await storage.getBoardsByMatter(req.params.matterId);
+        if (boards.length > 0) {
+          await triggerAutomation({
+            type: "document_uploaded",
+            boardId: boards[0].id,
+            metadata: {
+              matterId: req.params.matterId,
+              evidenceId: file.id,
+              fileName: file.originalName,
+              fileType: file.evidenceType,
+            },
+          });
+        }
+      } catch (autoErr) {
+        console.error("[evidence] Automation trigger (non-fatal):", autoErr);
+      }
+
       res.status(201).json(file);
     } catch (error) {
       if (error instanceof z.ZodError) {

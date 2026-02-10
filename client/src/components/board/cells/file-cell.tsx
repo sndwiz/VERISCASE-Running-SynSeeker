@@ -1,18 +1,19 @@
-import { useState } from "react";
-import { Paperclip, Upload, X, FileText, Image, File } from "lucide-react";
+import { useState, useRef } from "react";
+import { Paperclip, Upload, X, FileText, Image, File, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 import type { FileAttachment } from "@shared/schema";
 
 interface FileCellProps {
   value: FileAttachment[];
   onChange: (value: FileAttachment[]) => void;
   onClick?: (e: React.MouseEvent) => void;
+  taskId?: string;
 }
 
 function getFileIcon(type: string) {
@@ -27,24 +28,72 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FileCell({ value = [], onChange, onClick }: FileCellProps) {
+export function FileCell({ value = [], onChange, onClick, taskId }: FileCellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleRemoveFile = (fileId: string) => {
     onChange(value.filter((f) => f.id !== fileId));
   };
 
-  const handleAddFile = () => {
-    const newFile: FileAttachment = {
-      id: `file-${Date.now()}`,
-      name: `Document ${value.length + 1}.pdf`,
-      url: "#",
-      type: "application/pdf",
-      size: Math.floor(Math.random() * 1024 * 1024),
-      uploadedAt: new Date().toISOString(),
-      uploadedBy: "current-user",
-    };
-    onChange([...value, newFile]);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (taskId) {
+      setIsUploading(true);
+      try {
+        for (const file of Array.from(files)) {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const response = await fetch(`/api/tasks/${taskId}/files`, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || "Upload failed");
+          }
+
+          const fileRecord = await response.json();
+          onChange([...value, {
+            id: fileRecord.id,
+            name: fileRecord.name,
+            url: fileRecord.path || "#",
+            type: fileRecord.mimeType,
+            size: fileRecord.size,
+            uploadedAt: fileRecord.uploadedAt,
+            uploadedBy: "current-user",
+          }]);
+        }
+        toast({ title: "File uploaded", description: "File attached to task successfully." });
+      } catch (err: any) {
+        toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      for (const file of Array.from(files)) {
+        const newFile: FileAttachment = {
+          id: `file-${Date.now()}`,
+          name: file.name,
+          url: "#",
+          type: file.type || "application/octet-stream",
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: "current-user",
+        };
+        onChange([...value, newFile]);
+      }
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const fileCount = value.length;
@@ -67,16 +116,28 @@ export function FileCell({ value = [], onChange, onClick }: FileCellProps) {
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="start">
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1">
             <h4 className="text-sm font-medium">Files</h4>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileSelect}
+              data-testid="input-file-upload"
+            />
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleAddFile}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
               data-testid="button-add-file"
             >
-              <Upload className="h-3 w-3 mr-1" />
-              Add
+              {isUploading ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Upload className="h-3 w-3 mr-1" />
+              )}
+              {isUploading ? "Uploading..." : "Upload"}
             </Button>
           </div>
           

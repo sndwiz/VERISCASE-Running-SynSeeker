@@ -16,8 +16,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dashboard } from "@/components/board/dashboard-widgets";
 import type { Board, Task } from "@shared/schema";
+
+interface DashboardStats {
+  activeMatters: number;
+  hoursLogged: number;
+  documents: number;
+  activeClients: number;
+}
 
 export default function HomePage() {
   const { data: boards = [] } = useQuery<Board[]>({
@@ -28,32 +36,36 @@ export default function HomePage() {
     queryKey: ["/api/tasks/recent"],
   });
 
+  const { data: dashboardStats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats"],
+  });
+
   const stats = [
     {
       title: "Active Matters",
-      value: "12",
-      change: "+2 this week",
+      value: String(dashboardStats?.activeMatters ?? 0),
+      change: "Active cases",
       icon: Briefcase,
       color: "text-blue-500",
     },
     {
       title: "Hours Logged",
-      value: "156",
+      value: String(dashboardStats?.hoursLogged ?? 0),
       change: "This month",
       icon: Clock,
       color: "text-green-500",
     },
     {
       title: "Documents",
-      value: "284",
-      change: "+18 this week",
+      value: String(dashboardStats?.documents ?? 0),
+      change: "Total filed",
       icon: FileText,
       color: "text-purple-500",
     },
     {
       title: "Active Clients",
-      value: "38",
-      change: "+4 this month",
+      value: String(dashboardStats?.activeClients ?? 0),
+      change: "Total clients",
       icon: Users,
       color: "text-orange-500",
     },
@@ -94,8 +106,17 @@ export default function HomePage() {
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+              {statsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold" data-testid={`stat-value-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}

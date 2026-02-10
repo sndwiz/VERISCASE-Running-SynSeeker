@@ -8,6 +8,15 @@ import { boards } from "@shared/models/tables";
 import { eq, and, sql, or } from "drizzle-orm";
 import { syncTaskToCalendar, removeSyncedEvent } from "../services/calendar-sync";
 import { triggerAutomation } from "../automation-engine";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { createHash } from "crypto";
+
+const taskUpload = multer({
+  dest: "uploads/task-files/",
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 
 function getUserId(req: any): string | null {
   return (req as any).user?.id || (req.session as any)?.passport?.user?.id || null;
@@ -196,6 +205,67 @@ export function registerTaskRoutes(app: Express): void {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  app.post("/api/tasks/:taskId/files", taskUpload.single("file"), async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.taskId);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+      const destDir = path.join("uploads", "task-files", task.boardId, req.params.taskId);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+      const destPath = path.join(destDir, file.originalname);
+      fs.renameSync(file.path, destPath);
+
+      const fileBuffer = fs.readFileSync(destPath);
+      const sha256 = createHash("sha256").update(fileBuffer).digest("hex");
+
+      const fileRecord = {
+        id: `file-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        name: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+        path: destPath,
+        sha256,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const existingFiles = (task.files as any[]) || [];
+      await storage.updateTask(req.params.taskId, {
+        files: [...existingFiles, fileRecord],
+      });
+
+      res.status(201).json(fileRecord);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/tasks/:taskId/files", async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.taskId);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      res.json(task.files || []);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/tasks/:taskId/files/:fileId/download", async (req, res) => {
+    try {
+      const task = await storage.getTask(req.params.taskId);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      const files = (task.files || []) as any[];
+      const fileRecord = files.find((f: any) => f.id === req.params.fileId);
+      if (!fileRecord) return res.status(404).json({ error: "File not found" });
+      if (!fs.existsSync(fileRecord.path)) return res.status(404).json({ error: "File missing from storage" });
+      res.download(fileRecord.path, fileRecord.name);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
