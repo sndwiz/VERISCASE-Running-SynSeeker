@@ -394,6 +394,7 @@ export default function MatterDetailPage() {
               { value: "tasks", label: "Tasks" },
               { value: "contacts", label: "Contacts" },
               { value: "insights", label: "Insights" },
+              { value: "ocr-sessions", label: "OCR Processing" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
@@ -1026,6 +1027,10 @@ export default function MatterDetailPage() {
           <TabsContent value="insights" className="m-0 p-0">
             <MatterInsights matterId={matter.id} />
           </TabsContent>
+
+          <TabsContent value="ocr-sessions" className="m-0 p-0">
+            <OCRSessionsPanel matterId={matter.id} />
+          </TabsContent>
         </ScrollArea>
       </Tabs>
 
@@ -1324,5 +1329,136 @@ function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
         </Button>
       </DialogFooter>
     </>
+  );
+}
+
+interface OCRSession {
+  id: string;
+  matterId: string;
+  assetId: string;
+  filename: string;
+  method: string;
+  provider: string;
+  status: string;
+  confidence: number | null;
+  processingTimeMs: number | null;
+  pageCount: number | null;
+  textLength: number | null;
+  chunkCount: number | null;
+  anchorCount: number | null;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+function OCRSessionsPanel({ matterId }: { matterId: string }) {
+  const { data: sessions = [], isLoading } = useQuery<OCRSession[]>({
+    queryKey: [`/api/matters/${matterId}/ocr-sessions`],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+        <p className="text-lg font-medium">No OCR sessions yet</p>
+        <p className="text-sm">Upload documents in the Insights tab to begin processing.</p>
+      </div>
+    );
+  }
+
+  const completedCount = sessions.filter(s => s.status === "completed").length;
+  const avgConfidence = sessions.filter(s => s.confidence !== null).reduce((sum, s) => sum + (s.confidence || 0), 0) / (sessions.filter(s => s.confidence !== null).length || 1);
+  const totalPages = sessions.reduce((sum, s) => sum + (s.pageCount || 0), 0);
+
+  return (
+    <div className="p-6 space-y-6" data-testid="ocr-sessions-panel">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total Sessions</p>
+            <p className="text-2xl font-bold" data-testid="text-ocr-total">{sessions.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Completed</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-ocr-completed">{completedCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Avg Confidence</p>
+            <p className="text-2xl font-bold" data-testid="text-ocr-confidence">{Math.round(avgConfidence * 100)}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Pages Processed</p>
+            <p className="text-2xl font-bold" data-testid="text-ocr-pages">{totalPages}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Processing History</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y">
+            {sessions.map(session => (
+              <div key={session.id} className="p-4 flex items-start gap-4" data-testid={`ocr-session-${session.id}`}>
+                <div className="flex-shrink-0 mt-1">
+                  {session.status === "completed" ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  ) : session.status === "failed" ? (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium truncate">{session.filename}</p>
+                    <Badge variant={session.method === "ocr" ? "default" : "secondary"}>
+                      {session.method === "ocr" ? "OCR" : "Text Extract"}
+                    </Badge>
+                    <Badge variant="outline">{session.provider}</Badge>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                    {session.confidence !== null && (
+                      <span>Confidence: {Math.round(session.confidence * 100)}%</span>
+                    )}
+                    {session.processingTimeMs !== null && (
+                      <span>{(session.processingTimeMs / 1000).toFixed(1)}s</span>
+                    )}
+                    {session.pageCount !== null && (
+                      <span>{session.pageCount} page{session.pageCount !== 1 ? "s" : ""}</span>
+                    )}
+                    {session.textLength !== null && (
+                      <span>{session.textLength.toLocaleString()} chars</span>
+                    )}
+                    {session.chunkCount !== null && (
+                      <span>{session.chunkCount} chunks</span>
+                    )}
+                    <span>{new Date(session.startedAt).toLocaleString()}</span>
+                  </div>
+                  {session.errorMessage && (
+                    <p className="text-sm text-red-500 mt-1">{session.errorMessage}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

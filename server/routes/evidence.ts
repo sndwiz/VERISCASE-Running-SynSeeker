@@ -7,6 +7,9 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
+import { db } from "../db";
+import { ocrSessions } from "@shared/models/tables";
+import { eq, desc } from "drizzle-orm";
 
 export function registerEvidenceRoutes(app: Express): void {
   app.get("/api/matters/:matterId/evidence", async (req, res) => {
@@ -144,6 +147,30 @@ export function registerEvidenceRoutes(app: Express): void {
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to create OCR job" });
+    }
+  });
+
+  app.get("/api/matters/:matterId/ocr-sessions", async (req, res) => {
+    try {
+      const sessions = await db.select().from(ocrSessions)
+        .where(eq(ocrSessions.matterId, req.params.matterId))
+        .orderBy(desc(ocrSessions.startedAt));
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch OCR sessions" });
+    }
+  });
+
+  app.get("/api/ocr-sessions/:id", async (req, res) => {
+    try {
+      const [session] = await db.select().from(ocrSessions)
+        .where(eq(ocrSessions.id, req.params.id));
+      if (!session) {
+        return res.status(404).json({ error: "OCR session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch OCR session" });
     }
   });
 }

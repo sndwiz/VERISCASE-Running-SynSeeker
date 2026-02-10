@@ -61,6 +61,7 @@ interface TaskRowProps {
   onEditStatusLabels?: () => void;
   isSelected?: boolean;
   onSelect?: (taskId: string, selected: boolean) => void;
+  canDelete?: boolean;
 }
 
 export function TaskRow({
@@ -74,6 +75,7 @@ export function TaskRow({
   onEditStatusLabels,
   isSelected = false,
   onSelect,
+  canDelete = true,
 }: TaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
@@ -361,17 +363,19 @@ export function TaskRow({
               <Plus className="h-4 w-4 mr-2" />
               Add Subitem
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="text-destructive"
-              data-testid={`menu-delete-task-${task.id}`}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Task
-            </DropdownMenuItem>
+            {canDelete && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive"
+                data-testid={`menu-delete-task-${task.id}`}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Task
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

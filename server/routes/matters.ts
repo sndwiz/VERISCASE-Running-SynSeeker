@@ -143,28 +143,92 @@ export function registerMatterRoutes(app: Express): void {
         });
       }
 
-      const [baselineGroup] = await db.insert(groups).values({
-        title: "Onboarding Tasks",
-        color: "#6366f1",
-        boardId: masterBoard.id,
-        order: 0,
-      }).returning();
-
-      const baselineTasks = [
-        "Confirm service date",
-        "Check for scheduling order",
-        "Set discovery plan / disclosures deadline",
-        "Review opposing counsel filings",
-        "Upload initial case documents",
+      const presetGroups = [
+        { title: "Waiting", color: "#f59e0b", order: 0 },
+        { title: "Tasks", color: "#6366f1", order: 1 },
+        { title: "Motions", color: "#ef4444", order: 2 },
+        { title: "Filings", color: "#3b82f6", order: 3 },
+        { title: "Files", color: "#10b981", order: 4 },
+        { title: "In Progress", color: "#8b5cf6", order: 5 },
+        { title: "Stuck", color: "#dc2626", order: 6 },
+        { title: "Finished", color: "#22c55e", order: 7 },
       ];
 
-      for (let i = 0; i < baselineTasks.length; i++) {
-        await db.insert(tasks).values({
-          title: baselineTasks[i],
-          status: "not-started",
-          priority: i < 2 ? "high" : "medium",
+      const createdGroups: Record<string, string> = {};
+      for (const pg of presetGroups) {
+        const [g] = await db.insert(groups).values({
+          title: pg.title,
+          color: pg.color,
           boardId: masterBoard.id,
-          groupId: baselineGroup.id,
+          order: pg.order,
+        }).returning();
+        createdGroups[pg.title] = g.id;
+      }
+
+      const baselineTasks = [
+        { title: "Confirm service date", group: "Tasks", priority: "high" as const },
+        { title: "Check for scheduling order", group: "Tasks", priority: "high" as const },
+        { title: "Set discovery plan / disclosures deadline", group: "Tasks", priority: "medium" as const },
+        { title: "Review opposing counsel filings", group: "Tasks", priority: "medium" as const },
+        { title: "Upload initial case documents", group: "Tasks", priority: "medium" as const },
+      ];
+
+      for (const t of baselineTasks) {
+        await db.insert(tasks).values({
+          title: t.title,
+          status: "not-started",
+          priority: t.priority,
+          boardId: masterBoard.id,
+          groupId: createdGroups[t.group],
+        });
+      }
+
+      const { automationRules: automationRulesTable } = await import("@shared/models/tables");
+      const statusAutomations = [
+        {
+          name: "Move to In Progress on status change",
+          triggerType: "task.updated",
+          triggerField: "status",
+          triggerValue: "working-on-it",
+          actionType: "move_to_group",
+          actionConfig: { groupId: createdGroups["In Progress"] },
+        },
+        {
+          name: "Move to Stuck on status change",
+          triggerType: "task.updated",
+          triggerField: "status",
+          triggerValue: "stuck",
+          actionType: "move_to_group",
+          actionConfig: { groupId: createdGroups["Stuck"] },
+        },
+        {
+          name: "Move to Finished on completion",
+          triggerType: "task.updated",
+          triggerField: "status",
+          triggerValue: "done",
+          actionType: "move_to_group",
+          actionConfig: { groupId: createdGroups["Finished"] },
+        },
+        {
+          name: "Move to Waiting on pending review",
+          triggerType: "task.updated",
+          triggerField: "status",
+          triggerValue: "pending-review",
+          actionType: "move_to_group",
+          actionConfig: { groupId: createdGroups["Waiting"] },
+        },
+      ];
+
+      for (const auto of statusAutomations) {
+        await db.insert(automationRulesTable).values({
+          boardId: masterBoard.id,
+          name: auto.name,
+          triggerType: auto.triggerType,
+          triggerField: auto.triggerField,
+          triggerValue: auto.triggerValue,
+          actionType: auto.actionType,
+          actionConfig: auto.actionConfig,
+          isActive: true,
         });
       }
 

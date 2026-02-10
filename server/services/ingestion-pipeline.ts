@@ -6,6 +6,9 @@ import { insightsStorage } from "./insights-storage";
 import type { MatterAsset } from "./insights-storage";
 import { logger } from "../utils/logger";
 import { INSIGHTS_CONFIG } from "../config/insights";
+import { db } from "../db";
+import { ocrSessions, boards, groups, tasks } from "@shared/models/tables";
+import { eq, and } from "drizzle-orm";
 
 const UPLOAD_DIR = path.resolve("uploads/matter-assets");
 
@@ -162,16 +165,36 @@ export async function processAsset(assetId: string): Promise<void> {
   await insightsStorage.updateMatterAsset(assetId, { status: "processing" });
   logger.info("Processing asset", { assetId, fileType: asset.fileType, filename: asset.originalFilename });
 
+  const startTime = Date.now();
+  let ocrSessionId: string | null = null;
+
   try {
     const filePath = asset.storageUrl;
     if (!fs.existsSync(filePath)) {
       throw new Error(`File not found: ${filePath}`);
     }
 
+    const fileSizeBytes = fs.statSync(filePath).size;
     let extractedText = "";
     let method = "extracted_text";
     let confidence: number | null = null;
     let pageCount: number | null = null;
+    let provider = "local";
+
+    const [sessionRow] = await db.insert(ocrSessions).values({
+      matterId: asset.matterId,
+      assetId: asset.id,
+      originalFilename: asset.originalFilename,
+      fileType: asset.fileType,
+      fileSizeBytes,
+      method: "pending",
+      provider: "pending",
+      status: "processing",
+      hashSha256: asset.hashSha256 || null,
+      startedAt: new Date(),
+      createdBy: (asset as any).uploadedBy || "system",
+    }).returning();
+    ocrSessionId = sessionRow.id;
 
     switch (asset.fileType) {
       case "pdf": {
@@ -182,10 +205,12 @@ export async function processAsset(assetId: string): Promise<void> {
           extractedText = ocr.text;
           method = "ocr";
           confidence = ocr.confidence;
+          provider = "gemini-vision";
         } else {
           extractedText = pdf.text;
           method = "extracted_text";
           confidence = 0.95;
+          provider = "pdf-parse";
         }
         break;
       }
@@ -195,12 +220,14 @@ export async function processAsset(assetId: string): Promise<void> {
         method = "ocr";
         confidence = ocr.confidence;
         pageCount = 1;
+        provider = "gemini-vision";
         break;
       }
       case "doc": {
         extractedText = await extractTextFromDoc(filePath);
         method = "extracted_text";
         confidence = 0.95;
+        provider = "mammoth";
         break;
       }
       case "text":
@@ -208,12 +235,14 @@ export async function processAsset(assetId: string): Promise<void> {
         extractedText = extractTextFromPlain(filePath);
         method = "extracted_text";
         confidence = 1.0;
+        provider = "plaintext";
         break;
       }
       default: {
         extractedText = "[Unsupported file type]";
         method = "extracted_text";
         confidence = 0.0;
+        provider = "none";
       }
     }
 
@@ -270,15 +299,56 @@ export async function processAsset(assetId: string): Promise<void> {
       pageCount,
     });
 
+    const processingTimeMs = Date.now() - startTime;
+
+    if (ocrSessionId) {
+      await db.update(ocrSessions)
+        .set({
+          method,
+          provider,
+          status: "completed",
+          confidence,
+          pageCount,
+          extractedTextLength: extractedText.length,
+          chunkCount: chunks.length,
+          anchorCount: anchors.length,
+          processingTimeMs,
+          completedAt: new Date(),
+          ocrMetadata: {
+            textRecordId: assetTextRecord.id,
+            lineCount: lines.length,
+            avgChunkSize: chunks.length > 0 ? Math.round(extractedText.length / chunks.length) : 0,
+          },
+        })
+        .where(eq(ocrSessions.id, ocrSessionId));
+    }
+
+    await addDocumentToBoard(asset.matterId, asset.originalFilename, method, confidence, pageCount);
+
     logger.info("Asset processed successfully", {
       assetId,
       method,
       confidence,
       textLength: extractedText.length,
       chunks: chunks.length,
+      processingTimeMs,
     });
   } catch (err: any) {
+    const processingTimeMs = Date.now() - startTime;
     logger.error("Asset processing failed", { assetId, error: err.message });
+
+    if (ocrSessionId) {
+      await db.update(ocrSessions)
+        .set({
+          status: "failed",
+          errorMessage: err.message,
+          processingTimeMs,
+          completedAt: new Date(),
+        })
+        .where(eq(ocrSessions.id, ocrSessionId))
+        .catch(() => {});
+    }
+
     await insightsStorage.updateMatterAsset(assetId, {
       status: "failed",
       errorMessage: err.message,
@@ -347,6 +417,53 @@ export async function handleFileUpload(
       logger.warn("Failed to clean up destination file", { path: finalPath, error: cleanupErr.message });
     }
     throw err;
+  }
+}
+
+async function addDocumentToBoard(
+  matterId: string,
+  filename: string,
+  method: string,
+  confidence: number | null,
+  pageCount: number | null,
+): Promise<void> {
+  try {
+    const matterBoards = await db.select().from(boards)
+      .where(eq(boards.matterId, matterId));
+
+    const masterBoard = matterBoards.find(b => !b.name.includes(" - "));
+    if (!masterBoard) return;
+
+    const boardGroups = await db.select().from(groups)
+      .where(eq(groups.boardId, masterBoard.id));
+
+    let filesGroup = boardGroups.find(g => g.title === "Files");
+    if (!filesGroup) {
+      const [newGroup] = await db.insert(groups).values({
+        title: "Files",
+        color: "#10b981",
+        boardId: masterBoard.id,
+        order: boardGroups.length,
+      }).returning();
+      filesGroup = newGroup;
+    }
+
+    const confidenceStr = confidence !== null ? `${Math.round(confidence * 100)}%` : "N/A";
+    const pagesStr = pageCount ? `${pageCount} page${pageCount > 1 ? "s" : ""}` : "";
+    const methodLabel = method === "ocr" ? "OCR" : "Text Extract";
+
+    await db.insert(tasks).values({
+      title: filename,
+      description: `[${methodLabel}] Confidence: ${confidenceStr}${pagesStr ? ` | ${pagesStr}` : ""} | Processed: ${new Date().toISOString().split("T")[0]}`,
+      status: "done",
+      priority: "low",
+      boardId: masterBoard.id,
+      groupId: filesGroup.id,
+    });
+
+    logger.info("Document added to board Files group", { matterId, filename });
+  } catch (err: any) {
+    logger.warn("Failed to add document to board", { matterId, filename, error: err.message });
   }
 }
 

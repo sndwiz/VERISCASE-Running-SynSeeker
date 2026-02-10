@@ -233,6 +233,9 @@ class AutomationEngine {
       case "assign_reviewer":
         return this.actionAssignReviewer(event, actionConfig);
       
+      case "move_to_group":
+        return this.actionMoveToGroup(event, actionConfig);
+      
       default:
         return { message: `Action type "${rule.actionType}" executed (stub)` };
     }
@@ -264,6 +267,24 @@ class AutomationEngine {
       }
     }
     return { message: "Priority change skipped - no task found" };
+  }
+
+  private async actionMoveToGroup(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (event.taskId && config.groupId) {
+      const task = await storage.getTask(event.taskId);
+      if (task) {
+        const { groups: groupsTable } = await import("@shared/models/tables");
+        const { eq } = await import("drizzle-orm");
+        const { db } = await import("./db");
+        const [targetGroup] = await db.select().from(groupsTable).where(eq(groupsTable.id, config.groupId));
+        if (!targetGroup || targetGroup.boardId !== task.boardId) {
+          return { message: "Move to group skipped - target group not found or on different board" };
+        }
+        await storage.updateTask(event.taskId, { groupId: config.groupId });
+        return { message: `Task moved to group "${targetGroup.title}"` };
+      }
+    }
+    return { message: "Move to group skipped - no task or group found" };
   }
 
   private async actionAssignPerson(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {

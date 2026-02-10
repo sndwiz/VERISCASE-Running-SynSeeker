@@ -181,6 +181,7 @@ interface TaskGroupProps {
   onColumnUpdateDescription?: (columnId: string, description: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
+  canDeleteTasks?: boolean;
 }
 
 export function TaskGroup({
@@ -208,9 +209,19 @@ export function TaskGroup({
   onColumnUpdateDescription,
   currentSort,
   onOpenColumnCenter,
+  canDeleteTasks = true,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
+
+  const COMPLETED_COLLAPSE_THRESHOLD = 10;
+  const completedTasks = tasks.filter(t => t.status === "done");
+  const activeTasks = tasks.filter(t => t.status !== "done");
+  const shouldCollapseCompleted = completedTasks.length >= COMPLETED_COLLAPSE_THRESHOLD;
+  const displayTasks = shouldCollapseCompleted
+    ? (showCompleted ? [...activeTasks, ...completedTasks] : activeTasks)
+    : tasks;
 
   return (
     <div
@@ -321,7 +332,7 @@ export function TaskGroup({
               {!onOpenColumnCenter && <div className="w-8 flex-shrink-0" />}
             </div>
 
-            {tasks.map((task) => (
+            {displayTasks.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
@@ -334,8 +345,27 @@ export function TaskGroup({
                 onEditStatusLabels={onEditStatusLabels}
                 isSelected={selectedTaskIds.has(task.id)}
                 onSelect={onSelectTask}
+                canDelete={canDeleteTasks}
               />
             ))}
+
+            {shouldCollapseCompleted && (
+              <div
+                className="flex items-center gap-2 py-2 px-3 text-sm text-muted-foreground cursor-pointer border-b border-border/30 hover-elevate"
+                onClick={() => setShowCompleted(!showCompleted)}
+                data-testid={`toggle-completed-${group.id}`}
+              >
+                <div className="w-7 flex-shrink-0" />
+                {showCompleted ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                <span>
+                  {showCompleted ? "Hide" : "Show"} {completedTasks.length} completed item{completedTasks.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
 
             {tasks.length === 0 && (
               <div className="py-6 text-center text-sm text-muted-foreground border-b border-border/30">

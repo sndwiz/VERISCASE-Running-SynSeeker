@@ -197,6 +197,10 @@ export function registerTaskRoutes(app: Express): void {
 
   app.delete("/api/tasks/:id", async (req, res) => {
     try {
+      const userRole = (req as any).user?.claims?.metadata?.role;
+      if (userRole !== "admin") {
+        return res.status(403).json({ error: "Only admins can delete tasks" });
+      }
       removeSyncedEvent("board-task", req.params.id).catch(e => console.error("[tasks] Calendar unsync error:", e));
       const deleted = await storage.deleteTask(req.params.id);
       if (!deleted) {

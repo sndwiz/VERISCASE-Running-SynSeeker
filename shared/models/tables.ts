@@ -230,6 +230,40 @@ export const ocrJobs = pgTable("ocr_jobs", {
   completedAt: timestamp("completed_at"),
 });
 
+export type OcrJob = typeof ocrJobs.$inferSelect;
+export type InsertOcrJob = typeof ocrJobs.$inferInsert;
+
+// ============ OCR SESSIONS (detailed processing reports) ============
+export const ocrSessions = pgTable("ocr_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  assetId: varchar("asset_id"),
+  fileId: varchar("file_id"),
+  originalFilename: varchar("original_filename", { length: 500 }).notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  method: varchar("method", { length: 50 }).notNull(),
+  provider: varchar("provider", { length: 100 }).notNull(),
+  status: varchar("status", { length: 50 }).default("processing").notNull(),
+  confidence: real("confidence"),
+  pageCount: integer("page_count"),
+  extractedTextLength: integer("extracted_text_length"),
+  chunkCount: integer("chunk_count"),
+  anchorCount: integer("anchor_count"),
+  hashSha256: varchar("hash_sha256", { length: 128 }),
+  processingTimeMs: integer("processing_time_ms"),
+  errorMessage: text("error_message"),
+  ocrMetadata: jsonb("ocr_metadata").default({}),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdBy: varchar("created_by"),
+}, (table) => [
+  index("IDX_ocr_sessions_matter").on(table.matterId),
+]);
+
+export type OcrSession = typeof ocrSessions.$inferSelect;
+export type InsertOcrSession = typeof ocrSessions.$inferInsert;
+
 // ============ TIMELINE EVENTS ============
 export const timelineEvents = pgTable("timeline_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

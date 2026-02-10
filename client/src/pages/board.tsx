@@ -16,6 +16,7 @@ import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
 import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
 import { ViewTabs, KanbanView, CalendarView, DashboardView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import type { Board, Group, Task, ColumnType, CustomStatusLabel } from "@shared/schema";
 import { defaultStatusLabels } from "@shared/schema";
@@ -25,7 +26,9 @@ export default function BoardPage() {
   const boardId = params?.id;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { recordAction } = useWorkflowRecorder();
+  const canDeleteTasks = user?.role === "admin";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
@@ -522,6 +525,7 @@ export default function BoardPage() {
                 onColumnUpdateDescription={handleColumnUpdateDescription}
                 currentSort={currentSort}
                 onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                canDeleteTasks={canDeleteTasks}
               />
             ))
           )}
