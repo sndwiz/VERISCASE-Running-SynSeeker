@@ -1,0 +1,119 @@
+Here are the “KISS-adjacent” ideas that actually de-bloat code and make it faster in practice (not just in motivational-poster land). I’ll keep them punchy and usable.
+
+Make it smaller by design
+
+YAGNI (“You Aren’t Gonna Need It”)
+If it’s not solving a current problem, don’t build it. Future-you will thank you, because future-you is always tired.
+
+DRY (carefully)
+Don’t Repeat Yourself, but don’t create a “mega-abstraction” to avoid 3 lines of duplication. Duplication is cheaper than the wrong abstraction.
+
+Rule of Three
+Only abstract when you’ve written it 3 times. Before that, duplication is information.
+
+Single Responsibility Principle (SRP)
+One module/component does one job. This stops “God components” and spaghetti state.
+
+Separation of Concerns
+Keep UI, business logic, data access, and side-effects in distinct layers. Your app gets easier to test and faster to debug.
+
+⸻
+
+Make it easier to change (aka faster development)
+
+“Make illegal states unrepresentable”
+Use types/schema validation so the system can’t even create bad data. Fewer defensive checks, fewer bugs.
+
+Explicit > Implicit
+Magic is cute until it’s 2 AM. Prefer clear function inputs/outputs over hidden global state and “it just works” side-effects.
+
+Convention over Configuration (within reason)
+Pick a default shape (folder structure, naming, API patterns) and stick to it. Less glue code, fewer choices, less entropy.
+
+The Pit of Success
+Design APIs so the easiest way is the correct way. Defaults should be safe, fast, and predictable.
+
+⸻
+
+Keep the codebase from turning into a haunted house
+
+Avoid “action at a distance”
+Minimize shared mutable state. Prefer passing data in and returning data out.
+
+Limit fan-out
+A module that imports 19 other modules is a future fire. Keep dependency graphs shallow.
+
+Encapsulate volatility
+Put “stuff that changes a lot” behind a boundary:
+	•	external APIs
+	•	database queries
+	•	file parsing
+	•	vendor SDKs
+So changes don’t ripple through the codebase.
+
+Strangler Fig pattern (for refactors)
+Wrap the old system, build the new parts around it, and replace pieces gradually. No big-bang rewrites.
+
+⸻
+
+Performance without turning into a “premature optimization goblin”
+
+Measure first
+Use profiling before “optimizing.” Otherwise you’re just rearranging deck chairs in the fog.
+
+Do less work
+	•	cache computed results
+	•	memoize expensive UI renders
+	•	paginate/virtualize large lists
+	•	debounce search inputs
+	•	avoid re-parsing the same documents repeatedly
+
+Locality of reference
+Keep related data and logic close together. Fewer layers and indirections often means faster code and faster humans.
+
+⸻
+
+UI-specific “sleekness” principles (React/Monday-style boards)
+
+Virtualize large lists/grids
+If you might have 500+ rows, you will need virtualization. Non-negotiable.
+
+Minimize re-renders
+	•	stable keys
+	•	memoize row components
+	•	avoid passing new inline functions everywhere
+	•	derive state from props instead of duplicating it
+
+Single source of truth for state
+Don’t keep the same data in 3 places (server cache + component state + global store) unless you really need to.
+
+⸻
+
+Operations / architecture debloat
+
+12-Factor-ish habits
+	•	config via env vars
+	•	stateless services
+	•	logs as events
+	•	one build artifact per deploy
+Makes deployments cleaner and reduces “works on my machine” detritus.
+
+Keep interfaces stable
+Refactor internals aggressively, but keep your public contracts (API endpoints, schema, events) stable.
+
+Kill dead code
+If it’s unused, delete it. Git is your time machine. Dead code adds mental load and bugs.
+
+⸻
+
+Two “meta rules” that beat most slogans
+
+Reduce the number of concepts a new dev must learn
+If the app has 11 ways to do one thing, it’s already bloated.
+
+Fewer dependencies, fewer problems
+Every library is a new failure mode. Add deps only when they remove more code than they add.
+
+⸻
+
+If you want, I can translate these into a VERICASE “Engineering Doctrine” one-pager you can paste into your repo as docs/ENGINEERING_PRINCIPLES.md, plus a checklist for PR reviews (so your codebase stays clean instead of slowly becoming a cursed artifact).
