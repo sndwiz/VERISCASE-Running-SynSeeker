@@ -1,0 +1,321 @@
+# VERICASE — Plug‑and‑Play Upgrade Spec (Server‑Hosted, Docker, Multi‑Model, Batmode)
+
+This file consolidates the plan discussed in chat into a single, copy‑paste build spec you can drop into Replit or hand to a dev.
+
+---
+
+## 0) Mission
+
+VERICASE ingests mixed evidence (PDF/DOCX/images/audio/video/chat exports), extracts structured meaning, and produces defensible legal work product: timelines, graphs, contradictions, discovery/depo plans, damages, and brief‑ready narratives — with citations, audit logs, and privacy controls.
+
+It operates in two realities:
+
+- **ONLINE:** external model calls allowed only after sanitization and only for approved tasks.
+- **BATMODE:** offline/private. zero outbound calls; local‑only models and local processing.
+
+---
+
+## 1) Non‑Negotiables (Hard Rules)
+
+### 1.1 Observed vs Inferred
+Every output must label claims as:
+- **Observed** (directly in source) with citations
+- **Inferred** (reasoned) with confidence + alternatives + citations to supporting observations
+
+If it can’t cite it, it can’t claim it.
+
+### 1.2 Privacy + Privilege First
+- Raw docs and sensitive content stay in the private zone.
+- External LLMs never receive raw evidence.
+- External calls allowed only for sanitized payloads, and only when policy allows.
+
+### 1.3 Auditability
+Every action writes an audit record:
+- user, case, document IDs
+- selected model vs effective model
+- mode (ONLINE/BATMODE)
+- sanitization summary
+- artifacts produced
+- timestamps + request IDs
+
+---
+
+## 2) Proven Reference Pattern (Your “SynSeekr” Log)
+
+Use this as the known‑good architecture pattern:
+
+- **FastAPI Orchestrator**: main API (the single “truth” backend)
+- **Workers**: Dramatiq + Redis task queue (GPU‑enabled worker where applicable)
+- **Extraction**: Apache Tika + OCR (OCRmyPDF/Tesseract)
+- **Vectors**: Qdrant (docs + conversation memory collections)
+- **Graph**: Neo4j (entities + relationships via GLiNER/GLiREL)
+- **PII/Privilege**: Presidio analyzer/anonymizer + privilege module
+- **Local LLM**: Ollama (GPU passthrough) + local embedding models (e.g., bge-m3/nomic)
+- **SSO**: Authentik (protect UI/API/monitoring)
+- **Security**: UFW + fail2ban + minimal exposed ports + rate limiting
+- **Court‑Ready**: SHA‑256 integrity + chain of custody + court export ZIP
+- **Monitoring**: Prometheus + Grafana + Loki + GPU metrics exporters
+
+Important: credentials/IPs rotate; the **process** stays the same.
+
+---
+
+## 3) Deployment Architecture (Docker Zones)
+
+### 3.1 Containers / Services
+
+**Gateway / UI Zone**
+- reverse proxy (Nginx/Caddy/Traefik): only public port 443
+- frontend (your Clio×Monday UI)
+- api/orchestrator (FastAPI)
+
+**Private Processing Zone**
+- worker(s) (Dramatiq)
+- tika (text extraction)
+- ocr (OCR pipeline)
+- vision (optional local vision pipeline)
+- redaction (Presidio)
+
+**Data Stores Zone**
+- postgres (recommended) OR sqlite/json during bootstrap
+- qdrant (vectors)
+- neo4j (graph)
+- minio or encrypted filesystem volumes (raw + derived artifacts)
+
+**Model Zone**
+- model router (policy + routing)
+- ollama or vLLM (local LLM)
+- embedding runner
+- optional reranker
+
+### 3.2 Networking Rules
+- Only reverse proxy exposed publicly.
+- Everything else on internal docker networks.
+- Batmode enforced at:
+  - App level (router blocks) AND
+  - Network level (stop external gateway / block egress)
+
+Admin access is via private network (e.g., ZeroTier) + SSH, not public ports.
+
+---
+
+## 4) Core Data Model (Recommended)
+
+Use Postgres for durability; during bootstrap you can keep sqlite/json and migrate later behind the API.
+
+Entities to model:
+- users/orgs/roles/permissions
+- cases (matters)
+- clients
+- documents (hashes, metadata, storage pointers)
+- extractions (OCR text, structure, entities)
+- entities + relations (graph edges with citations + confidence)
+- events (timeline entries)
+- claims (observed/inferred assertions + support set)
+- artifacts (reports/exports)
+- jobs (async processing)
+- audit_log (everything)
+
+### Evidence Citations Standard
+Every extracted fact references:
+- document_id
+- page_number
+- text span and/or bounding box (for images/PDF)
+- confidence
+
+---
+
+## 5) Model System (Multi‑Model + Policy Engine)
+
+### 5.1 Model Registry
+Registry tracks:
+- providers: claude, gpt, gemini, deepseek, local‑ollama, etc.
+- capabilities: chat, vision, embeddings, rerank, transcribe
+- internet required: yes/no
+- data policy: local_only | sanitized_ok | unrestricted
+
+### 5.2 Policy Engine
+Inputs:
+- mode (ONLINE/BATMODE)
+- case policy: privileged | sealed | pii_heavy | standard
+- payload: raw | derived | sanitized
+- selected provider + capability
+- user role
+
+Outputs:
+- allowed yes/no
+- effective provider (may override selection)
+- required steps (redact, summarize, chunk, retrieve)
+- reason string for UI + audit
+
+### 5.3 Router Rules (Must Implement)
+- If BATMODE: external providers forbidden (force local)
+- If payload is raw: local‑only (even online)
+- If payload is sanitized and case policy allows: external OK
+- Always log: selected vs effective + redaction summary
+
+---
+
+## 6) Processing Pipeline (Single Case “Brain Loop”)
+
+### Stage A — Intake
+- Create case/client records
+- Presigned upload to private storage
+- Register document + queue job
+- Store SHA‑256 hashes + metadata + source notes
+
+### Stage B — Normalize & Extract
+- detect type (PDF/DOCX/images/email/chat)
+- extract via Tika (text + metadata)
+- OCR scans/images where needed
+- sectioning (headers/tables where possible)
+- entity extraction (names, orgs, dates, addresses, amounts, phones, emails, IDs)
+- optional visual findings (logos, damages, scene context — labeled as inference)
+
+### Stage C — Redaction + Privilege
+- Presidio detect SSN/DOB/addresses/etc.
+- produce redacted derivatives
+- store vault mapping with strict RBAC
+
+### Stage D — Chunking + Embeddings + Qdrant
+- chunk with overlap
+- embed each chunk
+- upsert to Qdrant with metadata (case_id, doc_id, page, entity tags)
+
+### Stage E — Graph + Timeline
+- GLiNER/GLiREL outputs to Neo4j
+- timeline events extracted with confidence + citations
+- preserve forks when narratives conflict
+
+### Stage F — Cross‑Doc Patterns
+- similarity clustering
+- modus operandi detection
+- convergence scoring (independent corroboration)
+- contradiction finder
+- missing evidence suggestions
+
+---
+
+## 7) Plug‑In “Weapon Modules” (Generators)
+
+You already have 5; expand to 10+ with the same interface:
+- returns JSON + Markdown + citations + confidence + auditId
+
+Existing modules (from your log):
+1) classifier
+2) summarizer
+3) fact_extractor
+4) hot_scorer
+5) privilege_detector
+
+Add these next (high ROI):
+6) contradiction_finder
+7) timeline_builder
+8) entity_graph_builder
+9) damages_ledger
+10) discovery_sniper (record‑anchored; no invented law)
+
+Optional power modules:
+- deposition_co_pilot
+- authenticity/tamper triage
+- settlement simulator
+- brief builder (record‑anchored)
+
+---
+
+## 8) Core API Contract (Minimum Endpoints)
+
+### Case management
+- POST /cases
+- GET /cases/{case_id}
+- POST /cases/{case_id}/clients
+- POST /cases/{case_id}/documents
+
+### Upload/ingest
+- POST /cases/{case_id}/uploads/presign -> { uploadUrl, fileKey }
+- POST /cases/{case_id}/documents -> { document_id, job_id }
+
+### Jobs
+- GET /jobs/{job_id} -> { status, progress, errors? }
+
+### Results
+- GET /cases/{case_id}/documents/{document_id}/results
+- GET /cases/{case_id}/insights
+- GET /cases/{case_id}/graph
+- GET /cases/{case_id}/timeline
+- GET /cases/{case_id}/contradictions
+
+### RAG
+- POST /rag-query (or POST /cases/{case_id}/query) -> answer + citations + auditId
+
+### Analysis
+- POST /analysis/queue
+- GET /analysis/{doc_id}
+- GET /analysis/hot-documents/{case_id}
+- GET /analysis/privilege-review/{case_id}
+
+### Court‑ready integrity
+- GET /documents/{id}/verify
+- GET /documents/{id}/custody-chain
+- GET /documents/{id}/export-for-court
+
+### Mode + models
+- GET /mode -> { batmode, lastExternalCallAt }
+- POST /mode/batmode -> { batmode }
+- GET /models
+- POST /models/select
+
+### Audit
+- GET /audit?caseId=...
+
+---
+
+## 9) Batmode Enforcement (Must Be Real)
+
+### App-level
+- Router refuses all external providers when batmode=on.
+- All endpoints include effective model used + reason if overridden.
+
+### Network-level (Recommended)
+- Put any external API calling behind an `external-gateway` service/container.
+- Batmode ON = stop external-gateway OR block its egress (iptables/ufw/docker net).
+- Batmode OFF = re-enable.
+
+UI must always show ONLINE vs BATMODE badge.
+
+---
+
+## 10) “Snap‑On Adapter” Strategy (Upgrade Without Rewrite)
+
+Fastest path: keep your existing UI, and standardize the backend contract above.
+- UI becomes a client of the orchestrator API.
+- Workers do all processing.
+- Storage/vectors/graph are private services.
+- Model routing + batmode enforced behind the API.
+
+---
+
+## 11) Copy/Paste Replit Prompt (Use This)
+
+Upgrade my existing VERICASE app to match this production pattern: FastAPI orchestrator + Dramatiq/Redis workers + Tika extraction + OCR pipeline + Qdrant vectors + Neo4j knowledge graph + Presidio PII detect/anonymize + Authentik SSO + hardened ingress + court-ready SHA-256 integrity/chain-of-custody export.
+
+Keep the UI intact but refactor it to call the orchestrator API. Implement endpoints: case/client/document CRUD, presigned uploads, document ingestion, /rag-query with citations, /analysis queue + getters, case-level insights, graph/timeline endpoints, integrity/chain-of-custody/court export endpoints, models registry + selection, and /mode batmode toggle.
+
+Implement a policy-driven multi-model router: users can pick Claude/GPT/Gemini/DeepSeek/Local, but Batmode forces local-only and blocks external calls. External calls are only allowed on sanitized payloads with Presidio redaction + audit logging.
+
+Provide working stubs for new analysis modules: contradiction finder, timeline builder, entity graph builder, damages ledger, discovery sniper. Ensure all outputs include citations and observed vs inferred tagging.
+
+---
+
+## 12) Quick Sanity Checklist
+
+- [ ] Only 443 exposed publicly (plus SSH only via private network)
+- [ ] Upload -> queues job -> extraction -> embeddings -> Qdrant -> query works end-to-end
+- [ ] Every output returns citations
+- [ ] Batmode blocks external calls (verified by logs + lastExternalCallAt)
+- [ ] Court export includes original, SHA‑256 certificate, custody chain
+- [ ] Audit log records model selection vs effective model for every AI call
+
+---
+
+End of file.

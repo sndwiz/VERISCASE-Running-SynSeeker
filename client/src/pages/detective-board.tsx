@@ -38,6 +38,10 @@ import {
   Milestone,
   RefreshCw,
   Shield,
+  Quote,
+  HelpCircle,
+  AlertOctagon,
+  FileImage,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 interface DetectiveNode {
   id: string;
   matterId: string;
-  type: "evidence" | "person" | "organization" | "location" | "event" | "theory" | "note" | "hypothesis" | "legal_element" | "timeline_marker";
+  type: "evidence" | "person" | "organization" | "location" | "event" | "theory" | "note" | "hypothesis" | "legal_element" | "timeline_marker" | "quote" | "question" | "gap_indicator" | "document_ref";
   title: string;
   description: string;
   linkedEvidenceId?: string;
@@ -121,6 +125,10 @@ const NODE_TYPES = {
   legal_element: { icon: Scale, label: "Legal Element", defaultColor: "#0891b2" },
   timeline_marker: { icon: Milestone, label: "Timeline Marker", defaultColor: "#7c3aed" },
   note: { icon: StickyNoteIcon, label: "Note", defaultColor: "#6b7280" },
+  quote: { icon: Quote, label: "Quote", defaultColor: "#9b59b6" },
+  question: { icon: HelpCircle, label: "Question", defaultColor: "#e67e22" },
+  gap_indicator: { icon: AlertOctagon, label: "Gap Indicator", defaultColor: "#e74c3c" },
+  document_ref: { icon: FileImage, label: "Document", defaultColor: "#34495e" },
 };
 
 const CONNECTION_TYPES = {
@@ -145,6 +153,10 @@ const PIN_COLORS: Record<string, string> = {
   legal_element: "#0891b2",
   timeline_marker: "#7c3aed",
   note: "#fdcb6e",
+  quote: "#6c5ce7",
+  question: "#e67e22",
+  gap_indicator: "#c0392b",
+  document_ref: "#34495e",
 };
 
 const BOARD_W = 4000;
@@ -170,6 +182,9 @@ const CONNECTION_COLOR_MAP: Record<string, string> = {
   supports: "#27ae60",
   "leads-to": "#f39c12",
   timeline: "#2980b9",
+  corroborates: "#059669",
+  communicates: "#7c3aed",
+  references: "#0284c7",
 };
 
 function getNodeDimensions(type: string) {
@@ -185,6 +200,14 @@ function getNodeDimensions(type: string) {
       return { w: 300, h: 200 };
     case "event":
       return { w: 160, h: 100 };
+    case "quote":
+      return { w: 240, h: 160 };
+    case "question":
+      return { w: 220, h: 140 };
+    case "gap_indicator":
+      return { w: 260, h: 150 };
+    case "document_ref":
+      return { w: 220, h: 160 };
     default:
       return { w: 200, h: 100 };
   }
@@ -626,6 +649,218 @@ function TimelineNodeEl({ node, isSelected, onMouseDown }: { node: DetectiveNode
   );
 }
 
+function QuoteCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  const lines = node.description.split("\n").filter(Boolean);
+  const quoteText = lines[0] || node.description;
+  const sourceText = lines[1] || "";
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 240,
+        background: "#f8f5ff",
+        borderRadius: 6,
+        boxShadow: isSelected ? "0 0 0 3px #6c5ce7, 3px 3px 12px rgba(0,0,0,0.25)" : "3px 3px 12px rgba(0,0,0,0.25)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#6c5ce7" />
+      <div style={{ padding: "18px 18px 14px" }}>
+        <div style={{ fontSize: 36, lineHeight: "24px", color: "#6c5ce7", fontFamily: "Georgia, serif", marginBottom: 4 }}>&ldquo;</div>
+        <div style={{ fontSize: 13, fontStyle: "italic", fontFamily: "Georgia, serif", color: "#2c3e50", lineHeight: 1.5, marginBottom: 8 }}>
+          {quoteText.length > 140 ? quoteText.slice(0, 140) + "..." : quoteText}
+        </div>
+        {sourceText && (
+          <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>
+            &mdash; {sourceText}
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: "#999", paddingTop: 10, borderTop: "1px solid #e8e0f0", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <DoctrineBadges node={node} />
+          <span style={{ ...BADGE_STYLE, background: "#ede7f6", color: "#6c5ce7" }}>QUOTE</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestionCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  const isResolved = node.title.startsWith("[Resolved]");
+  const isInvestigating = node.title.startsWith("[Investigating]");
+  const statusColor = isResolved ? "#27ae60" : isInvestigating ? "#f39c12" : "#e74c3c";
+  const statusLabel = isResolved ? "Resolved" : isInvestigating ? "Investigating" : "Unresolved";
+  const displayTitle = node.title.replace(/^\[(Resolved|Investigating)\]\s*/, "");
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 220,
+        background: "white",
+        borderRadius: 6,
+        borderLeft: "3px solid #e67e22",
+        boxShadow: isSelected ? "0 0 0 3px #e67e22, 3px 3px 12px rgba(0,0,0,0.25)" : "3px 3px 12px rgba(0,0,0,0.25)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#e67e22" />
+      <div style={{ padding: "18px 18px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+          <HelpCircle size={14} style={{ color: "#e67e22" }} />
+          <span style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "#e67e22" }}>OPEN QUESTION</span>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#2c3e50", marginBottom: 6, lineHeight: 1.3 }}>
+          {displayTitle}
+        </div>
+        {node.description && (
+          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.5, marginBottom: 8 }}>
+            {node.description.length > 120 ? node.description.slice(0, 120) + "..." : node.description}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 10, borderTop: "1px solid #eee" }}>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 10,
+            background: `${statusColor}22`,
+            color: statusColor,
+          }}>{statusLabel}</span>
+          <DoctrineBadges node={node} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GapIndicatorEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  const upperTitle = node.title.toUpperCase();
+  const priority = upperTitle.includes("HIGH") ? "HIGH" : upperTitle.includes("MEDIUM") ? "MEDIUM" : upperTitle.includes("LOW") ? "LOW" : "HIGH";
+  const priorityColor = priority === "HIGH" ? "#e74c3c" : priority === "MEDIUM" ? "#f39c12" : "#27ae60";
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 260,
+        background: "#fff5f0",
+        border: "2px solid #e74c3c",
+        borderRadius: 8,
+        boxShadow: isSelected ? "0 0 0 3px #c0392b, 3px 3px 12px rgba(0,0,0,0.25)" : "3px 3px 12px rgba(0,0,0,0.25)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+        animation: "gapPulse 2s infinite",
+      }}
+    >
+      <PushPin color="#c0392b" />
+      <div style={{
+        background: "#e74c3c",
+        color: "white",
+        padding: "10px 14px",
+        fontSize: 11,
+        fontWeight: 600,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        borderRadius: "6px 6px 0 0",
+      }}>
+        <AlertOctagon size={14} /> EVIDENCE GAP
+      </div>
+      <div style={{ padding: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#2c3e50", marginBottom: 6 }}>{node.title}</div>
+        {node.description && (
+          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.5, marginBottom: 10 }}>
+            {node.description.length > 140 ? node.description.slice(0, 140) + "..." : node.description}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 700,
+            padding: "2px 8px",
+            borderRadius: 4,
+            background: `${priorityColor}22`,
+            color: priorityColor,
+            textTransform: "uppercase",
+          }}>{priority}</span>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 10,
+            background: "#ffe0e0",
+            color: "#e74c3c",
+          }}>Not addressed</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DocumentRefEl({ node, isSelected, onMouseDown }: { node: DetectiveNode; isSelected: boolean; onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      data-testid={`board-element-${node.id}`}
+      onMouseDown={onMouseDown}
+      style={{
+        position: "absolute",
+        left: node.position.x,
+        top: node.position.y,
+        width: 220,
+        background: "white",
+        borderRadius: 6,
+        boxShadow: isSelected ? "0 0 0 3px #34495e, 3px 3px 12px rgba(0,0,0,0.25)" : "3px 3px 12px rgba(0,0,0,0.25)",
+        cursor: "move",
+        userSelect: "none",
+        zIndex: isSelected ? 50 : 1,
+      }}
+    >
+      <PushPin color="#34495e" />
+      <div style={{ padding: "18px 18px 14px" }}>
+        <div style={{
+          width: "100%",
+          height: 48,
+          background: "#ecf0f1",
+          borderRadius: 4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 10,
+        }}>
+          <FileImage size={24} style={{ color: "#7f8c8d" }} />
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#2c3e50", marginBottom: 4, lineHeight: 1.3 }}>
+          {node.title}
+        </div>
+        {node.description && (
+          <div style={{ fontSize: 11, color: "#888", lineHeight: 1.4, marginBottom: 8 }}>
+            {node.description.length > 100 ? node.description.slice(0, 100) + "..." : node.description}
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: "#999", paddingTop: 10, borderTop: "1px solid #eee", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <DoctrineBadges node={node} />
+          <span style={{ ...BADGE_STYLE, background: "#ecf0f1", color: "#34495e" }}>DOCUMENT</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MiniMap({ nodes, pan, containerW, containerH }: { nodes: DetectiveNode[]; pan: { x: number; y: number }; containerW: number; containerH: number }) {
   const scale = 150 / BOARD_W;
   const mapH = BOARD_H * scale;
@@ -748,6 +983,9 @@ export default function DetectiveBoardPage() {
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"context" | "history" | "details">("context");
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [nodeForm, setNodeForm] = useState({
     type: "evidence" as keyof typeof NODE_TYPES,
@@ -952,6 +1190,20 @@ export default function DetectiveBoardPage() {
     enabled: !!selectedMatterId && nodes.length > 0,
   });
 
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return nodes.filter(n =>
+      n.title.toLowerCase().includes(q) || n.description.toLowerCase().includes(q)
+    );
+  }, [nodes, searchQuery]);
+
+  const handleNodeContextMenu = useCallback((e: React.MouseEvent, nodeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, nodeId });
+  }, []);
+
   const handleNodeMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     e.preventDefault();
@@ -976,6 +1228,7 @@ export default function DetectiveBoardPage() {
   }, [isConnecting, connectionSource, nodes]);
 
   const handleBoardMouseDown = useCallback((e: React.MouseEvent) => {
+    setContextMenu(null);
     if (dragNode) return;
     const target = e.target as HTMLElement;
     if (target === boardRef.current || target.closest("[data-zone]")) {
@@ -1033,6 +1286,14 @@ export default function DetectiveBoardPage() {
     };
   }, [handleMouseMove, handleMouseUp]);
 
+  useEffect(() => {
+    const dismiss = () => setContextMenu(null);
+    if (contextMenu) {
+      window.addEventListener("click", dismiss);
+      return () => window.removeEventListener("click", dismiss);
+    }
+  }, [contextMenu]);
+
   const handleAddNode = () => {
     const centerX = -pan.x + 200 + Math.random() * 400;
     const centerY = -pan.y + 150 + Math.random() * 300;
@@ -1072,28 +1333,54 @@ export default function DetectiveBoardPage() {
     const end = getNodeCenter(target);
     const color = CONNECTION_COLOR_MAP[conn.connectionType] || "#78716c";
     const isSelected = selectedConnection?.id === conn.id;
+    const midX = (start.x + end.x) / 2;
+    const midY = (start.y + end.y) / 2;
+    const labelText = conn.label || conn.connectionType;
 
     return (
-      <line
-        key={conn.id}
-        x1={start.x}
-        y1={start.y}
-        x2={end.x}
-        y2={end.y}
-        stroke={color}
-        strokeWidth={isSelected ? 4 : 3}
-        strokeDasharray="10 5"
-        opacity={isSelected ? 1 : 0.8}
-        style={{ cursor: "pointer", pointerEvents: "stroke" }}
-        onClick={() => { setSelectedConnection(conn); setSelectedNode(null); setSidebarTab("details"); }}
-      />
+      <g key={conn.id}>
+        <line
+          x1={start.x}
+          y1={start.y}
+          x2={end.x}
+          y2={end.y}
+          stroke={color}
+          strokeWidth={isSelected ? 4 : 3}
+          strokeDasharray="10 5"
+          opacity={isSelected ? 1 : 0.8}
+          style={{ cursor: "pointer", pointerEvents: "stroke" }}
+          onClick={() => { setSelectedConnection(conn); setSelectedNode(null); setSidebarTab("details"); }}
+        />
+        <rect
+          x={midX - labelText.length * 3 - 4}
+          y={midY - 8}
+          width={labelText.length * 6 + 8}
+          height={16}
+          rx={3}
+          fill="rgba(0,0,0,0.7)"
+          style={{ pointerEvents: "none" }}
+        />
+        <text
+          x={midX}
+          y={midY + 4}
+          textAnchor="middle"
+          fill="white"
+          fontSize={10}
+          fontWeight={500}
+          style={{ pointerEvents: "none" }}
+        >
+          {labelText}
+        </text>
+      </g>
     );
   };
 
   const renderBoardNode = (node: DetectiveNode) => {
     const isSelected = selectedNode?.id === node.id;
+    const isSearchMatch = showSearch && searchQuery.trim() && searchResults.some(r => r.id === node.id);
     const onMouseDown = (e: React.MouseEvent) => handleNodeMouseDown(e, node.id);
 
+    const wrappedEl = (() => {
     switch (node.type) {
       case "note":
         return <StickyNoteEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
@@ -1103,9 +1390,24 @@ export default function DetectiveBoardPage() {
         return <ContradictionCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
       case "event":
         return <TimelineNodeEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
+      case "quote":
+        return <QuoteCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
+      case "question":
+        return <QuestionCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
+      case "gap_indicator":
+        return <GapIndicatorEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
+      case "document_ref":
+        return <DocumentRefEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
       default:
         return <EvidenceCardEl key={node.id} node={node} isSelected={isSelected} onMouseDown={onMouseDown} />;
     }
+    })();
+
+    return (
+      <div key={node.id} onContextMenu={(e) => handleNodeContextMenu(e, node.id)} style={isSearchMatch ? { filter: "drop-shadow(0 0 8px #3498db) drop-shadow(0 0 16px #3498db)" } : undefined}>
+        {wrappedEl}
+      </div>
+    );
   };
 
   const selectedMatter = matters.find(m => m.id === selectedMatterId);
@@ -1428,6 +1730,141 @@ export default function DetectiveBoardPage() {
           </div>
         )}
 
+        {/* Board Toolbar */}
+        <div style={{ position: "absolute", top: 12, right: 12, zIndex: 30, display: "flex", gap: 8 }}>
+          <button
+            data-testid="button-board-export"
+            onClick={() => {
+              const boardState = {
+                exportedAt: new Date().toISOString(),
+                matterId: selectedMatterId,
+                matterName: selectedMatter?.name || "",
+                caseNumber: selectedMatter?.caseNumber || "",
+                nodes: nodes.map(n => ({ ...n })),
+                connections: connections.map(c => ({ ...c })),
+                analytics: {
+                  totalNodes: nodes.length,
+                  totalConnections: connections.length,
+                  contradictions: connections.filter(c => c.connectionType === "contradicts").length,
+                  nodeTypes: Object.fromEntries(
+                    Object.keys(NODE_TYPES).map(t => [t, nodes.filter(n => n.type === t).length]).filter(([, v]) => v > 0)
+                  ),
+                },
+              };
+              const blob = new Blob([JSON.stringify(boardState, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `investigation-board-${selectedMatter?.caseNumber || selectedMatterId || "export"}-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast({ title: "Board exported", description: "Investigation board exported as JSON." });
+            }}
+            style={{
+              background: "rgba(0,0,0,0.6)",
+              color: "white",
+              border: "none",
+              borderRadius: 20,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Download size={14} /> Export
+          </button>
+          <button
+            data-testid="button-board-search"
+            onClick={() => { setShowSearch(s => !s); if (showSearch) setSearchQuery(""); }}
+            style={{
+              background: showSearch ? "#3498db" : "rgba(0,0,0,0.6)",
+              color: "white",
+              border: "none",
+              borderRadius: 20,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Search size={14} /> Search
+          </button>
+        </div>
+
+        {/* Search Overlay */}
+        {showSearch && (
+          <div style={{
+            position: "absolute",
+            top: 48,
+            right: 12,
+            zIndex: 30,
+            background: "rgba(0,0,0,0.85)",
+            borderRadius: 8,
+            padding: 12,
+            width: 280,
+          }}>
+            <input
+              data-testid="input-board-search"
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search nodes..."
+              autoFocus
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 6,
+                padding: "8px 12px",
+                color: "white",
+                fontSize: 13,
+                outline: "none",
+              }}
+            />
+            {searchQuery.trim() && (
+              <div style={{ marginTop: 8, maxHeight: 200, overflowY: "auto" }}>
+                {searchResults.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "#999", textAlign: "center", padding: 8 }}>No results found</div>
+                ) : (
+                  searchResults.map(n => (
+                    <div
+                      key={n.id}
+                      data-testid={`search-result-${n.id}`}
+                      onClick={() => {
+                        const dims = getNodeDimensions(n.type);
+                        setPan({ x: -n.position.x + containerSize.w / 2 - dims.w / 2, y: -n.position.y + containerSize.h / 2 - dims.h / 2 });
+                        setSelectedNode(n);
+                        setSidebarTab("details");
+                      }}
+                      style={{
+                        padding: "6px 8px",
+                        fontSize: 12,
+                        color: "white",
+                        cursor: "pointer",
+                        borderRadius: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                    >
+                      <span style={{ fontSize: 9, color: "#999", textTransform: "uppercase", minWidth: 50 }}>{n.type}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div
           ref={boardRef}
           data-testid="cork-board"
@@ -1528,24 +1965,109 @@ export default function DetectiveBoardPage() {
           containerH={containerSize.h}
         />
 
-        {/* Controls hint */}
-        <div style={{
+        {/* Controls hint bar */}
+        <div data-testid="controls-hint-bar" style={{
           position: "absolute",
-          bottom: 16,
-          right: 16,
+          bottom: 0,
+          left: 0,
+          right: 0,
           zIndex: 20,
-          background: "rgba(0,0,0,0.6)",
-          color: "rgba(255,255,255,0.7)",
-          padding: "8px 14px",
-          borderRadius: 8,
+          background: "rgba(0,0,0,0.7)",
+          color: "rgba(255,255,255,0.6)",
+          padding: "6px 16px",
           fontSize: 11,
+          textAlign: "center",
         }}>
-          <kbd style={{ background: "rgba(255,255,255,0.15)", padding: "2px 6px", borderRadius: 4, marginRight: 4 }}>Drag</kbd>
-          elements to move
+          Drag elements to move
           <span style={{ margin: "0 8px", opacity: 0.5 }}>|</span>
-          <kbd style={{ background: "rgba(255,255,255,0.15)", padding: "2px 6px", borderRadius: 4, marginRight: 4 }}>Click + Drag</kbd>
-          on board to pan
+          Click + Drag on board to pan
+          <span style={{ margin: "0 8px", opacity: 0.5 }}>|</span>
+          Right-click for options
         </div>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <div
+            data-testid="context-menu"
+            style={{
+              position: "fixed",
+              left: contextMenu.x,
+              top: contextMenu.y,
+              zIndex: 100,
+              background: "#1a1a2e",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 8,
+              padding: 4,
+              minWidth: 160,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div
+              data-testid="context-menu-edit"
+              onClick={() => {
+                const node = nodes.find(n => n.id === contextMenu.nodeId);
+                if (node) { setSelectedNode(node); setSidebarTab("details"); }
+                setContextMenu(null);
+              }}
+              style={{ padding: "8px 12px", fontSize: 12, color: "white", cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center", gap: 8 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <Eye size={14} /> Edit
+            </div>
+            <div
+              data-testid="context-menu-duplicate"
+              onClick={() => {
+                const node = nodes.find(n => n.id === contextMenu.nodeId);
+                if (node) {
+                  createNodeMutation.mutate({
+                    type: node.type as keyof typeof NODE_TYPES,
+                    title: node.title + " (copy)",
+                    description: node.description,
+                    color: node.color,
+                    confidenceScore: node.confidenceScore || 0.5,
+                    isInferred: node.isInferred || false,
+                    reliabilityLevel: (node.reliabilityLevel || "moderate") as "strong" | "moderate" | "weak",
+                    hypothesisType: (node.hypothesisType || "null") as "null" | "alternative",
+                    legalElement: node.legalElement || "",
+                    position: { x: node.position.x + 30, y: node.position.y + 30 },
+                  });
+                }
+                setContextMenu(null);
+              }}
+              style={{ padding: "8px 12px", fontSize: 12, color: "white", cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center", gap: 8 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <Plus size={14} /> Duplicate
+            </div>
+            <div
+              data-testid="context-menu-connect"
+              onClick={() => {
+                startConnecting(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+              style={{ padding: "8px 12px", fontSize: 12, color: "white", cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center", gap: 8 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <Link2 size={14} /> Connect to...
+            </div>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 0" }} />
+            <div
+              data-testid="context-menu-delete"
+              onClick={() => {
+                deleteNodeMutation.mutate(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+              style={{ padding: "8px 12px", fontSize: 12, color: "#e74c3c", cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center", gap: 8 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(231,76,60,0.1)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <Trash2 size={14} /> Delete
+            </div>
+          </div>
+        )}
       </div>
 
       {/* RIGHT SIDEBAR */}
@@ -2172,6 +2694,10 @@ export default function DetectiveBoardPage() {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes gapPulse {
+          0%, 100% { border-color: #e74c3c; }
+          50% { border-color: #c0392b88; }
         }
       `}</style>
     </div>

@@ -1112,7 +1112,7 @@ export const updateAutomationRuleSchema = insertAutomationRuleSchema.partial().o
 // Detective Board schemas
 export const insertDetectiveNodeSchema = z.object({
   matterId: z.string(),
-  type: z.enum(["evidence", "person", "organization", "location", "event", "theory", "note", "hypothesis", "legal_element", "timeline_marker"]),
+  type: z.enum(["evidence", "person", "organization", "location", "event", "theory", "note", "hypothesis", "legal_element", "timeline_marker", "quote", "question", "gap_indicator", "document_ref"]),
   title: z.string(),
   description: z.string().optional().default(""),
   linkedEvidenceId: z.string().optional(),
