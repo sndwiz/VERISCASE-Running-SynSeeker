@@ -21,6 +21,7 @@ import {
 import type {
   InsightCitation, ThemeResult, TimelineEntry, EntityResult,
   ContradictionResult, ActionItemResult, RiskResult, InsightAnalysisResult,
+  ToneAnalysisResult, ConsistencyCheckResult,
 } from "@shared/insights-types";
 
 interface MatterAsset {
@@ -373,6 +374,8 @@ function IntentDialog({
     { id: "contradictions", label: "Contradictions", icon: Zap },
     { id: "action_items", label: "Action Items", icon: ListTodo },
     { id: "risks", label: "Risks / Red Flags", icon: Shield },
+    { id: "tone_analysis", label: "Tone Analysis", icon: BarChart3 },
+    { id: "consistency_check", label: "Consistency (H0/H1)", icon: Target },
   ];
 
   return (
@@ -462,6 +465,8 @@ function ResultsViewer({
     { key: "contradictions", label: "Contradictions", hasData: !!sections.contradictions },
     { key: "action_items", label: "Action Items", hasData: !!sections.action_items },
     { key: "risks", label: "Risks", hasData: !!sections.risks },
+    { key: "tone_analysis", label: "Tone Analysis", hasData: !!sections.tone_analysis },
+    { key: "consistency_check", label: "Consistency", hasData: !!sections.consistency_check },
   ].filter(t => t.hasData);
 
   if (availableTabs.length === 0) return null;
@@ -614,6 +619,198 @@ function ResultsViewer({
                     <Badge variant={risk.severity === "high" ? "destructive" : "secondary"}>
                       {risk.severity}
                     </Badge>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          )}
+
+          {sections.tone_analysis && (
+            <TabsContent value="tone_analysis">
+              <div className="space-y-6" role="list" aria-label="Tone analysis results">
+                {(sections.tone_analysis as ToneAnalysisResult[]).map((tone, i) => (
+                  <div key={i} className="space-y-3 p-4 border rounded-md" role="listitem" data-testid={`tone-${i}`}>
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <h4 className="font-medium text-sm">{tone.document}</h4>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary">{tone.formalityLevel?.replace("_", " ")}</Badge>
+                        <Badge>{tone.overallTone}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Emotional Register</p>
+                        <p className="text-sm">{tone.emotionalRegister}</p>
+                      </div>
+                      {tone.persuasionTactics?.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Persuasion Tactics</p>
+                          <div className="flex flex-wrap gap-1">
+                            {tone.persuasionTactics.map((t, j) => (
+                              <Badge key={j} variant="secondary">{t}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {tone.linguisticMarkers?.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Linguistic Markers</p>
+                        <div className="flex flex-wrap gap-1">
+                          {tone.linguisticMarkers.map((m, j) => (
+                            <Badge key={j} variant="secondary">{m}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {tone.credibilityIndicators && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Credibility Indicators</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {tone.credibilityIndicators.hedgingLanguage?.length > 0 && (
+                            <div className="space-y-0.5">
+                              <p className="font-medium">Hedging Language</p>
+                              {tone.credibilityIndicators.hedgingLanguage.map((h, j) => (
+                                <p key={j} className="text-muted-foreground">"{h}"</p>
+                              ))}
+                            </div>
+                          )}
+                          {tone.credibilityIndicators.absoluteStatements?.length > 0 && (
+                            <div className="space-y-0.5">
+                              <p className="font-medium">Absolute Statements</p>
+                              {tone.credibilityIndicators.absoluteStatements.map((a, j) => (
+                                <p key={j} className="text-muted-foreground">"{a}"</p>
+                              ))}
+                            </div>
+                          )}
+                          {tone.credibilityIndicators.evasivePatterns?.length > 0 && (
+                            <div className="space-y-0.5">
+                              <p className="font-medium text-destructive">Evasive Patterns</p>
+                              {tone.credibilityIndicators.evasivePatterns.map((e, j) => (
+                                <p key={j} className="text-muted-foreground">"{e}"</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {tone.toneShifts?.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Tone Shifts</p>
+                        {tone.toneShifts.map((s, j) => (
+                          <div key={j} className="text-xs flex items-center gap-1">
+                            <span>{s.fromTone}</span>
+                            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                            <span>{s.toTone}</span>
+                            <span className="text-muted-foreground ml-1">({s.significance})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground border-t pt-2">{tone.summary}</p>
+                    <CitationList citations={tone.citations || []} />
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          )}
+
+          {sections.consistency_check && (
+            <TabsContent value="consistency_check">
+              <div className="space-y-6" role="list" aria-label="Consistency check results">
+                {(sections.consistency_check as ConsistencyCheckResult[]).map((check, i) => (
+                  <div key={i} className="space-y-4 p-4 border rounded-md" role="listitem" data-testid={`consistency-${i}`}>
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="space-y-0.5">
+                        <h4 className="font-medium text-sm">{check.documentA} vs {check.documentB}</h4>
+                      </div>
+                      <Badge variant={
+                        check.verdict === "inconsistent" ? "destructive" :
+                        check.verdict === "consistent" ? "default" : "secondary"
+                      }>
+                        {check.verdict.toUpperCase()} ({Math.round((check.confidenceScore || 0) * 100)}%)
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-1 p-2 rounded-md bg-muted/30">
+                        <p className="text-xs font-medium text-muted-foreground">H0 (Null Hypothesis)</p>
+                        <p>{check.nullHypothesis}</p>
+                      </div>
+                      <div className="space-y-1 p-2 rounded-md bg-muted/30">
+                        <p className="text-xs font-medium text-muted-foreground">H1 (Alternative Hypothesis)</p>
+                        <p>{check.alternativeHypothesis}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Statistical Reasoning</p>
+                      <p className="text-sm">{check.statisticalReasoning}</p>
+                    </div>
+
+                    {check.factualDiscrepancies?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Factual Discrepancies ({check.factualDiscrepancies.length})
+                        </p>
+                        {check.factualDiscrepancies.map((d, j) => (
+                          <div key={j} className="text-sm space-y-1 p-2 border rounded-md">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant={
+                                d.significance === "critical" ? "destructive" :
+                                d.significance === "major" ? "default" : "secondary"
+                              }>
+                                {d.significance}
+                              </Badge>
+                              <span className="font-medium">{d.claim}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+                              <p><span className="font-medium">Doc A:</span> {d.versionA}</p>
+                              <p><span className="font-medium">Doc B:</span> {d.versionB}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {check.evidenceForNull?.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                            Evidence for Consistency ({check.evidenceForNull.length})
+                          </p>
+                          {check.evidenceForNull.slice(0, 4).map((e, j) => (
+                            <p key={j} className="text-xs text-muted-foreground">{e.statement}</p>
+                          ))}
+                        </div>
+                      )}
+                      {check.evidenceForAlternative?.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-red-600 dark:text-red-400">
+                            Evidence for Inconsistency ({check.evidenceForAlternative.length})
+                          </p>
+                          {check.evidenceForAlternative.slice(0, 4).map((e, j) => (
+                            <p key={j} className="text-xs text-muted-foreground">{e.statement}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {check.toneAlignment && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Badge variant={check.toneAlignment.aligned ? "default" : "destructive"}>
+                          Tone {check.toneAlignment.aligned ? "Aligned" : "Misaligned"}
+                        </Badge>
+                        <span className="text-muted-foreground text-xs">{check.toneAlignment.explanation}</span>
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground border-t pt-2">{check.overallAssessment}</p>
                   </div>
                 ))}
               </div>

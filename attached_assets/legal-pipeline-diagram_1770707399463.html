@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal AI Document System - How It Works</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 50px;
+            font-size: 1.1rem;
+        }
+        
+        .phase-label {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 40px 0 30px;
+            color: #00d9ff;
+        }
+        
+        .phase-label span {
+            background: rgba(0, 217, 255, 0.1);
+            padding: 10px 30px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+        
+        /* Phase 1 Pipeline */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+        
+        .pipeline-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            min-width: 200px;
+            max-width: 280px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .step:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 217, 255, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 217, 255, 0.2);
+        }
+        
+        .step-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .step-desc {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        
+        .arrow {
+            font-size: 2rem;
+            color: #00d9ff;
+            animation: pulse 2s infinite;
+        }
+        
+        .arrow-down {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #00d9ff;
+            margin: 10px 0;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        /* Special styling for different step types */
+        .step.input {
+            border-color: rgba(255, 193, 7, 0.5);
+            background: rgba(255, 193, 7, 0.1);
+        }
+        
+        .step.process {
+            border-color: rgba(0, 217, 255, 0.5);
+            background: rgba(0, 217, 255, 0.1);
+        }
+        
+        .step.analysis {
+            border-color: rgba(255, 87, 87, 0.5);
+            background: rgba(255, 87, 87, 0.1);
+        }
+        
+        .step.storage {
+            border-color: rgba(0, 255, 136, 0.5);
+            background: rgba(0, 255, 136, 0.1);
+        }
+        
+        .step.output {
+            border-color: rgba(155, 89, 255, 0.5);
+            background: rgba(155, 89, 255, 0.1);
+        }
+        
+        /* Divider */
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            margin: 60px 0;
+        }
+        
+        /* Phase 2 - Wash Center */
+        .wash-center-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .zone {
+            flex: 1;
+            min-width: 300px;
+            max-width: 350px;
+            border-radius: 20px;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .zone-private {
+            background: linear-gradient(180deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 136, 0.05) 100%);
+            border: 2px solid rgba(0, 255, 136, 0.4);
+        }
+        
+        .zone-external {
+            background: linear-gradient(180deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.05) 100%);
+            border: 2px solid rgba(255, 193, 7, 0.4);
+        }
+        
+        .zone-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .zone-private .zone-title {
+            color: #00ff88;
+        }
+        
+        .zone-external .zone-title {
+            color: #ffc107;
+        }
+        
+        .zone-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .zone-item-icon {
+            font-size: 1.3rem;
+        }
+        
+        .transfer-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+        }
+        
+        .transfer-arrow .arrow-text {
+            font-size: 0.75rem;
+            color: #888;
+            text-align: center;
+            max-width: 80px;
+        }
+        
+        .transfer-arrow .arrows {
+            font-size: 2rem;
+            color: #00d9ff;
+        }
+        
+        /* Key Points */
+        .key-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 50px;
+        }
+        
+        .key-point {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .key-point h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: #00ff88;
+        }
+        
+        .key-point p {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        
+        /* Flags section */
+        .flags-section {
+            margin-top: 50px;
+            text-align: center;
+        }
+        
+        .flags-title {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            color: #ff5757;
+        }
+        
+        .flags-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .flag {
+            background: rgba(255, 87, 87, 0.15);
+            border: 1px solid rgba(255, 87, 87, 0.4);
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-size: 0.85rem;
+            color: #ff8888;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #666;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Legal Document Intelligence System</h1>
+        <p class="subtitle">How Your Documents Become Searchable Insights</p>
+        
+        <!-- PHASE 1 -->
+        <div class="phase-label"><span>📍 PHASE 1: What It Does Today</span></div>
+        
+        <div class="pipeline">
+            <!-- Row 1: Input -->
+            <div class="pipeline-row">
+                <div class="step input">
+                    <div class="step-icon">📄</div>
+                    <div class="step-title">Your Documents</div>
+                    <div class="step-desc">PDFs, scans, photos, handwritten notes - any format</div>
+                </div>
+            </div>
+            
+            <div class="arrow-down">⬇️</div>
+            
+            <!-- Row 2: OCR -->
+            <div class="pipeline-row">
+                <div class="step process">
+                    <div class="step-icon">👁️</div>
+                    <div class="step-title">Text Extraction</div>
+                    <div class="step-desc">AI reads every page, even messy handwriting and old faxes</div>
+                </div>
+            </div>
+            
+            <div class="arrow-down">⬇️</div>
+            
+            <!-- Row 3: Analysis -->
+            <div class="pipeline-row">
+                <div class="step analysis">
+                    <div class="step-icon">🔍</div>
+                    <div class="step-title">Tone Analysis</div>
+                    <div class="step-desc">Detects contradictions, evasive language, timeline issues</div>
+                </div>
+            </div>
+            
+            <div class="arrow-down">⬇️</div>
+            
+            <!-- Row 4: Storage -->
+            <div class="pipeline-row">
+                <div class="step storage">
+                    <div class="step-icon">🗄️</div>
+                    <div class="step-title">Smart Storage</div>
+                    <div class="step-desc">Every piece linked to source doc + page number</div>
+                </div>
+            </div>
+            
+            <div class="arrow-down">⬇️</div>
+            
+            <!-- Row 5: Output -->
+            <div class="pipeline-row">
+                <div class="step output">
+                    <div class="step-icon">💬</div>
+                    <div class="step-title">Ask Questions</div>
+                    <div class="step-desc">"Find contradictions about the meeting" → Instant answers</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Flags Section -->
+        <div class="flags-section">
+            <div class="flags-title">🚩 Red Flags It Catches Automatically</div>
+            <div class="flags-grid">
+                <div class="flag">⚡ Contradictions</div>
+                <div class="flag">🌫️ Evasive Language</div>
+                <div class="flag">📅 Timeline Issues</div>
+                <div class="flag">😤 Aggressive Tone</div>
+                <div class="flag">🛡️ Defensive Language</div>
+                <div class="flag">❓ Missing Information</div>
+                <div class="flag">🔤 Unusual Wording</div>
+                <div class="flag">📊 Detail Inconsistency</div>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- PHASE 2 -->
+        <div class="phase-label"><span>🚀 PHASE 2: The Wash Center (Coming Soon)</span></div>
+        
+        <div class="wash-center-diagram">
+            <!-- Private Zone (Left) -->
+            <div class="zone zone-private">
+                <div class="zone-title">🔒 YOUR OFFICE (Private)</div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">📁</span>
+                    <span>Original case files stay here</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🔐</span>
+                    <span>All names & personal info stays here</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">✂️</span>
+                    <span>System strips identifying info</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">📤</span>
+                    <span>Sends only patterns & language</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">📥</span>
+                    <span>Receives insights back</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🔗</span>
+                    <span>Reconnects to your real cases</span>
+                </div>
+            </div>
+            
+            <!-- Transfer Arrows -->
+            <div class="transfer-arrow">
+                <div class="arrow-text">Anonymous data only</div>
+                <div class="arrows">➡️</div>
+                <div class="arrows">⬅️</div>
+                <div class="arrow-text">Insights only</div>
+            </div>
+            
+            <!-- External Zone (Right) -->
+            <div class="zone zone-external">
+                <div class="zone-title">☁️ WASH CENTER (External)</div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🧠</span>
+                    <span>Powerful AI processing</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">📊</span>
+                    <span>Pattern analysis at scale</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🔎</span>
+                    <span>Cross-case comparisons</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🚫</span>
+                    <span>Never sees real names</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">🚫</span>
+                    <span>Never sees SSNs or addresses</span>
+                </div>
+                <div class="zone-item">
+                    <span class="zone-item-icon">📋</span>
+                    <span>Returns findings, not raw data</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Key Points -->
+        <div class="key-points">
+            <div class="key-point">
+                <h3>🔒 100% Private</h3>
+                <p>Sensitive data never leaves your hardware. The wash center only sees anonymized patterns - never actual client information.</p>
+            </div>
+            <div class="key-point">
+                <h3>⚖️ Discovery-Ready</h3>
+                <p>Complete audit trail of every operation. If challenged, you can prove exactly what data left your office (none of the sensitive stuff).</p>
+            </div>
+            <div class="key-point">
+                <h3>🚀 Enterprise Power</h3>
+                <p>Get the analysis capabilities of a massive law firm's tech stack without the security risks of cloud storage.</p>
+            </div>
+            <div class="key-point">
+                <h3>⏱️ Minutes, Not Weeks</h3>
+                <p>Find contradictions across 10,000 pages in seconds. Pattern match across your entire case history instantly.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Legal Document Intelligence System • All processing on your hardware • Contact: Wesley Thompson
+        </div>
+    </div>
+</body>
+</html>

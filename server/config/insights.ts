@@ -31,7 +31,7 @@ export const INSIGHTS_CONFIG = {
     maxDocumentsPerRun: 20,
     defaultScopeThreshold: 20,
     defaultScopeSize: 10,
-    aiModel: "claude-sonnet-4-5-20250514",
+    aiModel: "claude-sonnet-4-5",
     maxTokens: 8192,
   },
 
