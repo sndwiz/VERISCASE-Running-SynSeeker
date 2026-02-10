@@ -24,6 +24,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import type { Matter } from "@/types/matters";
 import {
   Upload,
   FileText,
@@ -44,12 +45,6 @@ import {
   AlertTriangle,
   XCircle,
 } from "lucide-react";
-
-interface Matter {
-  id: string;
-  name: string;
-  caseNumber: string;
-}
 
 interface PdfDocument {
   id: string;

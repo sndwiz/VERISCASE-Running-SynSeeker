@@ -52,19 +52,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { DOC_CATEGORIES, docTypesByCategory, CONFIDENTIALITY_LEVELS, DOC_PARTIES, DOC_ROLES } from "@shared/schema";
 import type { FileItemWithProfile, DocCategory, ConfidentialityLevel, DocParty, DocRole } from "@shared/schema";
+import type { Matter } from "@/types/matters";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-interface Matter {
-  id: string;
-  name: string;
-  caseNumber: string;
-  clientId: string;
-}
 
 interface FilingTag {
   id: string;

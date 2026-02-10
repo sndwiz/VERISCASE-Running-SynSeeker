@@ -7,6 +7,12 @@ VERICASE is a comprehensive legal practice management system designed to streaml
 - Dark/light theme toggle in header
 - Professional legal-focused design
 - Clean, modern interface
+- Engineering principles: YAGNI, DRY (Rule of Three), SRP, encapsulate volatility, reduce concepts, kill dead code
+
+## Code Organization (Refactored)
+- **Shared Types:** `client/src/types/matters.ts` — Single source of truth for Client, TeamMember, Matter, MatterParty, TriggerDates, MatterPhase, LitigationTemplateInfo, MatterDocument, MatterContact, Thread, TimelineEvent
+- **Shared Constants:** `client/src/lib/matter-constants.ts` — PRACTICE_AREAS, MATTER_TYPES, UTAH_COURTS, UTAH_JUDGES, MATTER_STATUSES, STATUS_OPTIONS
+- **Extracted Components:** `client/src/components/matters/litigation-form.tsx` (LitigationFormSection with data-driven trigger date fields), `client/src/components/matters/matter-sidebar-cards.tsx` (PhasesCard, KeyDatesCard, PartiesCard, TeamAssignmentsCard)
 
 ## System Architecture
 VERICASE is built with a modern web stack, featuring React 18 with TypeScript for the frontend, and Node.js with Express for the backend. PostgreSQL with Drizzle ORM handles data persistence.

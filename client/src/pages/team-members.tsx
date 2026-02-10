@@ -30,22 +30,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-interface TeamMember {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  phone?: string;
-  role: string;
-  title?: string;
-  barNumber?: string;
-  department?: string;
-  isActive: boolean;
-  userId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { TeamMember } from "@/types/matters";
 
 const TEAM_ROLES = [
   { value: "attorney", label: "Attorney" },

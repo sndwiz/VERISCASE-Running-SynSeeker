@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import type { Matter } from "@/types/matters";
 import {
   FileText,
   Image as ImageIcon,
@@ -86,12 +87,6 @@ interface OCRJob {
   createdAt: string;
   completedAt?: string;
   errorMessage?: string;
-}
-
-interface Matter {
-  id: string;
-  name: string;
-  caseNumber: string;
 }
 
 interface VerifyResult {

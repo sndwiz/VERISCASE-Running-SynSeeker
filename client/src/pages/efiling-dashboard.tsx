@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Matter } from "@/types/matters";
 import {
   FileText,
   Upload,
@@ -36,14 +37,6 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Matter {
-  id: string;
-  name: string;
-  caseNumber: string | null;
-  courtName: string | null;
-  status: string;
-}
 
 interface CaseFiling {
   id: string;

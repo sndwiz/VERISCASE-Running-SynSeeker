@@ -32,37 +32,8 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/hooks/use-workspace";
-
-interface Client {
-  id: string;
-  name: string;
-  type: "individual" | "business";
-  email?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: string;
-}
-
-interface Matter {
-  id: string;
-  clientId: string;
-  name: string;
-  caseNumber: string;
-  status: string;
-  practiceArea: string;
-}
-
-const PRACTICE_AREAS = [
-  "Civil Litigation", "Criminal Defense", "Family Law", "Corporate Law",
-  "Real Estate", "Intellectual Property", "Employment Law", "Immigration",
-  "Personal Injury", "Estate Planning", "Bankruptcy", "Tax Law", "Other",
-];
-
-const MATTER_TYPES = [
-  "Consultation", "Litigation", "Transaction", "Administrative",
-  "Regulatory", "Criminal Defense", "Civil Litigation", "Insurance Litigation", "Other",
-];
+import type { Client, Matter } from "@/types/matters";
+import { PRACTICE_AREAS, MATTER_TYPES } from "@/lib/matter-constants";
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -202,7 +173,7 @@ export default function ClientsPage() {
     if (selectedClient) {
       setClientForm({
         name: selectedClient.name,
-        type: selectedClient.type,
+        type: selectedClient.type || "individual",
         email: selectedClient.email || "",
         phone: selectedClient.phone || "",
         address: selectedClient.address || "",

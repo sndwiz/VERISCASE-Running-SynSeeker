@@ -42,7 +42,6 @@ import {
   Phone,
   Mail,
   ExternalLink,
-  Gavel,
   MapPin,
   User,
   Upload,
@@ -52,129 +51,9 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-interface Client {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-}
-
-interface MatterPhase {
-  id: string;
-  name: string;
-  order: number;
-  description: string;
-  advanceTrigger?: string;
-  status: "not-started" | "in-progress" | "completed";
-}
-
-interface TriggerDates {
-  filingDate?: string;
-  serviceDate?: string;
-  schedulingOrderDate?: string;
-  discoveryCutoff?: string;
-  expertDeadline?: string;
-  trialDate?: string;
-  mediationDate?: string;
-}
-
-interface MatterParty {
-  name: string;
-  role: string;
-  counsel?: string;
-}
-
-interface Matter {
-  id: string;
-  clientId: string;
-  name: string;
-  caseNumber: string;
-  matterType: string;
-  status: string;
-  description: string;
-  practiceArea: string;
-  responsiblePartyId?: string;
-  assignedAttorneys?: string[];
-  assignedParalegals?: string[];
-  courtName?: string;
-  judgeAssigned?: string;
-  opposingCounsel?: string;
-  venue?: string;
-  parties?: MatterParty[];
-  claims?: string[];
-  litigationTemplateId?: string;
-  currentPhase?: string;
-  phases?: MatterPhase[];
-  triggerDates?: TriggerDates;
-  openedDate: string;
-  closedDate?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TeamMember {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  phone?: string;
-  role: string;
-  title?: string;
-  barNumber?: string;
-  department?: string;
-  isActive: boolean;
-}
-
-interface MatterDocument {
-  id: string;
-  matterId: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-  uploadedAt: string;
-}
-
-interface MatterContact {
-  id: string;
-  matterId: string;
-  name: string;
-  role: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  notes?: string;
-}
-
-interface Thread {
-  id: string;
-  matterId: string;
-  subject: string;
-  status: string;
-  participants: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TimelineEvent {
-  id: string;
-  matterId: string;
-  title: string;
-  description: string;
-  eventType: string;
-  eventDate: string;
-  createdAt: string;
-}
-
-const STATUS_OPTIONS = [
-  { value: "active", label: "Open" },
-  { value: "pending", label: "Pending" },
-  { value: "on_hold", label: "On Hold" },
-  { value: "closed", label: "Closed" },
-  { value: "archived", label: "Archived" },
-];
+import type { Client, TeamMember, Matter, MatterDocument, MatterContact, Thread, TimelineEvent } from "@/types/matters";
+import { STATUS_OPTIONS, PRACTICE_AREAS } from "@/lib/matter-constants";
+import { PhasesCard, KeyDatesCard, PartiesCard, TeamAssignmentsCard } from "@/components/matters/matter-sidebar-cards";
 
 export default function MatterDetailPage() {
   const { toast } = useToast();
@@ -607,190 +486,16 @@ export default function MatterDetailPage() {
                   </Card>
 
                   {matter.phases && matter.phases.length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Gavel className="h-4 w-4" />
-                          Litigation Phases
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1">
-                        {[...matter.phases]
-                          .sort((a, b) => a.order - b.order)
-                          .map((phase) => {
-                            const isCurrent = phase.id === matter.currentPhase;
-                            return (
-                              <div
-                                key={phase.id}
-                                className={`flex items-center gap-2 p-1.5 rounded-md text-sm ${
-                                  isCurrent ? "bg-primary/10 font-medium" : ""
-                                }`}
-                                data-testid={`phase-${phase.id}`}
-                              >
-                                {phase.status === "completed" ? (
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                                ) : isCurrent ? (
-                                  <div className="h-3.5 w-3.5 rounded-full border-2 border-primary bg-primary/20 shrink-0" />
-                                ) : (
-                                  <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
-                                )}
-                                <span className={phase.status === "completed" ? "text-muted-foreground line-through" : ""}>
-                                  {phase.name}
-                                </span>
-                                {isCurrent && (
-                                  <Badge variant="secondary" className="ml-auto text-[10px]">Current</Badge>
-                                )}
-                              </div>
-                            );
-                          })}
-                        {matter.currentPhase && (() => {
-                          const current = matter.phases?.find(p => p.id === matter.currentPhase);
-                          if (!current) return null;
-                          const nextPhase = matter.phases?.find(p => p.order === current.order + 1);
-                          return (
-                            <div className="mt-3 pt-3 border-t space-y-1.5">
-                              <p className="text-xs text-muted-foreground">{current.description}</p>
-                              {nextPhase && (
-                                <p className="text-xs text-muted-foreground">
-                                  Next: <span className="font-medium text-foreground">{nextPhase.name}</span>
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </CardContent>
-                    </Card>
+                    <PhasesCard phases={matter.phases} currentPhase={matter.currentPhase} />
                   )}
 
                   {matter.triggerDates && Object.values(matter.triggerDates).some(v => v) && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Key Dates
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {[
-                          { key: "filingDate", label: "Filing Date" },
-                          { key: "serviceDate", label: "Service Date" },
-                          { key: "schedulingOrderDate", label: "Scheduling Order" },
-                          { key: "discoveryCutoff", label: "Discovery Cutoff" },
-                          { key: "expertDeadline", label: "Expert Deadline" },
-                          { key: "trialDate", label: "Trial Date" },
-                          { key: "mediationDate", label: "Mediation Date" },
-                        ].map(({ key, label }) => {
-                          const val = matter.triggerDates?.[key as keyof TriggerDates];
-                          if (!val) return null;
-                          const d = new Date(val + "T00:00:00");
-                          const isPast = d < new Date();
-                          return (
-                            <div key={key} className="flex items-center justify-between text-sm" data-testid={`date-${key}`}>
-                              <span className="text-muted-foreground">{label}</span>
-                              <span className={isPast ? "text-muted-foreground" : "font-medium"}>
-                                {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </CardContent>
-                    </Card>
+                    <KeyDatesCard triggerDates={matter.triggerDates} />
                   )}
 
-                  {matter.parties && matter.parties.length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Parties
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {matter.parties.map((party, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm" data-testid={`party-${idx}`}>
-                            <Badge variant="secondary" className="text-[10px] shrink-0">{party.role}</Badge>
-                            <span className="truncate">{party.name}</span>
-                            {party.counsel && (
-                              <span className="text-muted-foreground text-xs truncate ml-auto">({party.counsel})</span>
-                            )}
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  )}
+                  <PartiesCard parties={matter.parties} />
 
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Team Assignments
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {(() => {
-                        const responsibleParty = matter.responsiblePartyId
-                          ? teamMembers.find(tm => tm.id === matter.responsiblePartyId)
-                          : null;
-                        const assignedAtts = (matter.assignedAttorneys || [])
-                          .map(id => teamMembers.find(tm => tm.id === id))
-                          .filter(Boolean);
-                        const assignedPls = (matter.assignedParalegals || [])
-                          .map(id => teamMembers.find(tm => tm.id === id))
-                          .filter(Boolean);
-                        const hasTeam = responsibleParty || assignedAtts.length > 0 || assignedPls.length > 0;
-
-                        if (!hasTeam) {
-                          return <p className="text-sm text-muted-foreground">No team members assigned.</p>;
-                        }
-
-                        return (
-                          <>
-                            {responsibleParty && (
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                    {responsibleParty.firstName[0]}{responsibleParty.lastName[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="text-sm font-medium" data-testid="text-responsible-party">
-                                    {responsibleParty.firstName} {responsibleParty.lastName}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">Responsible Attorney</p>
-                                </div>
-                              </div>
-                            )}
-                            {assignedAtts.length > 0 && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1.5">Attorneys</p>
-                                {assignedAtts.map(atty => atty && (
-                                  <div key={atty.id} className="flex items-center gap-3 py-1" data-testid={`text-attorney-${atty.id}`}>
-                                    <Avatar className="h-7 w-7">
-                                      <AvatarFallback className="text-xs">{atty.firstName[0]}{atty.lastName[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <p className="text-sm">{atty.firstName} {atty.lastName}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {assignedPls.length > 0 && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1.5">Paralegals</p>
-                                {assignedPls.map(pl => pl && (
-                                  <div key={pl.id} className="flex items-center gap-3 py-1" data-testid={`text-paralegal-${pl.id}`}>
-                                    <Avatar className="h-7 w-7">
-                                      <AvatarFallback className="text-xs">{pl.firstName[0]}{pl.lastName[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <p className="text-sm">{pl.firstName} {pl.lastName}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </CardContent>
-                  </Card>
+                  <TeamAssignmentsCard matter={matter} teamMembers={teamMembers} />
 
                   <Card>
                     <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
@@ -1372,12 +1077,6 @@ function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
     judgeAssigned: matter.judgeAssigned || "",
     opposingCounsel: matter.opposingCounsel || "",
   });
-
-  const PRACTICE_AREAS = [
-    "Civil Litigation", "Criminal Defense", "Family Law", "Corporate Law",
-    "Real Estate", "Intellectual Property", "Employment Law", "Immigration",
-    "Personal Injury", "Estate Planning", "Bankruptcy", "Tax Law", "Other",
-  ];
 
   return (
     <>
