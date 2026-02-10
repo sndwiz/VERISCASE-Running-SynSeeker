@@ -1,4 +1,4 @@
-import { getRegistryModel, getLocalModels, type ModelRegistryEntry } from "../config/model-registry";
+import { getRegistryModel, getLocalModels, getAvailableModels, type ModelRegistryEntry } from "../config/model-registry";
 import { logger } from "../utils/logger";
 
 export type RuntimeMode = "online" | "batmode";
@@ -132,17 +132,15 @@ export function evaluatePolicy(request: PolicyRequest): PolicyDecision {
           originalModelId: requestedModelId,
         };
       }
-      if (effectivePayload === "raw") {
-        return {
-          allowed: false,
-          effectiveModelId: requestedModelId,
-          effectiveProvider: model.provider,
-          requiredSteps: ["redact", "sanitize"],
-          reason: `Case is ${effectivePolicy} with raw payload. Redaction required before external API call.`,
-          wasFallback: false,
-          originalModelId: requestedModelId,
-        };
-      }
+      return {
+        allowed: false,
+        effectiveModelId: requestedModelId,
+        effectiveProvider: model.provider,
+        requiredSteps: effectivePayload === "raw" ? ["redact", "sanitize"] : [],
+        reason: `Case is ${effectivePolicy}. External models blocked and no local models available. Cannot process request.`,
+        wasFallback: false,
+        originalModelId: requestedModelId,
+      };
     }
 
     if (effectivePayload === "raw" && model.dataPolicy !== "unrestricted") {
@@ -184,8 +182,7 @@ function findFallbackModel(mode: RuntimeMode): ModelRegistryEntry | undefined {
     const locals = getLocalModels();
     return locals.find((m) => m.capabilities.includes("chat")) || locals[0];
   }
-  const { getAvailableModels } = require("../config/model-registry");
-  const available = getAvailableModels() as ModelRegistryEntry[];
+  const available = getAvailableModels();
   return available.find((m) => m.capabilities.includes("chat")) || available[0];
 }
 
@@ -229,6 +226,7 @@ export function recordPolicyDecision(request: PolicyRequest, decision: PolicyDec
 }
 
 export function getPolicyAuditLog(limit = 50): PolicyAuditEntry[] {
+  if (limit <= 0) return [];
   return policyAuditLog.slice(-limit).reverse();
 }
 

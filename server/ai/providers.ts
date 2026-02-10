@@ -8,6 +8,16 @@ import { logger } from "../utils/logger";
 
 export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private";
 
+function getDeepSeekClient(): OpenAI {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    throw new Error("DeepSeek API key not configured. Set DEEPSEEK_API_KEY.");
+  }
+  return new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com/v1",
+  });
+}
+
 export interface AIModel {
   id: string;
   name: string;
@@ -309,6 +319,40 @@ export async function* streamGeminiResponse(
   yield { done: true };
 }
 
+export async function* streamDeepSeekResponse(
+  messages: ChatMessage[],
+  config: AIConfig
+): AsyncGenerator<StreamChunk> {
+  const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => {
+    if (typeof m.content === "string") {
+      return { role: m.role, content: m.content } as OpenAI.ChatCompletionMessageParam;
+    }
+    const parts: OpenAI.ChatCompletionContentPart[] = m.content.map((c) => {
+      if (c.type === "text") {
+        return { type: "text" as const, text: c.text || "" };
+      }
+      return { type: "text" as const, text: "[image not supported by DeepSeek]" };
+    });
+    return { role: m.role as "user", content: parts } as OpenAI.ChatCompletionMessageParam;
+  });
+
+  const deepseek = getDeepSeekClient();
+  const stream = await deepseek.chat.completions.create({
+    model: config.model,
+    max_tokens: config.maxTokens || 2048,
+    messages: apiMessages,
+    stream: true,
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) {
+      yield { content };
+    }
+  }
+  yield { done: true };
+}
+
 function getPrivateServerClient(): OpenAI {
   if (!process.env.PRIVATE_AI_SERVER_URL) {
     throw new Error("Private AI server not configured. Set PRIVATE_AI_SERVER_URL to your server's API endpoint.");
@@ -372,7 +416,7 @@ function resolveProviderFromModel(modelId: string): AIProvider {
     anthropic: "anthropic",
     openai: "openai",
     gemini: "gemini",
-    deepseek: "openai",
+    deepseek: "deepseek",
     private: "private",
     synseekr: "private",
   };
@@ -423,6 +467,9 @@ export async function* streamResponse(
         break;
       case "gemini":
         innerGen = streamGeminiResponse(messages, config);
+        break;
+      case "deepseek":
+        innerGen = streamDeepSeekResponse(messages, config);
         break;
       case "private":
         innerGen = streamPrivateServerResponse(messages, config);
@@ -673,11 +720,12 @@ export async function generateCompletion(
   }
 
   const effectiveModel = decision.wasFallback ? decision.effectiveModelId : model;
+  const effectiveProvider = resolveProviderFromModel(effectiveModel);
   if (decision.wasFallback) {
-    logger.info(`[policy-engine] Fallback: ${model} -> ${effectiveModel}`, { caller });
+    logger.info(`[policy-engine] Fallback: ${model} -> ${effectiveModel} (provider: ${effectiveProvider})`, { caller });
   }
 
-  const { id, startTime } = startAIOp("anthropic", effectiveModel, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+  const { id, startTime } = startAIOp(effectiveProvider, effectiveModel, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
 
   const synseekrResult = await generateCompletionViaSynSeekr(messages, options);
   if (synseekrResult !== null) {
@@ -686,6 +734,70 @@ export async function generateCompletion(
   }
 
   try {
+    if (effectiveProvider === "private") {
+      const privateClient = getPrivateServerClient();
+      const modelId = effectiveModel.startsWith("synergy-") ? (process.env.PRIVATE_AI_MODEL_NAME || effectiveModel) : effectiveModel;
+      const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      } as OpenAI.ChatCompletionMessageParam));
+      const response = await privateClient.chat.completions.create({
+        model: modelId,
+        max_tokens: maxTokens,
+        messages: apiMessages,
+      });
+      const result = response.choices[0]?.message?.content || "";
+      completeAIOp(id, startTime, result.slice(0, 500), "success");
+      return result;
+    }
+
+    if (effectiveProvider === "deepseek") {
+      const deepseek = getDeepSeekClient();
+      const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      } as OpenAI.ChatCompletionMessageParam));
+      const response = await deepseek.chat.completions.create({
+        model: effectiveModel,
+        max_tokens: maxTokens,
+        messages: apiMessages,
+      });
+      const result = response.choices[0]?.message?.content || "";
+      completeAIOp(id, startTime, result.slice(0, 500), "success");
+      return result;
+    }
+
+    if (effectiveProvider === "openai") {
+      const openai = getOpenAIClient();
+      const apiMessages: OpenAI.ChatCompletionMessageParam[] = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      } as OpenAI.ChatCompletionMessageParam));
+      const response = await openai.chat.completions.create({
+        model: effectiveModel,
+        max_tokens: maxTokens,
+        messages: apiMessages,
+      });
+      const result = response.choices[0]?.message?.content || "";
+      completeAIOp(id, startTime, result.slice(0, 500), "success");
+      return result;
+    }
+
+    if (effectiveProvider === "gemini") {
+      const gemini = getGeminiClient();
+      const chatMessages = messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      const response = await gemini.models.generateContent({
+        model: effectiveModel,
+        contents: chatMessages,
+      });
+      const result = response.text || "";
+      completeAIOp(id, startTime, result.slice(0, 500), "success");
+      return result;
+    }
+
     const response = await anthropic.messages.create({
       model: effectiveModel,
       max_tokens: maxTokens,
