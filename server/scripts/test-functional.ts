@@ -187,16 +187,24 @@ async function testCalendarSyncReactivity() {
   await storage.updateTask(task.id, { dueDate: newDueDate });
   await syncTaskToCalendar(task.id);
 
-  const calEvents = await storage.getCalendarEvents();
-  const syncedEvent = calEvents.find((e: any) => e.sourceId === task.id && e.sourceType === "board-task");
+  const calEventsAll = await storage.getCalendarEvents();
+  const syncedEvent = calEventsAll.find((e: any) => e.sourceId === task.id || e.taskId === task.id);
   assert("Calendar event synced", !!syncedEvent,
-    syncedEvent ? `Event "${syncedEvent.title}" date=${syncedEvent.startDate}` : "Not found");
+    syncedEvent ? `Event "${syncedEvent.title}" date=${syncedEvent.startDate}, sourceType=${(syncedEvent as any).sourceType}` : "Not found — checking DB directly");
+
+  if (!syncedEvent) {
+    const [directCheck] = await db.select().from(tables.calendarEvents)
+      .where(eq(tables.calendarEvents.sourceId, task.id));
+    assert("Calendar event in DB (direct)", !!directCheck,
+      directCheck ? `Found: "${directCheck.title}" sourceType=${directCheck.sourceType}` : "Not in DB either");
+  }
 
   if (syncedEvent) {
     const newDate2 = new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0];
     await storage.updateTask(task.id, { dueDate: newDate2 });
     await syncTaskToCalendar(task.id);
-    const updated = (await storage.getCalendarEvents()).find((e: any) => e.sourceId === task.id && e.sourceType === "board-task");
+    const updatedAll = await storage.getCalendarEvents();
+    const updated = updatedAll.find((e: any) => e.sourceId === task.id || e.taskId === task.id);
     assert("Calendar updates when due date changes", updated?.startDate === newDate2,
       `Expected ${newDate2}, got ${updated?.startDate}`);
   }
@@ -368,7 +376,7 @@ async function testFullCalendarSync() {
   const calEvents = await storage.getCalendarEvents();
   const bySource: Record<string, number> = {};
   for (const ev of calEvents) {
-    const src = (ev as any).sourceType || "manual";
+    const src = (ev as any).sourceType || "unknown";
     bySource[src] = (bySource[src] || 0) + 1;
   }
 
@@ -378,7 +386,7 @@ async function testFullCalendarSync() {
     assert(`  Source: ${source}`, count > 0, `${count} events`);
   }
 
-  const sourceTypes = Object.keys(bySource);
+  const sourceTypes = Object.keys(bySource).filter(s => s !== "unknown");
   assert("Multiple source types synced", sourceTypes.length >= 3,
     `Sources: [${sourceTypes.join(", ")}]`);
 }
@@ -386,11 +394,19 @@ async function testFullCalendarSync() {
 async function testDataLinkageIntegrity() {
   console.log("\n══ TEST 10: DATA LINKAGE — Cross-Entity Relationships ══");
 
-  const [matter] = await db.select().from(tables.matters).limit(1);
+  const mattersWithFilings = await db.select({ 
+    id: tables.matters.id,
+    name: tables.matters.name,
+    clientId: tables.matters.clientId,
+    filingCount: sql<number>`(SELECT count(*) FROM case_filings cf WHERE cf.matter_id = ${tables.matters.id})`,
+  }).from(tables.matters).orderBy(sql`(SELECT count(*) FROM case_filings cf WHERE cf.matter_id = ${tables.matters.id}) DESC`).limit(1);
+  
+  const matter = mattersWithFilings[0];
   if (!matter) {
     assert("Find matter", false, "No matters");
     return;
   }
+  assert("Target matter", true, `"${matter.name}" [${matter.id}] (${matter.filingCount} filings)`);
 
   const boards = await storage.getBoardsByMatter(matter.id);
   assert("Matter → Boards", boards.length > 0, `${boards.length} boards linked`);

@@ -2040,6 +2040,9 @@ export class DbStorage {
       createdBy: row.createdBy,
       createdAt: toISOString(row.createdAt) || new Date().toISOString(),
       updatedAt: toISOString(row.updatedAt) || new Date().toISOString(),
+      sourceType: row.sourceType || undefined,
+      sourceId: row.sourceId || undefined,
+      autoSynced: row.autoSynced || false,
     }));
   }
 

@@ -296,13 +296,18 @@ class AutomationEngine {
     try {
       const { generateCompletion } = await import("./ai/providers");
       const result = await generateCompletion(
-        { provider: "anthropic", model: "claude-sonnet-4-5", maxTokens: 200 },
         [
-          { role: "system", content: "You are a legal task categorizer. Given a task title and description, return a JSON object with: { category: string, tags: string[], urgency: 'low'|'medium'|'high' }. Categories: 'Filing', 'Discovery', 'Motion', 'Hearing', 'Client Communication', 'Research', 'Administrative', 'Evidence', 'Deadline'. Return ONLY the JSON." },
           { role: "user", content: `Task: "${task.title}"\nDescription: "${task.description || 'No description'}"` },
-        ]
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 200,
+          system: "You are a legal task categorizer. Given a task title and description, return a JSON object with: { category: string, tags: string[], urgency: 'low'|'medium'|'high' }. Categories: 'Filing', 'Discovery', 'Motion', 'Hearing', 'Client Communication', 'Research', 'Administrative', 'Evidence', 'Deadline'. Return ONLY the JSON.",
+          caller: "automation-ai-categorize",
+        }
       );
-      const parsed = JSON.parse(result);
+      const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
       const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
       await storage.updateTask(event.taskId, {
         tags: [...(task.tags || []), ...tags],
