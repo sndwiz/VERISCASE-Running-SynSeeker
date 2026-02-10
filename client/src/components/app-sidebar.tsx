@@ -85,29 +85,41 @@ function getTooltipForTitle(title: string): string {
   return feature?.tooltip || "";
 }
 
-const navigationItems = [
+const caseManagementItems = [
   { title: "My Tasks", url: "/my-tasks", icon: ListTodo },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
-  { title: "Team Members", url: "/team-members", icon: UserCheck },
-  { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
-  { title: "Documents", url: "/documents", icon: FileText },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Approvals", url: "/approvals", icon: Gavel },
+];
+
+const documentsItems = [
+  { title: "Filing Cabinet", url: "/documents", icon: FileText },
   { title: "Upload Organizer", url: "/upload-organizer", icon: FolderOpen },
   { title: "Document Builder", url: "/document-maker", icon: FilePlus2 },
-  { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
   { title: "PDF Pro", url: "/pdf-pro", icon: FileText },
+  { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
+  { title: "Templates", url: "/templates", icon: Library },
+];
+
+const billingItems = [
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
-  { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Billing", url: "/billing", icon: DollarSign },
   { title: "Billing Verifier", url: "/billing-verifier", icon: ClipboardCheck },
+];
+
+const communicationItems = [
   { title: "Communications", url: "/communications", icon: MessageSquare },
   { title: "Master Chat", url: "/master-chat", icon: MessageSquare },
+  { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Legal AI", url: "/legal-ai", icon: Wand2 },
   { title: "Legal Research", url: "/legal-research", icon: Search },
-  { title: "Approvals", url: "/approvals", icon: Gavel },
-  { title: "Meeting Notes", url: "/meetings", icon: Mic },
-  { title: "Template Library", url: "/templates", icon: Library },
+];
+
+const adminItems = [
+  { title: "Team Members", url: "/team-members", icon: UserCheck },
+  { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
 ];
@@ -119,11 +131,51 @@ const aiInvestigationItems = [
   { title: "E-Filing Brain", url: "/efiling", icon: Scale },
 ];
 
+function NavSection({ label, items, isOpen, toggle, location, testId }: {
+  label: string;
+  items: { title: string; url: string; icon: any }[];
+  isOpen: boolean;
+  toggle: () => void;
+  location: string;
+  testId: string;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>
+        <button type="button" className="flex items-center gap-1 hover:opacity-80" onClick={toggle} data-testid={`toggle-${testId}-section`}>
+          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "" : "-rotate-90"}`} />
+          <span>{label}</span>
+        </button>
+      </SidebarGroupLabel>
+      {isOpen && (
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {items.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild isActive={location === item.url || location.startsWith(item.url + "/")} tooltip={getTooltipForTitle(item.title)}>
+                  <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      )}
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [location] = useLocation();
   const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
-  const [practiceOpen, setPracticeOpen] = useState(true);
+  const [caseManageOpen, setCaseManageOpen] = useState(true);
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [commOpen, setCommOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
@@ -315,73 +367,13 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
           )}
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <button
-              type="button"
-              className="flex items-center gap-1 hover:opacity-80"
-              onClick={() => setAiOpen(!aiOpen)}
-              data-testid="toggle-ai-section"
-            >
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${aiOpen ? "" : "-rotate-90"}`} />
-              <span>AI & Investigation</span>
-            </button>
-          </SidebarGroupLabel>
-          {aiOpen && (
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {aiInvestigationItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      tooltip={getTooltipForTitle(item.title)}
-                    >
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
+        <NavSection label="AI & Investigation" items={aiInvestigationItems} isOpen={aiOpen} toggle={() => setAiOpen(!aiOpen)} location={location} testId="ai" />
 
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <button
-              type="button"
-              className="flex items-center gap-1 hover:opacity-80"
-              onClick={() => setPracticeOpen(!practiceOpen)}
-              data-testid="toggle-practice-section"
-            >
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${practiceOpen ? "" : "-rotate-90"}`} />
-              <span>Legal Practice</span>
-            </button>
-          </SidebarGroupLabel>
-          {practiceOpen && (
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {navigationItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url || location.startsWith(item.url + "/")}
-                      tooltip={getTooltipForTitle(item.title)}
-                    >
-                      <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
+        <NavSection label="Case Management" items={caseManagementItems} isOpen={caseManageOpen} toggle={() => setCaseManageOpen(!caseManageOpen)} location={location} testId="case-mgmt" />
+        <NavSection label="Documents" items={documentsItems} isOpen={docsOpen} toggle={() => setDocsOpen(!docsOpen)} location={location} testId="docs" />
+        <NavSection label="Billing & Time" items={billingItems} isOpen={billingOpen} toggle={() => setBillingOpen(!billingOpen)} location={location} testId="billing" />
+        <NavSection label="Communication & AI" items={communicationItems} isOpen={commOpen} toggle={() => setCommOpen(!commOpen)} location={location} testId="comm" />
+        <NavSection label="Admin & Tools" items={adminItems} isOpen={adminOpen} toggle={() => setAdminOpen(!adminOpen)} location={location} testId="admin" />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">

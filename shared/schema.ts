@@ -1542,7 +1542,7 @@ export interface ApprovalComment {
   userId: string;
   userName: string;
   content: string;
-  decision?: "approved" | "rejected" | "needs-revision";
+  decision?: "approved" | "rejected" | "vetting";
   createdAt: string;
 }
 

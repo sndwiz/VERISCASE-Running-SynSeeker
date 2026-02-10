@@ -200,7 +200,6 @@ class AutomationEngine {
   }
 
   private async actionSendNotification(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Notification: ${config.message || "Task updated"} for task ${event.taskId}`);
     return { message: `Notification sent: ${config.message || "Task updated"}` };
   }
 
@@ -246,75 +245,61 @@ class AutomationEngine {
   }
 
   private async actionSendEmail(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Email would be sent to: ${config.to || "team"}`);
     return { message: `Email queued to ${config.to || "team"}` };
   }
 
   private async actionSendSlack(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Slack message to channel: ${config.channel || "#general"}`);
     return { message: `Slack message sent to ${config.channel || "#general"}` };
   }
 
   private async actionAICategorize(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] AI categorization for task ${event.taskId}`);
     return { message: "AI categorization completed (stub - integrate with AI provider)" };
   }
 
   private async actionAISummarize(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] AI summarization for task ${event.taskId}`);
     return { message: "AI summary generated (stub - integrate with AI provider)" };
   }
 
   private async actionAIExtract(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] AI extraction for task ${event.taskId}`);
     return { message: "AI data extraction completed (stub - integrate with AI provider)" };
   }
 
   private async actionAISentiment(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] AI sentiment analysis for task ${event.taskId}`);
     return { message: "AI sentiment analysis completed (stub - integrate with AI provider)" };
   }
 
   private async actionAITranslate(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
     const targetLang = config.targetLanguage || "Spanish";
-    console.log(`[Automation] AI translation to ${targetLang} for task ${event.taskId}`);
     return { message: `AI translation to ${targetLang} completed (stub - integrate with AI provider)` };
   }
 
   private async actionAIWrite(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] AI content writing for task ${event.taskId}`);
     return { message: "AI content generated (stub - integrate with AI provider)" };
   }
 
   private async actionAIFillColumn(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
     const column = config.column || "unknown";
-    console.log(`[Automation] AI fill column "${column}" for task ${event.taskId}`);
     return { message: `AI filled column "${column}" (stub - integrate with AI provider)` };
   }
 
   private async actionRequestApproval(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Approval requested for task ${event.taskId}`);
     return { message: "Approval request created" };
   }
 
   private async actionCreateApprovalRecord(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Approval record created for task ${event.taskId}`);
     return { message: "Approval record created" };
   }
 
   private async actionEscalateReview(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
     const escalateTo = config.escalateTo || "senior attorney";
-    console.log(`[Automation] Review escalated to ${escalateTo} for task ${event.taskId}`);
     return { message: `Review escalated to ${escalateTo}` };
   }
 
   private async actionLogCompliance(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Compliance logged for task ${event.taskId}`);
     return { message: "Compliance event logged" };
   }
 
   private async actionGenerateConfirmation(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Confirmation generated for task ${event.taskId}`);
     return { message: "Confirmation letter generated (stub)" };
   }
 

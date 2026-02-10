@@ -35,7 +35,6 @@ import type {
   InsertResearchResult,
   AutomationRule,
   InsertAutomationRule,
-  AutomationRun,
   DetectiveNode,
   InsertDetectiveNode,
   DetectiveConnection,
@@ -101,93 +100,6 @@ function toISOString(date: Date | null): string | null {
 }
 
 export class DbStorage {
-  private initialized = false;
-
-  async ensureInitialized(): Promise<void> {
-    if (this.initialized) return;
-    this.initialized = true;
-
-    // Check if we have any boards - if not, seed sample data
-    const existingBoards = await db.select().from(tables.boards).limit(1);
-    if (existingBoards.length === 0) {
-      await this.seedSampleData();
-    }
-  }
-
-  private async seedSampleData(): Promise<void> {
-    console.log("Seeding sample data...");
-    
-    // Create a sample board
-    const board = await this.createBoard({
-      name: "Mercer Case - Master Board",
-      description: "State of Utah v. Unknown - Death of Nathan Mercer | Track all investigation tasks, motions, and deadlines",
-      color: "#dc2626",
-      icon: "layout-grid",
-    });
-
-    // Create sample groups
-    const groupsData = [
-      { title: "Critical - Immediate", color: "#dc2626", order: 0 },
-      { title: "Active Investigation", color: "#f59e0b", order: 1 },
-      { title: "Discovery & Motions", color: "#3b82f6", order: 2 },
-      { title: "Research & Analysis", color: "#8b5cf6", order: 3 },
-      { title: "Completed", color: "#10b981", order: 4 },
-    ];
-
-    const groupIds: string[] = [];
-    for (const g of groupsData) {
-      const group = await this.createGroup({
-        ...g,
-        collapsed: false,
-        boardId: board.id,
-      });
-      groupIds.push(group.id);
-    }
-
-    // Create sample tasks (placeholder - full tasks added by seedDemoData)
-    const sampleTasks: { title: string; status: any; priority: any; groupIdx: number; progress: number }[] = [];
-
-    for (const t of sampleTasks) {
-      await this.createTask({
-        title: t.title,
-        status: t.status,
-        priority: t.priority,
-        progress: t.progress,
-        boardId: board.id,
-        groupId: groupIds[t.groupIdx],
-        description: "",
-        tags: [],
-        assignees: [],
-        notes: "",
-        customFields: {},
-        subtasks: [],
-      });
-    }
-
-    // Create a second board for evidence tracking
-    const board2 = await this.createBoard({
-      name: "Evidence & Discovery Tracker",
-      description: "Track evidence collection, chain of custody, and discovery requests for Mercer investigation",
-      color: "#7c3aed",
-      icon: "file-text",
-    });
-
-    const evidenceGroups = [
-      { title: "Awaiting Analysis", color: "#f59e0b", order: 0 },
-      { title: "Under Review", color: "#3b82f6", order: 1 },
-      { title: "Processed", color: "#10b981", order: 2 },
-    ];
-
-    for (const g of evidenceGroups) {
-      await this.createGroup({
-        ...g,
-        collapsed: false,
-        boardId: board2.id,
-      });
-    }
-
-    console.log("Sample data seeded successfully!");
-  }
 
   // ============ BOARD METHODS ============
   private rowToBoard(r: any): Board {
@@ -207,7 +119,6 @@ export class DbStorage {
   }
 
   async getBoards(): Promise<Board[]> {
-    await this.ensureInitialized();
     const rows = await db.select().from(tables.boards).orderBy(asc(tables.boards.createdAt));
     return rows.map(r => this.rowToBoard(r));
   }
@@ -222,13 +133,6 @@ export class DbStorage {
   async getBoardsByMatter(matterId: string): Promise<Board[]> {
     const rows = await db.select().from(tables.boards)
       .where(eq(tables.boards.matterId, matterId))
-      .orderBy(asc(tables.boards.createdAt));
-    return rows.map(r => this.rowToBoard(r));
-  }
-
-  async getBoardsByWorkspace(workspaceId: string): Promise<Board[]> {
-    const rows = await db.select().from(tables.boards)
-      .where(eq(tables.boards.workspaceId, workspaceId))
       .orderBy(asc(tables.boards.createdAt));
     return rows.map(r => this.rowToBoard(r));
   }
@@ -293,19 +197,6 @@ export class DbStorage {
       order: r.order || 0,
       boardId: r.boardId,
     }));
-  }
-
-  async getGroup(id: string): Promise<Group | undefined> {
-    const [row] = await db.select().from(tables.groups).where(eq(tables.groups.id, id));
-    if (!row) return undefined;
-    return {
-      id: row.id,
-      title: row.title,
-      color: row.color || "#6366f1",
-      collapsed: row.collapsed || false,
-      order: row.order || 0,
-      boardId: row.boardId,
-    };
   }
 
   async createGroup(data: InsertGroup): Promise<Group> {
@@ -693,29 +584,6 @@ export class DbStorage {
       status: (row.status as any) || "pending",
       provider: row.provider || "openai-vision",
       createdAt: toISOString(row.createdAt) || now.toISOString(),
-    };
-  }
-
-  async updateOCRJob(id: string, data: Partial<OCRJob>): Promise<OCRJob | undefined> {
-    const updateData: any = { ...data };
-    if (data.status === "completed" || data.status === "failed") {
-      updateData.completedAt = new Date();
-    }
-    const [row] = await db.update(tables.ocrJobs).set(updateData).where(eq(tables.ocrJobs.id, id)).returning();
-    if (!row) return undefined;
-    return {
-      id: row.id,
-      fileId: row.fileId,
-      matterId: row.matterId,
-      status: (row.status as any) || "pending",
-      provider: row.provider || "openai-vision",
-      confidence: row.confidence || undefined,
-      extractedText: row.extractedText || undefined,
-      pageCount: row.pageCount || undefined,
-      processingTime: row.processingTime || undefined,
-      error: row.error || undefined,
-      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
-      completedAt: row.completedAt ? toISOString(row.completedAt) || undefined : undefined,
     };
   }
 
@@ -1204,24 +1072,6 @@ export class DbStorage {
     };
   }
 
-  async updateResearchResult(id: string, data: Partial<ResearchResult>): Promise<ResearchResult | undefined> {
-    const { createdAt, ...updateData } = data as any;
-    const [row] = await db.update(tables.researchResults).set(updateData).where(eq(tables.researchResults.id, id)).returning();
-    if (!row) return undefined;
-    return {
-      id: row.id,
-      matterId: row.matterId,
-      query: row.query,
-      source: row.source,
-      citation: row.citation,
-      summary: row.summary,
-      relevance: row.relevance || 50,
-      notes: row.notes || "",
-      createdBy: row.createdBy,
-      createdAt: toISOString(row.createdAt) || new Date().toISOString(),
-    };
-  }
-
   // ============ AUTOMATION METHODS ============
   async getAutomationRules(boardId: string): Promise<AutomationRule[]> {
     const rows = await db.select().from(tables.automationRules).where(eq(tables.automationRules.boardId, boardId));
@@ -1288,31 +1138,6 @@ export class DbStorage {
   async deleteAutomationRule(id: string): Promise<boolean> {
     await db.delete(tables.automationRules).where(eq(tables.automationRules.id, id));
     return true;
-  }
-
-  async createAutomationRun(data: Partial<AutomationRun>): Promise<AutomationRun> {
-    const id = randomUUID();
-    const now = new Date();
-    const [row] = await db.insert(tables.automationRuns).values({
-      id,
-      ruleId: data.ruleId!,
-      taskId: data.taskId,
-      triggerData: data.triggerData as any || {},
-      actionResult: data.actionResult as any || {},
-      status: data.status || "pending",
-      executedAt: now,
-    }).returning();
-    return {
-      id: row.id,
-      ruleId: row.ruleId,
-      taskId: row.taskId || undefined,
-      triggerData: (row.triggerData as Record<string, any>) || {},
-      actionResult: (row.actionResult as Record<string, any>) || {},
-      status: (row.status as any) || "pending",
-      error: row.error || undefined,
-      executedAt: toISOString(row.executedAt) || now.toISOString(),
-      completedAt: row.completedAt ? toISOString(row.completedAt) || undefined : undefined,
-    };
   }
 
   // ============ DETECTIVE BOARD METHODS ============
@@ -1436,17 +1261,6 @@ export class DbStorage {
   }
 
   // ============ FILE ITEMS ============
-
-  async getFileItems(matterId: string): Promise<FileItem[]> {
-    const rows = await db.select().from(tables.fileItems).where(eq(tables.fileItems.matterId, matterId));
-    return rows.map(r => this.rowToFileItem(r));
-  }
-
-  async getFileItem(id: string): Promise<FileItem | undefined> {
-    const [row] = await db.select().from(tables.fileItems).where(eq(tables.fileItems.id, id));
-    if (!row) return undefined;
-    return this.rowToFileItem(row);
-  }
 
   private rowToFileItem(r: any): FileItem {
     return {
@@ -1576,7 +1390,8 @@ export class DbStorage {
   // ============ FILE ITEMS WITH PROFILES ============
 
   async getFileItemsWithProfiles(matterId: string): Promise<FileItemWithProfile[]> {
-    const fileItems = await this.getFileItems(matterId);
+    const rows = await db.select().from(tables.fileItems).where(eq(tables.fileItems.matterId, matterId));
+    const fileItems = rows.map(r => this.rowToFileItem(r));
     const result: FileItemWithProfile[] = [];
     for (const file of fileItems) {
       const profile = await this.getDocProfile(file.id);
@@ -1587,8 +1402,9 @@ export class DbStorage {
   }
 
   async getFileItemWithProfile(id: string): Promise<FileItemWithProfile | undefined> {
-    const file = await this.getFileItem(id);
-    if (!file) return undefined;
+    const [row] = await db.select().from(tables.fileItems).where(eq(tables.fileItems.id, id));
+    if (!row) return undefined;
+    const file = this.rowToFileItem(row);
     const profile = await this.getDocProfile(file.id);
     const tags = await this.getFileItemTags(file.id);
     return { ...file, profile, tags };
@@ -1741,7 +1557,6 @@ export class DbStorage {
 
   // Time Entries
   async getTimeEntries(matterId?: string): Promise<TimeEntry[]> {
-    await this.ensureInitialized();
     const rows = matterId
       ? await db.select().from(tables.timeEntries).where(eq(tables.timeEntries.matterId, matterId)).orderBy(desc(tables.timeEntries.date))
       : await db.select().from(tables.timeEntries).orderBy(desc(tables.timeEntries.date));
@@ -1763,7 +1578,6 @@ export class DbStorage {
   }
 
   async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
-    await this.ensureInitialized();
     const [row] = await db.select().from(tables.timeEntries).where(eq(tables.timeEntries.id, id));
     if (!row) return undefined;
     return {
@@ -1784,7 +1598,6 @@ export class DbStorage {
   }
 
   async createTimeEntry(data: InsertTimeEntry): Promise<TimeEntry> {
-    await this.ensureInitialized();
     const now = new Date();
     const [row] = await db.insert(tables.timeEntries).values({
       matterId: data.matterId,
@@ -1846,7 +1659,6 @@ export class DbStorage {
 
   // Expenses
   async getExpenses(filters?: { clientId?: string; matterId?: string }): Promise<Expense[]> {
-    await this.ensureInitialized();
     let query = db.select().from(tables.expenses);
     const conditions = [];
     if (filters?.clientId) conditions.push(eq(tables.expenses.clientId, filters.clientId));
@@ -1960,7 +1772,6 @@ export class DbStorage {
 
   // Invoices
   async getInvoices(filters?: { clientId?: string; matterId?: string }): Promise<Invoice[]> {
-    await this.ensureInitialized();
     let query = db.select().from(tables.invoices);
     const conditions = [];
     if (filters?.clientId) conditions.push(eq(tables.invoices.clientId, filters.clientId));
@@ -2102,7 +1913,6 @@ export class DbStorage {
 
   // Payments
   async getPayments(filters?: { clientId?: string; invoiceId?: string }): Promise<Payment[]> {
-    await this.ensureInitialized();
     let query = db.select().from(tables.payments);
     const conditions = [];
     if (filters?.clientId) conditions.push(eq(tables.payments.clientId, filters.clientId));
@@ -2155,7 +1965,6 @@ export class DbStorage {
 
   // Trust Transactions
   async getTrustTransactions(filters?: { clientId?: string; matterId?: string }): Promise<TrustTransaction[]> {
-    await this.ensureInitialized();
     let query = db.select().from(tables.trustTransactions);
     const conditions = [];
     if (filters?.clientId) conditions.push(eq(tables.trustTransactions.clientId, filters.clientId));
@@ -2211,7 +2020,6 @@ export class DbStorage {
 
   // Calendar Events
   async getCalendarEvents(matterId?: string): Promise<CalendarEvent[]> {
-    await this.ensureInitialized();
     const rows = matterId
       ? await db.select().from(tables.calendarEvents).where(eq(tables.calendarEvents.matterId, matterId)).orderBy(asc(tables.calendarEvents.startDate))
       : await db.select().from(tables.calendarEvents).orderBy(asc(tables.calendarEvents.startDate));
@@ -2236,7 +2044,6 @@ export class DbStorage {
   }
 
   async getCalendarEvent(id: string): Promise<CalendarEvent | undefined> {
-    await this.ensureInitialized();
     const [row] = await db.select().from(tables.calendarEvents).where(eq(tables.calendarEvents.id, id));
     if (!row) return undefined;
     return {
@@ -2260,7 +2067,6 @@ export class DbStorage {
   }
 
   async createCalendarEvent(data: InsertCalendarEvent): Promise<CalendarEvent> {
-    await this.ensureInitialized();
     const now = new Date();
     const [row] = await db.insert(tables.calendarEvents).values({
       matterId: data.matterId,
@@ -2331,7 +2137,6 @@ export class DbStorage {
 
   // Approval Requests
   async getApprovalRequests(matterId?: string): Promise<ApprovalRequest[]> {
-    await this.ensureInitialized();
     const rows = matterId
       ? await db.select().from(tables.approvalRequests).where(eq(tables.approvalRequests.matterId, matterId)).orderBy(desc(tables.approvalRequests.createdAt))
       : await db.select().from(tables.approvalRequests).orderBy(desc(tables.approvalRequests.createdAt));
@@ -2354,7 +2159,6 @@ export class DbStorage {
   }
 
   async getApprovalRequest(id: string): Promise<ApprovalRequest | undefined> {
-    await this.ensureInitialized();
     const [row] = await db.select().from(tables.approvalRequests).where(eq(tables.approvalRequests.id, id));
     if (!row) return undefined;
     return {
@@ -2376,7 +2180,6 @@ export class DbStorage {
   }
 
   async createApprovalRequest(data: InsertApprovalRequest): Promise<ApprovalRequest> {
-    await this.ensureInitialized();
     const now = new Date();
     const [row] = await db.insert(tables.approvalRequests).values({
       fileId: data.fileId,
@@ -2440,7 +2243,6 @@ export class DbStorage {
   }
 
   async addApprovalComment(data: InsertApprovalComment): Promise<ApprovalComment> {
-    await this.ensureInitialized();
     const request = await this.getApprovalRequest(data.approvalId);
     if (!request) throw new Error("Approval request not found");
     
@@ -2456,8 +2258,7 @@ export class DbStorage {
     const updatedComments = [...request.comments, comment];
     let newStatus = request.status;
     if (data.decision) {
-      newStatus = data.decision === "approved" ? "approved" : 
-                  data.decision === "rejected" ? "rejected" : "vetting";
+      newStatus = data.decision === "approved" ? "approved" : "rejected";
     }
     
     await db.update(tables.approvalRequests)
@@ -4572,10 +4373,6 @@ District Court Judge`,
     return submissions;
   }
 
-  async getClientFormSubmission(id: string): Promise<ClientFormSubmission | undefined> {
-    return this.clientFormSubmissionsCache.get(id);
-  }
-
   async createClientFormSubmission(data: InsertClientFormSubmission): Promise<ClientFormSubmission> {
     const submission: ClientFormSubmission = {
       id: randomUUID(),
@@ -4591,14 +4388,6 @@ District Court Judge`,
     };
     this.clientFormSubmissionsCache.set(submission.id, submission);
     return submission;
-  }
-
-  async updateClientFormSubmission(id: string, data: Partial<ClientFormSubmission>): Promise<ClientFormSubmission | undefined> {
-    const submission = this.clientFormSubmissionsCache.get(id);
-    if (!submission) return undefined;
-    const updated = { ...submission, ...data };
-    this.clientFormSubmissionsCache.set(id, updated);
-    return updated;
   }
 
   async getMeetings(): Promise<Meeting[]> {
