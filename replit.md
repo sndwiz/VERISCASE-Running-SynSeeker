@@ -21,6 +21,14 @@ VERICASE turns messy case materials into structured, defensible insight without 
 - Professional legal-focused design
 - Clean, modern interface
 
+## Runtime Doctrine: Model Choice + Batmode + Data Isolation
+- **Model Registry:** `server/config/model-registry.ts` — Config-driven registry of 15+ models (Claude, GPT, Gemini, DeepSeek, Synergy Private, SynSeekr) with metadata: providerType, dataPolicy, requiresInternet, capabilities, costHint, latencyHint.
+- **Policy Engine:** `server/ai/policy-engine.ts` — Central decision layer enforcing ONLINE/BATMODE modes. evaluatePolicy() checks mode, model, casePolicy, payloadClassification, redactionStatus. Batmode blocks all external API calls and falls back to local models. Privileged/sealed case policies also block external models. In-memory audit ring buffer (500 entries).
+- **Provider Integration:** `server/ai/providers.ts` — enforcePolicyGate() wraps generateCompletion(), streamResponse(), and analyzeImageWithVision(). Policy decisions are recorded automatically.
+- **API Routes:** `server/routes/ai-policy.ts` — GET /api/ai/models, GET/POST /api/ai/policy/state, POST /api/ai/policy/mode, POST /api/ai/policy/select-model, POST /api/ai/policy/evaluate, GET /api/ai/policy/audit.
+- **UI:** `client/src/components/model-picker.tsx` — ModelPicker dropdown + BatmodeBadge toggle always visible in header. Model dropdown shows local/cloud icons and batmode compatibility.
+- **Rule:** Data policy drives model choice. Batmode = no outbound API calls, app-level enforcement.
+
 ## System Architecture
 VERICASE is built with a modern web stack, featuring React 18 with TypeScript for the frontend, and Node.js with Express for the backend. PostgreSQL with Drizzle ORM handles data persistence.
 

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Bot, Calendar, Terminal, Circle } from "lucide-react";
 import { useProcessRecorder } from "@/hooks/use-process-recorder";
+import { ModelPicker, BatmodeBadge } from "@/components/model-picker";
 import { Link } from "wouter";
 import { HelpGuide } from "@/components/help-guide";
 import { WorkspaceProvider, useWorkspace } from "@/hooks/use-workspace";
@@ -247,6 +248,8 @@ function AppLayout() {
                 </TooltipTrigger>
                 <TooltipContent>{recorder.isRecording ? "Stop recording and convert to automation/macro/playbook" : "Record your workflow to create automations, macros, or SOPs"}</TooltipContent>
               </Tooltip>
+              <BatmodeBadge />
+              <ModelPicker />
               <HelpGuide />
               <ThemeToggle />
               <UserMenu />

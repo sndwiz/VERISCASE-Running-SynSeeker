@@ -1,0 +1,191 @@
+Got it. Here’s the clean “main brain / backend doctrine” for Replit to implement, tuned to what you just clarified: multi-model selector + offline “batmode” + container isolation + private-data guarantees.
+
+⸻
+
+VERICASE Runtime Doctrine: Model Choice + Batmode + Data Isolation
+
+Core rule
+
+Data policy drives model choice — not the other way around.
+Users can pick Claude/GPT/DeepSeek/Gemini/etc., but VERICASE must enforce privacy constraints automatically. If the selected model can’t comply with the current data policy, VERICASE either:
+	1.	falls back to an allowed local model, or
+	2.	switches to Batmode, or
+	3.	blocks the request with a clear reason.
+
+No “oops we sent privileged docs to the cloud” moments. Ever.
+
+⸻
+
+Modes
+
+Mode A: Online Mode (Connected)
+	•	UI shows: ONLINE
+	•	Allowed operations:
+	•	local-only processing for raw docs by default
+	•	external model calls only for sanitized payloads if policy allows
+	•	Every external call must have:
+	•	redaction summary
+	•	audit log entry
+	•	request id
+
+Mode B: Batmode (Offline / Private Mode)
+	•	UI shows: BATMODE — OFFLINE PRIVATE
+	•	Hard constraints:
+	•	No outbound calls to external LLM APIs
+	•	No telemetry, no remote OCR, no remote embeddings
+	•	Allowed operations:
+	•	local OCR / local extract / local embeddings / local RAG
+	•	local chat + analysis using local model runners
+	•	If user selects “Claude/GPT/etc.” while in Batmode:
+	•	UI allows selection (for future) but runtime executes local equivalent
+	•	show “Queued / Not available offline” where relevant
+
+Batmode isn’t a vibe. It’s a network enforcement layer.
+
+⸻
+
+“Model Picker” Design (what Replit should build)
+
+1) Model Registry
+
+A DB table or config-driven registry:
+	•	model_id
+	•	display_name (Claude, GPT-4.x, Gemini, DeepSeek, Local-Llama, etc.)
+	•	provider_type = external_api | local_runner
+	•	capabilities = chat | embeddings | vision | rerank | transcription
+	•	data_policy = local_only | sanitized_ok | unrestricted
+	•	requires_internet (bool)
+	•	max_context, cost_hint, latency_hint
+
+2) Policy Engine (Decision Layer)
+
+Every request runs through:
+
+Inputs
+	•	current mode: ONLINE or BATMODE
+	•	selected model
+	•	case policy: privileged, sealed, PII-heavy, etc.
+	•	payload classification: raw | derived | sanitized
+	•	redaction status: not_run | passed | failed
+
+Outputs
+	•	allowed = true/false
+	•	effective_model (may differ from selected)
+	•	required_steps (redact first, chunk, embed, etc.)
+	•	reason for UI + audit log
+
+This is your “adult supervision” layer.
+
+3) Router Layer (Execution Layer)
+	•	If effective_model is external:
+	•	only send sanitized text/images
+	•	hard size limits, truncation rules, and citation references
+	•	If local:
+	•	route to local model runner container
+	•	keep everything in private network
+
+⸻
+
+Container Isolation (Docker/Compose layout)
+
+Data classification zones
+
+Create hard lanes:
+
+Zone 1 — Public Web / UI
+	•	frontend container
+	•	reverse proxy container
+	•	contains no raw documents
+	•	stores only session tokens + minimal metadata
+
+Zone 2 — Private Processing
+	•	ingestion worker
+	•	OCR/Tika
+	•	entity extraction
+	•	embeddings generation
+	•	vision analysis
+	•	all run here, close to storage
+
+Zone 3 — Data Stores
+	•	Postgres (case DB)
+	•	object storage (MinIO or filesystem volume) for raw docs
+	•	Qdrant (vector DB)
+	•	encrypted volumes
+
+Zone 4 — Model Runners
+	•	local LLM runner (Ollama or vLLM)
+	•	local embedding model
+	•	optional local vision model
+	•	separated from DB by network rules (only API access)
+
+Network rules (Compose)
+	•	Only reverse proxy exposes ports publicly (443)
+	•	Everything else is on an internal Docker network
+	•	Admin access happens via ZeroTier + SSH, not public ports
+	•	Add an explicit “egress control” for Batmode (see next section)
+
+⸻
+
+Batmode Enforcement (real, not cosmetic)
+
+Batmode should be implemented at two levels:
+
+1) App-level guard
+	•	Router refuses any external provider calls when mode=BATMODE
+	•	Returns: OFFLINE_MODE_BLOCKED
+
+2) Network-level egress kill switch (recommended)
+
+So even if a bug slips in, outbound traffic is still blocked.
+
+Options:
+	•	Docker network policy (best via host firewall rules)
+	•	iptables/ufw rules to deny outbound from specific containers
+	•	Run external-calling services in a separate container/network that can be stopped
+
+Simple operational behavior
+	•	Batmode ON:
+	•	stop external-model-gateway container OR block its egress
+	•	Batmode OFF:
+	•	allow it again
+
+UI toggles it, backend enforces it, network makes it idiot-proof.
+
+⸻
+
+Audit Trail (mandatory for trust)
+
+Every “analysis action” writes an audit row:
+	•	who did it
+	•	which case/matter
+	•	selected model vs effective model used
+	•	mode (online/batmode)
+	•	whether any external call happened (should be false in Batmode)
+	•	redaction summary (counts, types)
+	•	document IDs referenced (not contents)
+
+⸻
+
+User Experience Rules (so it feels clean)
+	•	Model dropdown is always visible.
+	•	Batmode badge is always visible.
+	•	If user picks a model that isn’t allowed right now:
+	•	don’t break the flow
+	•	show: “Using Local Private Model (Batmode)” or “Sanitization Required”
+	•	Provide “Why?” link that shows policy explanation in plain English.
+
+⸻
+
+What to tell Replit to build (copy/paste spec)
+
+Build VERICASE as a server-hosted Docker Compose app with:
+	1.	A model registry + router that supports Claude/GPT/Gemini/DeepSeek + local models
+	2.	A policy engine that decides whether the selected model is allowed based on data sensitivity + mode
+	3.	Batmode (offline private mode) that blocks all external calls at app-level and preferably at network level
+	4.	Strict container zones separating UI, processing, storage, and model runners
+	5.	An audit log recording model usage, mode, redaction, and evidence references
+	6.	Default behavior: raw docs never leave the private zone; external models only receive sanitized payloads
+
+⸻
+
+If you keep steering this direction, VERICASE becomes the rare “multi-model” system that doesn’t turn into a privacy roulette wheel. The trick is making Batmode and policy enforcement the boss of the model picker, not a polite suggestion.

@@ -2,6 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { startAIOp, completeAIOp } from "./ai-ops";
+import { evaluatePolicy, getMode, getSelectedModel, recordPolicyDecision, type PolicyDecision, type PolicyRequest } from "./policy-engine";
+import { getRegistryModel } from "../config/model-registry";
+import { logger } from "../utils/logger";
 
 export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private";
 
@@ -362,11 +365,48 @@ export async function* streamPrivateServerResponse(
   }
 }
 
+function resolveProviderFromModel(modelId: string): AIProvider {
+  const entry = getRegistryModel(modelId);
+  if (!entry) return "anthropic";
+  const providerMap: Record<string, AIProvider> = {
+    anthropic: "anthropic",
+    openai: "openai",
+    gemini: "gemini",
+    deepseek: "openai",
+    private: "private",
+    synseekr: "private",
+  };
+  return providerMap[entry.provider] || "anthropic";
+}
+
+function enforcePolicyGate(modelId: string, caller: string): PolicyDecision {
+  const request: PolicyRequest = {
+    mode: getMode(),
+    requestedModelId: modelId,
+    caller,
+  };
+  const decision = evaluatePolicy(request);
+  recordPolicyDecision(request, decision);
+  return decision;
+}
+
 export async function* streamResponse(
   messages: ChatMessage[],
   config: AIConfig,
   caller: string = "unknown"
 ): AsyncGenerator<StreamChunk> {
+  const decision = enforcePolicyGate(config.model, caller);
+  if (!decision.allowed) {
+    logger.warn(`[policy-engine] BLOCKED stream: ${decision.reason}`, { caller, model: config.model });
+    yield { error: `Policy blocked: ${decision.reason}` };
+    yield { done: true };
+    return;
+  }
+  if (decision.wasFallback) {
+    logger.info(`[policy-engine] Fallback: ${config.model} -> ${decision.effectiveModelId}`, { caller });
+    config = { ...config, model: decision.effectiveModelId, provider: resolveProviderFromModel(decision.effectiveModelId) };
+  }
+
   const inputSummary = messages.map((m) => typeof m.content === "string" ? m.content : "[multimodal]").join("\n");
   const { id, startTime } = startAIOp(config.provider, config.model, "stream_chat", inputSummary, caller);
   let fullOutput = "";
@@ -417,6 +457,16 @@ export async function analyzeImageWithVision(
   config: AIConfig,
   caller: string = "vision_analysis"
 ): Promise<string> {
+  const decision = enforcePolicyGate(config.model, caller);
+  if (!decision.allowed) {
+    logger.warn(`[policy-engine] BLOCKED vision: ${decision.reason}`, { caller, model: config.model });
+    throw new Error(`Policy blocked: ${decision.reason}`);
+  }
+  if (decision.wasFallback) {
+    logger.info(`[policy-engine] Vision fallback: ${config.model} -> ${decision.effectiveModelId}`, { caller });
+    config = { ...config, model: decision.effectiveModelId, provider: resolveProviderFromModel(decision.effectiveModelId) };
+  }
+
   const { id, startTime } = startAIOp(config.provider, config.model, "vision_analysis", prompt, caller);
 
   try {
@@ -563,8 +613,8 @@ Return your analysis in this JSON format:
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
-  } catch (e) {
-    console.error("Failed to parse AI response as JSON:", e);
+  } catch (e: any) {
+    logger.error("Failed to parse AI response as JSON:", { error: e?.message });
   }
 
   return {
@@ -615,7 +665,19 @@ export async function generateCompletion(
   const model = options.model || "claude-sonnet-4-5";
   const maxTokens = options.maxTokens || 2048;
   const caller = options.caller || "generateCompletion";
-  const { id, startTime } = startAIOp("anthropic", model, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+
+  const decision = enforcePolicyGate(model, caller);
+  if (!decision.allowed) {
+    logger.warn(`[policy-engine] BLOCKED completion: ${decision.reason}`, { caller, model });
+    throw new Error(`Policy blocked: ${decision.reason}`);
+  }
+
+  const effectiveModel = decision.wasFallback ? decision.effectiveModelId : model;
+  if (decision.wasFallback) {
+    logger.info(`[policy-engine] Fallback: ${model} -> ${effectiveModel}`, { caller });
+  }
+
+  const { id, startTime } = startAIOp("anthropic", effectiveModel, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
 
   const synseekrResult = await generateCompletionViaSynSeekr(messages, options);
   if (synseekrResult !== null) {
@@ -625,7 +687,7 @@ export async function generateCompletion(
 
   try {
     const response = await anthropic.messages.create({
-      model,
+      model: effectiveModel,
       max_tokens: maxTokens,
       ...(options.system ? { system: options.system } : {}),
       messages,
