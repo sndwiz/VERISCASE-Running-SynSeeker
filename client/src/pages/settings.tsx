@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw, Cpu, DollarSign, Zap, AlertTriangle, Activity } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw, Cpu, DollarSign, Zap, AlertTriangle, Activity, Shield, Trash2, Eye, Columns } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTheme } from "@/lib/theme-provider";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import AIEventLogPage from "@/pages/admin/ai-event-log";
+import ManageUsersPage from "@/pages/admin/manage-users";
+import RolesPermissionsPage from "@/pages/admin/roles-permissions";
+import RecoveryBinPage from "@/pages/admin/recovery-bin";
 
 interface AuthUser {
   id: string;
@@ -179,6 +184,42 @@ export default function SettingsPage() {
             <TabsTrigger value="ai-ops" data-testid="tab-ai-ops">
               <Cpu className="h-4 w-4 mr-2" />
               AI Ops
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="ai-log" data-testid="tab-ai-log">
+              <Activity className="h-4 w-4 mr-2" />
+              AI Log
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="users" data-testid="tab-users">
+              <Users className="h-4 w-4 mr-2" />
+              Users
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="roles" data-testid="tab-roles">
+              <Shield className="h-4 w-4 mr-2" />
+              Roles
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="recovery" data-testid="tab-recovery">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Recovery
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="pii-policy" data-testid="tab-pii-policy">
+              <Eye className="h-4 w-4 mr-2" />
+              PII Policy
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="custom-fields" data-testid="tab-custom-fields">
+              <Columns className="h-4 w-4 mr-2" />
+              Custom Fields
             </TabsTrigger>
           )}
         </TabsList>
@@ -589,6 +630,42 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="ai-ops">
             <AIOpsDashboard />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="ai-log">
+            <AIEventLogPage />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="users">
+            <ManageUsersPage />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="roles">
+            <RolesPermissionsPage />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="recovery">
+            <RecoveryBinPage />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="pii-policy">
+            <PIIPolicySettings />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="custom-fields">
+            <CustomFieldsSettings />
           </TabsContent>
         )}
       </Tabs>
@@ -1106,6 +1183,442 @@ function AIOpsDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface PIIPolicy {
+  id?: string;
+  defaultAction: string;
+  enabledEntities: string[];
+  redactBeforeExternalAI: boolean;
+  allowPIIInBatmode: boolean;
+}
+
+const PII_ENTITY_TYPES = [
+  { key: "SSN", label: "Social Security Number (SSN)" },
+  { key: "DOB", label: "Date of Birth (DOB)" },
+  { key: "address", label: "Address" },
+  { key: "phone", label: "Phone Number" },
+  { key: "email", label: "Email Address" },
+  { key: "bank_account", label: "Bank Account" },
+  { key: "credit_card", label: "Credit Card" },
+  { key: "drivers_license", label: "Driver's License" },
+  { key: "passport", label: "Passport" },
+  { key: "MRN", label: "Medical Record Number (MRN)" },
+];
+
+const PII_ACTIONS = [
+  { value: "flag", label: "Flag" },
+  { value: "redact", label: "Redact" },
+  { value: "anonymize", label: "Anonymize" },
+  { value: "block", label: "Block" },
+];
+
+function PIIPolicySettings() {
+  const { toast } = useToast();
+  const [defaultAction, setDefaultAction] = useState("flag");
+  const [enabledEntities, setEnabledEntities] = useState<string[]>(PII_ENTITY_TYPES.map(e => e.key));
+  const [redactBeforeExternalAI, setRedactBeforeExternalAI] = useState(false);
+  const [allowPIIInBatmode, setAllowPIIInBatmode] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  const { data: policy, isLoading } = useQuery<PIIPolicy>({
+    queryKey: ["/api/pii-policies"],
+  });
+
+  if (policy && !initialized) {
+    if (policy.defaultAction) setDefaultAction(policy.defaultAction);
+    if (policy.enabledEntities) setEnabledEntities(policy.enabledEntities);
+    if (policy.redactBeforeExternalAI !== undefined) setRedactBeforeExternalAI(policy.redactBeforeExternalAI);
+    if (policy.allowPIIInBatmode !== undefined) setAllowPIIInBatmode(policy.allowPIIInBatmode);
+    setInitialized(true);
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: (data: Partial<PIIPolicy>) => {
+      if (policy?.id) {
+        return apiRequest("PATCH", `/api/pii-policies/${policy.id}`, data);
+      }
+      return apiRequest("POST", "/api/pii-policies", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pii-policies"] });
+      toast({ title: "PII policy saved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save PII policy", variant: "destructive" });
+    },
+  });
+
+  const handleToggleEntity = (entity: string) => {
+    setEnabledEntities((prev) =>
+      prev.includes(entity)
+        ? prev.filter((e) => e !== entity)
+        : [...prev, entity]
+    );
+  };
+
+  const handleSave = () => {
+    saveMutation.mutate({
+      defaultAction,
+      enabledEntities,
+      redactBeforeExternalAI,
+      allowPIIInBatmode,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            PII Policy Settings
+          </CardTitle>
+          <CardDescription>
+            Configure how personally identifiable information is detected and handled
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Default Action</Label>
+            <Select value={defaultAction} onValueChange={setDefaultAction} data-testid="select-pii-default-action">
+              <SelectTrigger data-testid="select-pii-default-action-trigger">
+                <SelectValue placeholder="Select default action" />
+              </SelectTrigger>
+              <SelectContent>
+                {PII_ACTIONS.map((action) => (
+                  <SelectItem key={action.value} value={action.value}>
+                    {action.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Action taken when PII is detected in documents and AI inputs
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <Label>Enabled PII Entity Types</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Select which types of PII to detect and handle
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PII_ENTITY_TYPES.map((entity) => (
+                <div key={entity.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`pii-entity-${entity.key}`}
+                    checked={enabledEntities.includes(entity.key)}
+                    onCheckedChange={() => handleToggleEntity(entity.key)}
+                    data-testid={`checkbox-pii-entity-${entity.key}`}
+                  />
+                  <Label
+                    htmlFor={`pii-entity-${entity.key}`}
+                    className="text-sm cursor-pointer"
+                  >
+                    {entity.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-medium text-sm">Redact before external AI</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically redact PII before sending data to external AI providers
+              </p>
+            </div>
+            <Switch
+              checked={redactBeforeExternalAI}
+              onCheckedChange={setRedactBeforeExternalAI}
+              data-testid="switch-redact-before-external-ai"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-medium text-sm">Allow PII in batmode</p>
+              <p className="text-xs text-muted-foreground">
+                Allow PII to pass through when batch processing mode is active
+              </p>
+            </div>
+            <Switch
+              checked={allowPIIInBatmode}
+              onCheckedChange={setAllowPIIInBatmode}
+              data-testid="switch-allow-pii-batmode"
+            />
+          </div>
+
+          <Button
+            onClick={handleSave}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-pii-policy"
+          >
+            {saveMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+            ) : (
+              "Save PII Policy"
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface CustomField {
+  id: string;
+  entityType: string;
+  fieldName: string;
+  fieldType: string;
+  required: boolean;
+}
+
+const ENTITY_TYPES = [
+  { value: "client", label: "Client" },
+  { value: "matter", label: "Matter" },
+  { value: "task", label: "Task" },
+  { value: "document", label: "Document" },
+  { value: "time_entry", label: "Time Entry" },
+  { value: "invoice", label: "Invoice" },
+];
+
+const FIELD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+  { value: "select", label: "Select" },
+  { value: "multiselect", label: "Multi-select" },
+  { value: "boolean", label: "Boolean" },
+  { value: "url", label: "URL" },
+];
+
+function CustomFieldsSettings() {
+  const { toast } = useToast();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEntityType, setNewEntityType] = useState("client");
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldType, setNewFieldType] = useState("text");
+  const [newRequired, setNewRequired] = useState(false);
+
+  const { data: fields, isLoading } = useQuery<CustomField[]>({
+    queryKey: ["/api/custom-fields"],
+  });
+
+  const createFieldMutation = useMutation({
+    mutationFn: (data: { entityType: string; fieldName: string; fieldType: string; required: boolean }) =>
+      apiRequest("POST", "/api/custom-fields", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      toast({ title: "Custom field created" });
+      setShowAddForm(false);
+      setNewFieldName("");
+      setNewEntityType("client");
+      setNewFieldType("text");
+      setNewRequired(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to create custom field", variant: "destructive" });
+    },
+  });
+
+  const deleteFieldMutation = useMutation({
+    mutationFn: (fieldId: string) =>
+      apiRequest("DELETE", `/api/custom-fields/${fieldId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      toast({ title: "Custom field deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete custom field", variant: "destructive" });
+    },
+  });
+
+  const handleCreateField = () => {
+    if (!newFieldName.trim()) return;
+    createFieldMutation.mutate({
+      entityType: newEntityType,
+      fieldName: newFieldName,
+      fieldType: newFieldType,
+      required: newRequired,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Columns className="h-5 w-5" />
+                Custom Fields
+              </CardTitle>
+              <CardDescription>
+                Define custom fields for different entity types
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => setShowAddForm(!showAddForm)}
+              data-testid="button-add-custom-field"
+            >
+              Add Field
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {showAddForm && (
+            <Card className="mb-6">
+              <CardContent className="pt-6 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Entity Type</Label>
+                    <Select value={newEntityType} onValueChange={setNewEntityType}>
+                      <SelectTrigger data-testid="select-cf-entity-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ENTITY_TYPES.map((et) => (
+                          <SelectItem key={et.value} value={et.value}>
+                            {et.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Field Name</Label>
+                    <Input
+                      value={newFieldName}
+                      onChange={(e) => setNewFieldName(e.target.value)}
+                      placeholder="e.g., Case Number"
+                      data-testid="input-cf-field-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Field Type</Label>
+                    <Select value={newFieldType} onValueChange={setNewFieldType}>
+                      <SelectTrigger data-testid="select-cf-field-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FIELD_TYPES.map((ft) => (
+                          <SelectItem key={ft.value} value={ft.value}>
+                            {ft.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2 pt-6">
+                    <Checkbox
+                      id="cf-required"
+                      checked={newRequired}
+                      onCheckedChange={(checked) => setNewRequired(checked === true)}
+                      data-testid="checkbox-cf-required"
+                    />
+                    <Label htmlFor="cf-required" className="cursor-pointer">
+                      Required field
+                    </Label>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={handleCreateField}
+                    disabled={!newFieldName.trim() || createFieldMutation.isPending}
+                    data-testid="button-save-custom-field"
+                  >
+                    {createFieldMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Save Field
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewFieldName("");
+                    }}
+                    data-testid="button-cancel-add-field"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!fields || fields.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Columns className="h-10 w-10 mb-3" />
+              <p>No custom fields defined yet</p>
+              <p className="text-sm mt-1">Add your first custom field to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {fields.map((field) => (
+                <div
+                  key={field.id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-md border"
+                  data-testid={`row-custom-field-${field.id}`}
+                >
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      {ENTITY_TYPES.find(e => e.value === field.entityType)?.label || field.entityType}
+                    </Badge>
+                    <div>
+                      <p className="text-sm font-medium" data-testid={`text-cf-name-${field.id}`}>
+                        {field.fieldName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {FIELD_TYPES.find(f => f.value === field.fieldType)?.label || field.fieldType}
+                        {field.required && " (required)"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => deleteFieldMutation.mutate(field.id)}
+                    disabled={deleteFieldMutation.isPending}
+                    data-testid={`button-delete-cf-${field.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

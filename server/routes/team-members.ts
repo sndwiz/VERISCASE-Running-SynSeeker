@@ -4,6 +4,7 @@ import { teamMembers } from "@shared/models/tables";
 import { insertTeamMemberSchema, updateTeamMemberSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireAdmin } from "../security/rbac";
 
 export function registerTeamMemberRoutes(app: Express): void {
   app.get("/api/team-members", async (_req, res) => {
@@ -64,6 +65,89 @@ export function registerTeamMemberRoutes(app: Express): void {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete team member" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/suspend", requireAdmin(), async (req, res) => {
+    try {
+      const userId = (req as any).user?.claims?.sub || "admin";
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      if (!member) return res.status(404).json({ error: "Team member not found" });
+
+      const [updated] = await db.update(teamMembers)
+        .set({
+          status: "suspended",
+          suspendedAt: new Date(),
+          suspendedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(teamMembers.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to suspend user" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/reactivate", requireAdmin(), async (req, res) => {
+    try {
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      if (!member) return res.status(404).json({ error: "Team member not found" });
+
+      const [updated] = await db.update(teamMembers)
+        .set({
+          status: "active",
+          suspendedAt: null,
+          suspendedBy: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(teamMembers.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reactivate user" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/offboard", requireAdmin(), async (req, res) => {
+    try {
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      if (!member) return res.status(404).json({ error: "Team member not found" });
+
+      const [updated] = await db.update(teamMembers)
+        .set({
+          status: "offboarded",
+          offboardedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(teamMembers.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to offboard user" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reset-mfa", requireAdmin(), async (req, res) => {
+    try {
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      if (!member) return res.status(404).json({ error: "Team member not found" });
+
+      const [updated] = await db.update(teamMembers)
+        .set({
+          mfaEnabled: false,
+          mfaMethod: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(teamMembers.id, req.params.id))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset MFA" });
     }
   });
 }

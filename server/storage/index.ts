@@ -17,6 +17,7 @@ import { DocumentsStorage } from "./documents.storage";
 import { FormsStorage } from "./forms.storage";
 import { MeetingsStorage } from "./meetings.storage";
 import { SecurityStorage } from "./security.storage";
+import { AdminStorage } from "./admin.storage";
 
 const boards = new BoardsStorage();
 const ai = new AIStorage();
@@ -37,6 +38,7 @@ const documents = new DocumentsStorage();
 const forms = new FormsStorage();
 const meetings = new MeetingsStorage();
 const security = new SecurityStorage();
+const admin = new AdminStorage();
 
 function bindAll<T extends object>(instance: T): T {
   const proto = Object.getPrototypeOf(instance);
@@ -70,4 +72,5 @@ export const storage = {
   ...bindAll(forms),
   ...bindAll(meetings),
   ...bindAll(security),
+  ...bindAll(admin),
 };

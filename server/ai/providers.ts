@@ -1,10 +1,52 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
+import { createHash } from "crypto";
 import { startAIOp, completeAIOp } from "./ai-ops";
 import { evaluatePolicy, getMode, getSelectedModel, recordPolicyDecision, type PolicyDecision, type PolicyRequest } from "./policy-engine";
 import { getRegistryModel } from "../config/model-registry";
 import { logger } from "../utils/logger";
+import { storage } from "../storage";
+
+async function logAIEvent(params: {
+  provider: string;
+  modelId: string;
+  action: string;
+  prompt: string;
+  output: string;
+  durationMs: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  errorMessage?: string | null;
+}) {
+  try {
+    await storage.createAIEventLog({
+      userId: "system",
+      userEmail: null,
+      matterId: null,
+      action: params.action,
+      mode: getMode(),
+      modelId: params.modelId,
+      modelProvider: params.provider,
+      isExternal: params.provider !== "synseekr" && params.provider !== "private",
+      inputTokenCount: params.inputTokens || null,
+      outputTokenCount: params.outputTokens || null,
+      promptHash: createHash("sha256").update(params.prompt || "").digest("hex"),
+      outputHash: createHash("sha256").update(params.output || "").digest("hex"),
+      durationMs: params.durationMs,
+      errorMessage: params.errorMessage || null,
+      citations: [],
+      actionsTaken: [],
+      piiDetected: false,
+      piiRedacted: false,
+      piiEntities: [],
+      inputDocIds: [],
+      requestId: null,
+    });
+  } catch (logErr) {
+    console.error("[AI Event Log] Failed to log event:", logErr);
+  }
+}
 
 export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private" | "synseekr";
 
@@ -511,9 +553,34 @@ export async function* streamResponse(
       yield chunk;
     }
 
+    const streamDurationMs = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, fullOutput, hadError ? "error" : "success", hadError ? "Stream contained error" : undefined);
+
+    logAIEvent({
+      provider: config.provider,
+      modelId: config.model,
+      action: "stream_chat",
+      prompt: inputSummary,
+      output: fullOutput,
+      durationMs: streamDurationMs,
+      inputTokens: Math.ceil(inputSummary.length / 4),
+      outputTokens: Math.ceil(fullOutput.length / 4),
+      errorMessage: hadError ? "Stream contained error" : null,
+    });
   } catch (err: any) {
+    const errorDurationMs = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, fullOutput, "error", err.message || "Unknown error");
+
+    logAIEvent({
+      provider: config.provider,
+      modelId: config.model,
+      action: "stream_chat",
+      prompt: inputSummary,
+      output: fullOutput,
+      durationMs: errorDurationMs,
+      errorMessage: err.message || "Unknown error",
+    });
+
     yield { error: err.message || "AI request failed" };
     yield { done: true };
   }
@@ -574,10 +641,35 @@ export async function analyzeImageWithVision(
 
     const textBlock = response.content.find((block) => block.type === "text");
     const result = textBlock?.type === "text" ? textBlock.text : "";
+    const visionDurationMs = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, result, "success");
+
+    logAIEvent({
+      provider: config.provider,
+      modelId: config.model,
+      action: "vision_analysis",
+      prompt: prompt,
+      output: result,
+      durationMs: visionDurationMs,
+      inputTokens: response.usage?.input_tokens || null,
+      outputTokens: response.usage?.output_tokens || null,
+    });
+
     return result;
   } catch (err: any) {
+    const visionErrorDurationMs = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, "", "error", err.message || "Vision analysis failed");
+
+    logAIEvent({
+      provider: config.provider,
+      modelId: config.model,
+      action: "vision_analysis",
+      prompt: prompt,
+      output: "",
+      durationMs: visionErrorDurationMs,
+      errorMessage: err.message || "Vision analysis failed",
+    });
+
     throw err;
   }
 }
@@ -749,21 +841,50 @@ export async function generateCompletion(
     logger.info(`[policy-engine] Fallback: ${model} -> ${effectiveModel} (provider: ${effectiveProvider})`, { caller });
   }
 
-  const { id, startTime } = startAIOp(effectiveProvider, effectiveModel, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+  const completionPromptSummary = messages.map(m => m.content).join("\n");
+  const { id, startTime } = startAIOp(effectiveProvider, effectiveModel, "completion", completionPromptSummary.slice(0, 200), caller);
 
   if (effectiveProvider === "synseekr") {
     const synseekrResult = await generateCompletionViaSynSeekr(messages, { ...options, model: effectiveModel });
     if (synseekrResult !== null) {
+      const synDuration = Math.round(performance.now() - startTime);
       completeAIOp(id, startTime, synseekrResult.slice(0, 500), "success");
+      logAIEvent({
+        provider: "synseekr",
+        modelId: effectiveModel,
+        action: "completion",
+        prompt: completionPromptSummary,
+        output: synseekrResult,
+        durationMs: synDuration,
+      });
       return synseekrResult;
     }
+    const synErrDuration = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, "", "error", "SynSeekr server not available or returned no result");
+    logAIEvent({
+      provider: "synseekr",
+      modelId: effectiveModel,
+      action: "completion",
+      prompt: completionPromptSummary,
+      output: "",
+      durationMs: synErrDuration,
+      errorMessage: "SynSeekr server not available or returned no result",
+    });
     throw new Error("SynSeekr server not available. Check SYNSEEKR_URL configuration and server status.");
   }
 
   const synseekrResult = await generateCompletionViaSynSeekr(messages, options);
   if (synseekrResult !== null) {
+    const synFallbackDuration = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, synseekrResult.slice(0, 500), "success");
+    logAIEvent({
+      provider: "synseekr",
+      modelId: effectiveModel,
+      action: "completion",
+      prompt: completionPromptSummary,
+      output: synseekrResult,
+      durationMs: synFallbackDuration,
+    });
     return synseekrResult;
   }
 
@@ -781,7 +902,18 @@ export async function generateCompletion(
         messages: apiMessages,
       });
       const result = response.choices[0]?.message?.content || "";
+      const privateDuration = Math.round(performance.now() - startTime);
       completeAIOp(id, startTime, result.slice(0, 500), "success");
+      logAIEvent({
+        provider: "private",
+        modelId: effectiveModel,
+        action: "completion",
+        prompt: completionPromptSummary,
+        output: result,
+        durationMs: privateDuration,
+        inputTokens: response.usage?.prompt_tokens || null,
+        outputTokens: response.usage?.completion_tokens || null,
+      });
       return result;
     }
 
@@ -797,7 +929,18 @@ export async function generateCompletion(
         messages: apiMessages,
       });
       const result = response.choices[0]?.message?.content || "";
+      const deepseekDuration = Math.round(performance.now() - startTime);
       completeAIOp(id, startTime, result.slice(0, 500), "success");
+      logAIEvent({
+        provider: "deepseek",
+        modelId: effectiveModel,
+        action: "completion",
+        prompt: completionPromptSummary,
+        output: result,
+        durationMs: deepseekDuration,
+        inputTokens: response.usage?.prompt_tokens || null,
+        outputTokens: response.usage?.completion_tokens || null,
+      });
       return result;
     }
 
@@ -813,7 +956,18 @@ export async function generateCompletion(
         messages: apiMessages,
       });
       const result = response.choices[0]?.message?.content || "";
+      const openaiDuration = Math.round(performance.now() - startTime);
       completeAIOp(id, startTime, result.slice(0, 500), "success");
+      logAIEvent({
+        provider: "openai",
+        modelId: effectiveModel,
+        action: "completion",
+        prompt: completionPromptSummary,
+        output: result,
+        durationMs: openaiDuration,
+        inputTokens: response.usage?.prompt_tokens || null,
+        outputTokens: response.usage?.completion_tokens || null,
+      });
       return result;
     }
 
@@ -828,7 +982,16 @@ export async function generateCompletion(
         contents: chatMessages,
       });
       const result = response.text || "";
+      const geminiDuration = Math.round(performance.now() - startTime);
       completeAIOp(id, startTime, result.slice(0, 500), "success");
+      logAIEvent({
+        provider: "gemini",
+        modelId: effectiveModel,
+        action: "completion",
+        prompt: completionPromptSummary,
+        output: result,
+        durationMs: geminiDuration,
+      });
       return result;
     }
 
@@ -841,10 +1004,31 @@ export async function generateCompletion(
 
     const textBlock = response.content.find((block) => block.type === "text");
     const result = textBlock?.type === "text" ? textBlock.text : "";
+    const anthropicDuration = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, result.slice(0, 500), "success");
+    logAIEvent({
+      provider: "anthropic",
+      modelId: effectiveModel,
+      action: "completion",
+      prompt: completionPromptSummary,
+      output: result,
+      durationMs: anthropicDuration,
+      inputTokens: response.usage?.input_tokens || null,
+      outputTokens: response.usage?.output_tokens || null,
+    });
     return result;
   } catch (err: any) {
+    const completionErrDuration = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, "", "error", err.message || "Completion failed");
+    logAIEvent({
+      provider: effectiveProvider,
+      modelId: effectiveModel,
+      action: "completion",
+      prompt: completionPromptSummary,
+      output: "",
+      durationMs: completionErrDuration,
+      errorMessage: err.message || "Completion failed",
+    });
     throw err;
   }
 }

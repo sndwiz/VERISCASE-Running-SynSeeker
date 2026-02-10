@@ -42,6 +42,12 @@ import { registerCaseInsightsRoutes } from "./case-insights";
 import { registerEmailIntelRoutes } from "./email-intel";
 import { registerReportsRoutes } from "./reports";
 import { registerSynSeekerInvestigationRoutes } from "./synseeker-investigations";
+import { registerAIEventLogRoutes } from "./ai-event-log";
+import { registerRolesPermissionsRoutes } from "./roles-permissions";
+import { registerRecoveryBinRoutes } from "./recovery-bin";
+import { registerCustomFieldRoutes } from "./custom-fields";
+import { registerTextSnippetRoutes } from "./text-snippets";
+import { registerPIIPolicyRoutes } from "./pii-policy";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -87,4 +93,10 @@ export function registerAllRoutes(app: Express): void {
   registerEmailIntelRoutes(app);
   registerReportsRoutes(app);
   registerSynSeekerInvestigationRoutes(app);
+  registerAIEventLogRoutes(app);
+  registerRolesPermissionsRoutes(app);
+  registerRecoveryBinRoutes(app);
+  registerCustomFieldRoutes(app);
+  registerTextSnippetRoutes(app);
+  registerPIIPolicyRoutes(app);
 }

@@ -16,6 +16,13 @@ export const teamMembers = pgTable("team_members", {
   userId: varchar("user_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  suspendedAt: timestamp("suspended_at"),
+  suspendedBy: varchar("suspended_by", { length: 255 }),
+  offboardedAt: timestamp("offboarded_at"),
+  lastLoginAt: timestamp("last_login_at"),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaMethod: varchar("mfa_method", { length: 20 }),
 });
 
 export type TeamMember = typeof teamMembers.$inferSelect;
@@ -156,6 +163,8 @@ export const matters = pgTable("matters", {
   opposingCounsel: varchar("opposing_counsel", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  externalAiAllowed: boolean("external_ai_allowed").default(false),
+  aiSensitivityLevel: varchar("ai_sensitivity_level", { length: 20 }).default("high"),
 }, (table) => [
   index("IDX_matters_client_id").on(table.clientId),
 ]);
@@ -1886,3 +1895,184 @@ export const entityConnections = pgTable("entity_connections", {
 
 export type EntityConnection = typeof entityConnections.$inferSelect;
 export type InsertEntityConnection = typeof entityConnections.$inferInsert;
+
+// ============ AI EVENT LOGS (Immutable) ============
+export const aiEventLogs = pgTable("ai_event_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  userEmail: varchar("user_email", { length: 255 }),
+  matterId: varchar("matter_id", { length: 36 }),
+  action: varchar("action", { length: 100 }).notNull(),
+  mode: varchar("mode", { length: 20 }).notNull(),
+  modelId: varchar("model_id", { length: 100 }).notNull(),
+  modelProvider: varchar("model_provider", { length: 50 }).notNull(),
+  isExternal: boolean("is_external").notNull().default(false),
+  inputDocIds: jsonb("input_doc_ids").$type<string[]>().default([]),
+  inputTokenCount: integer("input_token_count"),
+  outputTokenCount: integer("output_token_count"),
+  promptHash: varchar("prompt_hash", { length: 64 }),
+  outputHash: varchar("output_hash", { length: 64 }),
+  citations: jsonb("citations").$type<{ docId: string; page?: number; excerpt?: string }[]>().default([]),
+  actionsTaken: jsonb("actions_taken").$type<string[]>().default([]),
+  piiDetected: boolean("pii_detected").default(false),
+  piiRedacted: boolean("pii_redacted").default(false),
+  piiEntities: jsonb("pii_entities").$type<string[]>().default([]),
+  requestId: varchar("request_id", { length: 36 }),
+  durationMs: integer("duration_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ai_event_logs_user").on(table.userId),
+  index("idx_ai_event_logs_matter").on(table.matterId),
+  index("idx_ai_event_logs_created").on(table.createdAt),
+]);
+
+export type AIEventLog = typeof aiEventLogs.$inferSelect;
+export type InsertAIEventLog = typeof aiEventLogs.$inferInsert;
+
+// ============ ROLES ============
+export const roles = pgTable("roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  description: text("description"),
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+  isSystem: boolean("is_system").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = typeof roles.$inferInsert;
+
+// ============ MATTER PERMISSIONS ============
+export const matterPermissions = pgTable("matter_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id", { length: 36 }).notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  accessLevel: varchar("access_level", { length: 20 }).notNull(),
+  grantedBy: varchar("granted_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_matter_permissions_matter").on(table.matterId),
+  index("idx_matter_permissions_user").on(table.userId),
+]);
+
+export type MatterPermission = typeof matterPermissions.$inferSelect;
+export type InsertMatterPermission = typeof matterPermissions.$inferInsert;
+
+// ============ DOCUMENT PERMISSIONS ============
+export const documentPermissions = pgTable("document_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id", { length: 36 }).notNull(),
+  privilegeLevel: varchar("privilege_level", { length: 30 }).notNull(),
+  restrictedToRoles: jsonb("restricted_to_roles").$type<string[]>().default([]),
+  restrictedToUsers: jsonb("restricted_to_users").$type<string[]>().default([]),
+  setBy: varchar("set_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_document_permissions_doc").on(table.documentId),
+]);
+
+export type DocumentPermission = typeof documentPermissions.$inferSelect;
+export type InsertDocumentPermission = typeof documentPermissions.$inferInsert;
+
+// ============ PII POLICIES ============
+export const piiPolicies = pgTable("pii_policies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id", { length: 36 }),
+  enabledEntities: jsonb("enabled_entities").$type<string[]>().default(["SSN", "DOB", "address", "phone", "email", "bank_account", "credit_card", "drivers_license", "passport", "MRN"]),
+  defaultAction: varchar("default_action", { length: 20 }).notNull().default("flag"),
+  redactBeforeExternalAI: boolean("redact_before_external_ai").notNull().default(true),
+  allowPIIInBatmode: boolean("allow_pii_in_batmode").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type PIIPolicy = typeof piiPolicies.$inferSelect;
+export type InsertPIIPolicy = typeof piiPolicies.$inferInsert;
+
+// ============ CUSTOM FIELD DEFINITIONS ============
+export const customFieldDefinitions = pgTable("custom_field_definitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id", { length: 36 }),
+  entityType: varchar("entity_type", { length: 30 }).notNull(),
+  fieldName: varchar("field_name", { length: 100 }).notNull(),
+  fieldType: varchar("field_type", { length: 20 }).notNull(),
+  options: jsonb("options").$type<string[]>(),
+  required: boolean("required").default(false),
+  validationRegex: varchar("validation_regex", { length: 255 }),
+  sortOrder: integer("sort_order").default(0),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type CustomFieldDefinition = typeof customFieldDefinitions.$inferSelect;
+export type InsertCustomFieldDefinition = typeof customFieldDefinitions.$inferInsert;
+
+// ============ CUSTOM FIELD VALUES ============
+export const customFieldValues = pgTable("custom_field_values", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fieldDefinitionId: varchar("field_definition_id", { length: 36 }).notNull(),
+  entityId: varchar("entity_id", { length: 36 }).notNull(),
+  value: jsonb("value"),
+  updatedBy: varchar("updated_by", { length: 255 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_custom_field_values_entity").on(table.entityId),
+  index("idx_custom_field_values_field").on(table.fieldDefinitionId),
+]);
+
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+export type InsertCustomFieldValue = typeof customFieldValues.$inferInsert;
+
+// ============ COURT HOLIDAYS ============
+export const courtHolidays = pgTable("court_holidays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jurisdictionId: varchar("jurisdiction_id", { length: 36 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  date: timestamp("date").notNull(),
+  recurring: boolean("recurring").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type CourtHoliday = typeof courtHolidays.$inferSelect;
+export type InsertCourtHoliday = typeof courtHolidays.$inferInsert;
+
+// ============ WORKSPACE BILLING ============
+export const workspaceBilling = pgTable("workspace_billing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id", { length: 36 }).notNull(),
+  plan: varchar("plan", { length: 30 }).notNull().default("starter"),
+  seatCount: integer("seat_count").notNull().default(1),
+  storageUsedBytes: integer("storage_used_bytes").default(0),
+  aiTokensUsedMonth: integer("ai_tokens_used_month").default(0),
+  ocrPagesUsedMonth: integer("ocr_pages_used_month").default(0),
+  storageLimit: integer("storage_limit").default(5368709120),
+  aiTokenLimit: integer("ai_token_limit").default(100000),
+  ocrPageLimit: integer("ocr_page_limit").default(500),
+  dataRetentionDays: integer("data_retention_days").default(2555),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type WorkspaceBilling = typeof workspaceBilling.$inferSelect;
+export type InsertWorkspaceBilling = typeof workspaceBilling.$inferInsert;
+
+// ============ TEXT SNIPPETS ============
+export const textSnippets = pgTable("text_snippets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workspaceId: varchar("workspace_id", { length: 36 }),
+  userId: varchar("user_id", { length: 255 }),
+  name: varchar("name", { length: 100 }).notNull(),
+  shortcut: varchar("shortcut", { length: 30 }),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 50 }),
+  isShared: boolean("is_shared").default(false),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type TextSnippet = typeof textSnippets.$inferSelect;
+export type InsertTextSnippet = typeof textSnippets.$inferInsert;

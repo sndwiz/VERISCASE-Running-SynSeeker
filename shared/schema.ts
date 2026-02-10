@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { createInsertSchema } from "drizzle-zod";
+import * as tables from "./models/tables";
 
 // Priority levels
 export type Priority = "low" | "medium" | "high" | "critical";
@@ -2898,6 +2900,56 @@ export const updateFindingSchema = z.object({
 });
 
 export type UpdateFinding = z.infer<typeof updateFindingSchema>;
+
+// ── AI Event Logs Schemas ──
+export const insertAiEventLogSchema = createInsertSchema(tables.aiEventLogs).omit({ id: true, createdAt: true });
+export type InsertAiEventLogInput = z.infer<typeof insertAiEventLogSchema>;
+export type SelectAiEventLog = typeof tables.aiEventLogs.$inferSelect;
+
+// ── Roles Schemas ──
+export const insertRoleSchema = createInsertSchema(tables.roles).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRoleInput = z.infer<typeof insertRoleSchema>;
+export type SelectRole = typeof tables.roles.$inferSelect;
+
+// ── Matter Permissions Schemas ──
+export const insertMatterPermissionSchema = createInsertSchema(tables.matterPermissions).omit({ id: true, createdAt: true });
+export type InsertMatterPermissionInput = z.infer<typeof insertMatterPermissionSchema>;
+export type SelectMatterPermission = typeof tables.matterPermissions.$inferSelect;
+
+// ── Document Permissions Schemas ──
+export const insertDocumentPermissionSchema = createInsertSchema(tables.documentPermissions).omit({ id: true, createdAt: true });
+export type InsertDocumentPermissionInput = z.infer<typeof insertDocumentPermissionSchema>;
+export type SelectDocumentPermission = typeof tables.documentPermissions.$inferSelect;
+
+// ── PII Policies Schemas ──
+export const insertPiiPolicySchema = createInsertSchema(tables.piiPolicies).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPiiPolicyInput = z.infer<typeof insertPiiPolicySchema>;
+export type SelectPiiPolicy = typeof tables.piiPolicies.$inferSelect;
+
+// ── Custom Field Definitions Schemas ──
+export const insertCustomFieldDefinitionSchema = createInsertSchema(tables.customFieldDefinitions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomFieldDefinitionInput = z.infer<typeof insertCustomFieldDefinitionSchema>;
+export type SelectCustomFieldDefinition = typeof tables.customFieldDefinitions.$inferSelect;
+
+// ── Custom Field Values Schemas ──
+export const insertCustomFieldValueSchema = createInsertSchema(tables.customFieldValues).omit({ id: true, updatedAt: true });
+export type InsertCustomFieldValueInput = z.infer<typeof insertCustomFieldValueSchema>;
+export type SelectCustomFieldValue = typeof tables.customFieldValues.$inferSelect;
+
+// ── Court Holidays Schemas ──
+export const insertCourtHolidaySchema = createInsertSchema(tables.courtHolidays).omit({ id: true, createdAt: true });
+export type InsertCourtHolidayInput = z.infer<typeof insertCourtHolidaySchema>;
+export type SelectCourtHoliday = typeof tables.courtHolidays.$inferSelect;
+
+// ── Workspace Billing Schemas ──
+export const insertWorkspaceBillingSchema = createInsertSchema(tables.workspaceBilling).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertWorkspaceBillingInput = z.infer<typeof insertWorkspaceBillingSchema>;
+export type SelectWorkspaceBilling = typeof tables.workspaceBilling.$inferSelect;
+
+// ── Text Snippets Schemas ──
+export const insertTextSnippetSchema = createInsertSchema(tables.textSnippets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertTextSnippetInput = z.infer<typeof insertTextSnippetSchema>;
+export type SelectTextSnippet = typeof tables.textSnippets.$inferSelect;
 
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
