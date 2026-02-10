@@ -79,7 +79,7 @@ router.patch("/jurisdictions/:id", async (req: Request<{ id: string }>, res: Res
     const allowed = ["name", "state", "courtType", "ruleSet", "discoveryResponseDays", "motionOppositionDays", "motionReplyDays", "initialDisclosureDays", "answerDays", "mailServiceExtraDays", "electronicServiceExtraDays", "weekendHolidayAdjust", "holidays", "customRules", "isDefault"] as const;
     const updates: Record<string, any> = { updatedAt: new Date() };
     for (const key of allowed) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+      if (Object.hasOwn(req.body, key)) updates[key] = req.body[key];
     }
     const [updated] = await db.update(jurisdictionProfiles)
       .set(updates)
