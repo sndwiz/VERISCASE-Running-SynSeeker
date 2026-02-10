@@ -2877,6 +2877,28 @@ export const acknowledgeAlertSchema = z.object({
   acknowledgedBy: z.string().optional().default("Lauren"),
 });
 
+// ── SynSeeker Investigation Schemas ──
+
+export const createInvestigationSchema = z.object({
+  targetName: z.string().min(1, "Target name is required").max(200),
+  targetDomain: z.string().max(100).optional(),
+  targetAddress: z.string().max(300).optional(),
+  targetState: z.string().length(2, "State must be 2 characters").default("UT"),
+  matterId: z.string().uuid().optional(),
+  sources: z.array(z.string()).optional(),
+  templateId: z.string().optional().default("custom"),
+});
+
+export type CreateInvestigation = z.infer<typeof createInvestigationSchema>;
+
+export const updateFindingSchema = z.object({
+  starred: z.boolean().optional(),
+  dismissed: z.boolean().optional(),
+  userNotes: z.string().optional(),
+});
+
+export type UpdateFinding = z.infer<typeof updateFindingSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

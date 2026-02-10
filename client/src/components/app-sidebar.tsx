@@ -70,6 +70,7 @@ import {
   Pin,
   History,
   BarChart3,
+  Radar,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,7 @@ const aiInvestigationItems = [
   { title: "Video Pipeline", url: "/video-pipeline", icon: FileVideo },
   { title: "PDF Forensics", url: "/pdf-forensics", icon: FileSearch },
   { title: "Email Intel", url: "/email-intel", icon: Mail },
+  { title: "SynSeeker", url: "/synseeker", icon: Radar },
 ];
 
 function NavSection({ label, items, isOpen, toggle, location, testId }: {

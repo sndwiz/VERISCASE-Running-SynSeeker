@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar, text, integer, boolean, real } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, pgEnum, timestamp, varchar, text, integer, boolean, real } from "drizzle-orm/pg-core";
 
 // ============ TEAM MEMBERS ============
 export const teamMembers = pgTable("team_members", {
@@ -1767,3 +1767,122 @@ export const emailContacts = pgTable("email_contacts", {
 
 export type EmailContact = typeof emailContacts.$inferSelect;
 export type InsertEmailContact = typeof emailContacts.$inferInsert;
+
+// ============ SYNSEEKER INVESTIGATION ENGINE ============
+
+export const investigationStatusEnum = pgEnum('investigation_status', [
+  'queued', 'scanning', 'analyzing', 'complete', 'failed', 'archived',
+]);
+
+export const findingSeverityEnum = pgEnum('finding_severity', [
+  'critical', 'warning', 'info', 'success',
+]);
+
+export const entityTypeEnum = pgEnum('entity_type_inv', [
+  'company', 'person', 'domain', 'address', 'phone', 'email', 'license', 'case',
+]);
+
+export const investigations = pgTable("investigations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id"),
+  targetName: text("target_name").notNull(),
+  targetDomain: text("target_domain"),
+  targetAddress: text("target_address"),
+  targetState: text("target_state"),
+  sources: jsonb("sources").$type<string[]>().default(['web', 'corp', 'domain', 'legal', 'npi', 'reviews', 'social', 'news']),
+  templateId: text("template_id"),
+  status: investigationStatusEnum("status").default('queued').notNull(),
+  progress: integer("progress").default(0).notNull(),
+  scanLog: jsonb("scan_log").$type<Array<{
+    timestamp: string;
+    source: string;
+    action: string;
+    result: string;
+    message: string;
+    dataFound?: boolean;
+  }>>().default([]),
+  totalFindings: integer("total_findings").default(0).notNull(),
+  criticalFlags: integer("critical_flags").default(0).notNull(),
+  entityCount: integer("entity_count").default(0).notNull(),
+  connectionCount: integer("connection_count").default(0).notNull(),
+  aiSummary: text("ai_summary"),
+  aiRiskScore: integer("ai_risk_score"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  scanDuration: integer("scan_duration"),
+}, (table) => [
+  index("idx_investigations_status").on(table.status),
+  index("idx_investigations_matter").on(table.matterId),
+  index("idx_investigations_created").on(table.createdAt),
+]);
+
+export type Investigation = typeof investigations.$inferSelect;
+export type InsertInvestigation = typeof investigations.$inferInsert;
+
+export const investigationFindings = pgTable("investigation_findings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  investigationId: varchar("investigation_id").notNull(),
+  severity: findingSeverityEnum("severity").notNull(),
+  source: text("source").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  rawData: jsonb("raw_data"),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  url: text("url"),
+  screenshot: text("screenshot"),
+  aiRelevance: integer("ai_relevance"),
+  aiNotes: text("ai_notes"),
+  starred: boolean("starred").default(false).notNull(),
+  dismissed: boolean("dismissed").default(false).notNull(),
+  userNotes: text("user_notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_inv_findings_investigation").on(table.investigationId),
+  index("idx_inv_findings_severity").on(table.severity),
+]);
+
+export type InvestigationFinding = typeof investigationFindings.$inferSelect;
+export type InsertInvestigationFinding = typeof investigationFindings.$inferInsert;
+
+export const discoveredEntities = pgTable("discovered_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  investigationId: varchar("investigation_id").notNull(),
+  type: entityTypeEnum("type").notNull(),
+  name: text("name").notNull(),
+  role: text("role"),
+  details: jsonb("details"),
+  title: text("title"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  state: text("state"),
+  sosId: text("sos_id"),
+  npi: text("npi"),
+  registrar: text("registrar"),
+  registrationDate: timestamp("registration_date", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_disc_entities_investigation").on(table.investigationId),
+  index("idx_disc_entities_type").on(table.type),
+]);
+
+export type DiscoveredEntity = typeof discoveredEntities.$inferSelect;
+export type InsertDiscoveredEntity = typeof discoveredEntities.$inferInsert;
+
+export const entityConnections = pgTable("entity_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  investigationId: varchar("investigation_id").notNull(),
+  sourceEntityId: varchar("source_entity_id").notNull(),
+  targetEntityId: varchar("target_entity_id").notNull(),
+  relationship: text("relationship").notNull(),
+  strength: text("strength"),
+  evidence: text("evidence"),
+  severity: findingSeverityEnum("severity"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_entity_connections_investigation").on(table.investigationId),
+]);
+
+export type EntityConnection = typeof entityConnections.$inferSelect;
+export type InsertEntityConnection = typeof entityConnections.$inferInsert;

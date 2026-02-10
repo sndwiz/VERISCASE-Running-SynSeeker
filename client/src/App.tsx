@@ -72,6 +72,7 @@ const VideoPipelinePage = lazy(() => import("@/pages/video-pipeline"));
 const PdfForensicsPage = lazy(() => import("@/pages/pdf-forensics"));
 const EmailIntelPage = lazy(() => import("@/pages/email-intel"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
+const SynSeekerPage = lazy(() => import("@/pages/synseeker"));
 
 function PageLoader() {
   return (
@@ -130,6 +131,8 @@ function Router() {
       <Route path="/email-intel" component={EmailIntelPage} />
       <Route path="/reports/:reportId" component={ReportsPage} />
       <Route path="/reports" component={ReportsPage} />
+      <Route path="/synseeker" component={SynSeekerPage} />
+      <Route path="/synseeker/:id" component={SynSeekerPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

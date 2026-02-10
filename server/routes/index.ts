@@ -41,6 +41,7 @@ import { registerPdfForensicsRoutes } from "./pdf-forensics";
 import { registerCaseInsightsRoutes } from "./case-insights";
 import { registerEmailIntelRoutes } from "./email-intel";
 import { registerReportsRoutes } from "./reports";
+import { registerSynSeekerInvestigationRoutes } from "./synseeker-investigations";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -85,4 +86,5 @@ export function registerAllRoutes(app: Express): void {
   registerCaseInsightsRoutes(app);
   registerEmailIntelRoutes(app);
   registerReportsRoutes(app);
+  registerSynSeekerInvestigationRoutes(app);
 }
