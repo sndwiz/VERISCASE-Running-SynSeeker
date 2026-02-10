@@ -22,7 +22,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Document & Form Maker:** AI-powered document generation system with URCP compliance checking and lawyer approval workflows.
 - **Filing Cabinet:** A two-layer document classification system with Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
-- **Detective Board:** A visual investigation board for entity and event graphing, incorporating confidence scores, reliability ratings, and observed/inferred labeling for 10 node types and 8 connection types.
+- **Detective Board:** A visual investigation board for entity and event graphing, incorporating confidence scores, reliability ratings, and observed/inferred labeling for 14 node types (evidence, person, organization, location, event, theory, note, hypothesis, legal_element, timeline_marker, quote, question, gap_indicator, document_ref) and 8 connection types. Features include right-click context menu, board search overlay with highlighting, connection labels on SVG, JSON export, "What's New" AI findings panel, version history timeline, minimap, cross-board data sync, and unaccounted time analysis.
 - **Automations:** Event-driven automation engine with 85+ pre-built templates, AI-powered actions, and a Workflow Recorder.
 - **SynSeekr Integration:** Hybrid AI architecture connecting to a self-hosted SynSeekr server for advanced AI capabilities like document analysis, entity extraction, RAG queries, and investigations. Includes 12 SynSeekr automation templates.
 - **Communications Hub:** A centralized communication system for client portals, SMS, and internal team interaction.
