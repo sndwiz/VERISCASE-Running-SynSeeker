@@ -47,23 +47,23 @@ export default function BillingVerifierPage() {
   const [roundingScenarios, setRoundingScenarios] = useState<RoundingScenario[]>([]);
 
   const { data: profiles = [] } = useQuery({
-    queryKey: ["/api/billing-profiles"],
+    queryKey: ["/api/billing-verifier/profiles"],
   });
 
   const saveProfileMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/billing-profiles", data);
+      const res = await apiRequest("POST", "/api/billing-verifier/profiles", data);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing-verifier/profiles"] });
       toast({ title: "Profile saved" });
     },
   });
 
   const saveResultsMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/billing-results", data);
+      const res = await apiRequest("POST", "/api/billing-verifier/results", data);
       return res.json();
     },
     onSuccess: () => {

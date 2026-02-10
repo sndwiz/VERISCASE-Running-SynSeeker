@@ -491,7 +491,9 @@ export default function FilingCabinetPage() {
             <CardContent className="flex-1 p-0 min-h-0">
               <ScrollArea className="h-full">
                 {isLoading ? (
-                  <div className="p-8 text-center text-muted-foreground">Loading...</div>
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
                 ) : filteredFiles.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -230,12 +230,12 @@ export default function LegalAIPage() {
   });
 
   const { data: recentConversations = [] } = useQuery<Conversation[]>({
-    queryKey: ["/api/conversations"],
+    queryKey: ["/api/ai/conversations"],
   });
 
   const launchWorkflowMutation = useMutation({
     mutationFn: async (data: { title: string; systemPrompt: string; matterId?: string; initialMessage?: string }) => {
-      const res = await apiRequest("POST", "/api/conversations", {
+      const res = await apiRequest("POST", "/api/ai/conversations", {
         title: data.title,
         model: "claude-sonnet-4-5",
         matterId: data.matterId && data.matterId !== "__none__" ? data.matterId : undefined,
@@ -244,7 +244,7 @@ export default function LegalAIPage() {
       const conversation = await res.json();
 
       if (data.initialMessage) {
-        await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+        await apiRequest("POST", `/api/ai/conversations/${conversation.id}/messages`, {
           content: data.initialMessage,
         });
       }
@@ -252,7 +252,7 @@ export default function LegalAIPage() {
       return conversation;
     },
     onSuccess: (conversation: Conversation) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
       setLocation(`/ai-chat?conversation=${conversation.id}`);
     },
     onError: () => {

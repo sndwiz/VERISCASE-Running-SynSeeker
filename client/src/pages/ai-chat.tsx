@@ -92,11 +92,11 @@ export default function AIChatPage() {
   });
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
-    queryKey: ["/api/conversations"],
+    queryKey: ["/api/ai/conversations"],
   });
 
   const { data: currentConversation, isLoading: isLoadingConversation } = useQuery<Conversation>({
-    queryKey: ["/api/conversations", selectedConversationId],
+    queryKey: ["/api/ai/conversations", selectedConversationId],
     enabled: !!selectedConversationId,
   });
 
@@ -109,11 +109,11 @@ export default function AIChatPage() {
 
   const createConversationMutation = useMutation({
     mutationFn: async (data: { title: string; model: string; matterId?: string }) => {
-      const res = await apiRequest("POST", "/api/conversations", data);
+      const res = await apiRequest("POST", "/api/ai/conversations", data);
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
       setSelectedConversationId(data.id);
       if (pendingLandingMessage.current) {
         setMessage(pendingLandingMessage.current);
@@ -127,9 +127,9 @@ export default function AIChatPage() {
   });
 
   const deleteConversationMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/conversations/${id}`),
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/ai/conversations/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
       if (selectedConversationId) {
         setSelectedConversationId(null);
       }
@@ -141,15 +141,15 @@ export default function AIChatPage() {
 
   const updateConversationMutation = useMutation({
     mutationFn: async (data: { id: number; matterId?: string | null }) => {
-      const res = await apiRequest("PATCH", `/api/conversations/${data.id}`, {
+      const res = await apiRequest("PATCH", `/api/ai/conversations/${data.id}`, {
         matterId: data.matterId || undefined,
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
       if (selectedConversationId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversationId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations", selectedConversationId] });
       }
       toast({ title: "Conversation updated" });
     },
@@ -207,7 +207,7 @@ export default function AIChatPage() {
     setStreamingContent("");
 
     try {
-      const response = await fetch(`/api/conversations/${selectedConversationId}/messages`, {
+      const response = await fetch(`/api/ai/conversations/${selectedConversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: userMessage, model: selectedModel }),
@@ -246,7 +246,7 @@ export default function AIChatPage() {
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations", selectedConversationId] });
     } catch (error) {
       toast({ title: "Failed to send message", variant: "destructive" });
     } finally {
