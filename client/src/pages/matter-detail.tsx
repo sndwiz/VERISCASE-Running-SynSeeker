@@ -62,6 +62,31 @@ interface Client {
   notes?: string;
 }
 
+interface MatterPhase {
+  id: string;
+  name: string;
+  order: number;
+  description: string;
+  advanceTrigger?: string;
+  status: "not-started" | "in-progress" | "completed";
+}
+
+interface TriggerDates {
+  filingDate?: string;
+  serviceDate?: string;
+  schedulingOrderDate?: string;
+  discoveryCutoff?: string;
+  expertDeadline?: string;
+  trialDate?: string;
+  mediationDate?: string;
+}
+
+interface MatterParty {
+  name: string;
+  role: string;
+  counsel?: string;
+}
+
 interface Matter {
   id: string;
   clientId: string;
@@ -77,6 +102,13 @@ interface Matter {
   courtName?: string;
   judgeAssigned?: string;
   opposingCounsel?: string;
+  venue?: string;
+  parties?: MatterParty[];
+  claims?: string[];
+  litigationTemplateId?: string;
+  currentPhase?: string;
+  phases?: MatterPhase[];
+  triggerDates?: TriggerDates;
   openedDate: string;
   closedDate?: string;
   createdAt: string;
@@ -483,6 +515,19 @@ export default function MatterDetailPage() {
                         <DetailRow label="Court" value={matter.courtName} />
                         <DetailRow label="Judge assigned" value={matter.judgeAssigned} />
                         <DetailRow label="Opposing counsel" value={matter.opposingCounsel} />
+                        <DetailRow label="Venue" value={matter.venue} />
+                        {matter.claims && matter.claims.length > 0 && (
+                          <DetailRow
+                            label="Claims"
+                            value={
+                              <div className="flex flex-wrap gap-1">
+                                {matter.claims.map((c, i) => (
+                                  <Badge key={i} variant="secondary" className="text-[10px]">{c}</Badge>
+                                ))}
+                              </div>
+                            }
+                          />
+                        )}
                         <DetailRow
                           label="Status"
                           value={
@@ -560,6 +605,119 @@ export default function MatterDetailPage() {
                       />
                     </CardContent>
                   </Card>
+
+                  {matter.phases && matter.phases.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Gavel className="h-4 w-4" />
+                          Litigation Phases
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-1">
+                        {[...matter.phases]
+                          .sort((a, b) => a.order - b.order)
+                          .map((phase) => {
+                            const isCurrent = phase.id === matter.currentPhase;
+                            return (
+                              <div
+                                key={phase.id}
+                                className={`flex items-center gap-2 p-1.5 rounded-md text-sm ${
+                                  isCurrent ? "bg-primary/10 font-medium" : ""
+                                }`}
+                                data-testid={`phase-${phase.id}`}
+                              >
+                                {phase.status === "completed" ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                ) : isCurrent ? (
+                                  <div className="h-3.5 w-3.5 rounded-full border-2 border-primary bg-primary/20 shrink-0" />
+                                ) : (
+                                  <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+                                )}
+                                <span className={phase.status === "completed" ? "text-muted-foreground line-through" : ""}>
+                                  {phase.name}
+                                </span>
+                                {isCurrent && (
+                                  <Badge variant="secondary" className="ml-auto text-[10px]">Current</Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        {matter.currentPhase && (() => {
+                          const current = matter.phases?.find(p => p.id === matter.currentPhase);
+                          if (!current) return null;
+                          const nextPhase = matter.phases?.find(p => p.order === current.order + 1);
+                          return (
+                            <div className="mt-3 pt-3 border-t space-y-1.5">
+                              <p className="text-xs text-muted-foreground">{current.description}</p>
+                              {nextPhase && (
+                                <p className="text-xs text-muted-foreground">
+                                  Next: <span className="font-medium text-foreground">{nextPhase.name}</span>
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {matter.triggerDates && Object.values(matter.triggerDates).some(v => v) && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Key Dates
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {[
+                          { key: "filingDate", label: "Filing Date" },
+                          { key: "serviceDate", label: "Service Date" },
+                          { key: "schedulingOrderDate", label: "Scheduling Order" },
+                          { key: "discoveryCutoff", label: "Discovery Cutoff" },
+                          { key: "expertDeadline", label: "Expert Deadline" },
+                          { key: "trialDate", label: "Trial Date" },
+                          { key: "mediationDate", label: "Mediation Date" },
+                        ].map(({ key, label }) => {
+                          const val = matter.triggerDates?.[key as keyof TriggerDates];
+                          if (!val) return null;
+                          const d = new Date(val + "T00:00:00");
+                          const isPast = d < new Date();
+                          return (
+                            <div key={key} className="flex items-center justify-between text-sm" data-testid={`date-${key}`}>
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className={isPast ? "text-muted-foreground" : "font-medium"}>
+                                {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {matter.parties && matter.parties.length > 0 && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Parties
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {matter.parties.map((party, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm" data-testid={`party-${idx}`}>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{party.role}</Badge>
+                            <span className="truncate">{party.name}</span>
+                            {party.counsel && (
+                              <span className="text-muted-foreground text-xs truncate ml-auto">({party.counsel})</span>
+                            )}
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <Card>
                     <CardHeader className="pb-3">

@@ -1,0 +1,289 @@
+Yep. What you’re building is basically “litigation as a guided checklist + deadline brain”—Clio for the data, Monday for the execution, with prompts that feel like how lawyers actually run a file.
+
+Below is a jurisdiction-agnostic (but realistic) process map you can encode. Treat it like a default playbook your app can load as templates, then let firms/jurisdictions customize the rule timing.
+
+⸻
+
+1) The core idea: Matter Setup → Phase Gates → Deadline Engine → Prompted Workflows
+
+Your app should do 4 things for every matter:
+	1.	Create the matter exactly like filings
+	•	parties, roles, court, case number, judge, venue, claims/causes, service info
+	2.	Apply a workflow template
+	•	“General Civil Litigation” or “Medical Malpractice / PI”
+	3.	Generate deadlines from trigger dates
+	•	filing date, service date, answer date, scheduling order dates, discovery cutoff, expert deadlines, trial date
+	4.	Prompt next-best actions
+	•	based on what’s done + what’s due + what’s missing (evidence gaps)
+
+⸻
+
+2) A “Litigation Attorney” default workflow (civil litigation)
+
+Think in phases. Every phase has: required inputs → outputs → triggers → next prompts.
+
+Phase A — Intake & Pre-suit
+
+Goal: decide whether to file; preserve evidence; start damages file.
+Prompts/tasks:
+	•	Conflict check, engagement letter, fee agreement
+	•	Fact intake: timeline, people/orgs, locations
+	•	Evidence hold: preservation letter / litigation hold
+	•	Collect: contracts, emails/texts, photos, recordings, invoices, medical
+	•	Identify claims + defenses + jurisdiction/venue logic
+	•	Pre-suit demand (optional): draft + send + set response deadline
+App output:
+	•	Matter “Facts Timeline v1”
+	•	Evidence inventory + missing items list
+	•	Damages ledger started
+
+Trigger to advance: “Suit authorized” or “Demand rejected/no response.”
+
+⸻
+
+Phase B — Pleadings & Service
+
+Goal: get the case on file correctly and get everyone served.
+Prompts/tasks:
+	•	Draft complaint/petition (with exhibits list)
+	•	Filing checklist (court format, caption, verification, fees)
+	•	Service package: summons + complaint + instructions
+	•	Track service returns + proof of service
+	•	Defendant answer deadline tracking (depends on jurisdiction/service type)
+
+App should ask for these key dates:
+	•	filing date
+	•	each defendant service date
+	•	answer/response due date(s)
+
+Trigger to advance: all defendants served + answers in (or defaults handled).
+
+⸻
+
+Phase C — Early Case Management / Scheduling
+
+Goal: lock the calendar and scope.
+Prompts/tasks:
+	•	Case management statement / scheduling conference prep
+	•	Proposed discovery plan / protective order (common)
+	•	Initial disclosures (if applicable)
+	•	Calendar: discovery cutoff, expert deadlines, dispositive motion deadline, pretrial order, trial date
+	•	Identify key issues for discovery plan
+
+Outputs:
+	•	“Scheduling Order” captured in the matter
+	•	Deadline matrix auto-created (your app becomes the “deadline truth”)
+
+Trigger: scheduling order entered.
+
+⸻
+
+Phase D — Written Discovery (start early, run continuously)
+
+Goal: build admissible record; pin down facts; force production.
+Prompts/tasks (defense/plantiff both use these):
+	•	Draft + serve: Interrogatories, Requests for Production, Requests for Admission
+	•	Third-party subpoenas (phone, bank, employer, surveillance, etc.)
+	•	Meet-and-confer tracker for deficiencies
+	•	Rolling production log + privilege log prompts
+	•	“Hot document” triage and contradiction finder (where your AI shines)
+
+App needs to track:
+	•	service dates for each discovery set
+	•	response due dates
+	•	extension agreements
+	•	deficiency letters + deadlines to cure
+
+Trigger: responses received + reviewed; disputes flagged.
+
+⸻
+
+Phase E — Depositions
+
+Goal: testimony locked, impeachment built.
+Prompts/tasks:
+	•	Depo plan by witness category (party, key witness, expert, custodian)
+	•	Notice/subpoena process
+	•	Exhibit bundles + authentication plan
+	•	Depo summaries + “impeachment clips” list
+
+Trigger: key depositions complete.
+
+⸻
+
+Phase F — Experts (often the turning point)
+
+Goal: admissible opinions + reports + deposition strategy.
+Prompts/tasks:
+	•	Expert retention + engagement
+	•	Provide records package + timeline
+	•	Expert report deadline + disclosure compliance
+	•	Rebuttal experts (if needed)
+	•	Expert depos scheduled
+
+Trigger: expert discovery closed.
+
+⸻
+
+Phase G — Motion Practice
+
+Goal: narrow issues, exclude evidence, win early if possible.
+Prompt types (very standard):
+	•	Motion to dismiss / pleadings motions (early)
+	•	Motion to compel (during discovery disputes)
+	•	Summary judgment / dispositive (after discovery)
+	•	Motions in limine (pretrial)
+	•	Daubert/Frye challenges (experts)
+
+App should prompt motions when:
+	•	discovery dispute exists + meet-and-confer logged + deadline approaching
+	•	dispositive motion deadline is X days away and key evidence is ready/not ready
+	•	trial is near and exhibit/witness lists are incomplete
+
+⸻
+
+Phase H — Pretrial & Trial
+
+Goal: exhibits authenticated, lists filed, story locked.
+Prompts/tasks:
+	•	Final witness list, exhibit list
+	•	Exhibit numbering + binders + electronic exhibit set
+	•	Pretrial order drafting
+	•	Jury instructions/voir dire (if jury)
+	•	Trial brief (optional)
+	•	Trial calendar (daily schedule, witness order)
+
+Trigger: case concluded or post-trial motions.
+
+⸻
+
+Phase I — Settlement / ADR (runs parallel)
+
+Goal: resolution on favorable terms.
+Prompts/tasks:
+	•	Settlement demand package (liability + damages + exhibits)
+	•	Mediation statement + confidential exhibits
+	•	Authority tracking, offers/counteroffers log
+	•	Draft settlement agreement + releases
+
+⸻
+
+3) A “Medical Attorney” default workflow (PI / Med Mal)
+
+This is litigation + extra layers: records, causation, experts, liens, damages math.
+
+Phase A — Intake + Records + Screening
+
+Prompts/tasks:
+	•	HIPAA authorizations signed
+	•	Request records from: hospitals, clinics, EMS, imaging, pharmacy
+	•	Build medical timeline (visits, meds, imaging, procedures)
+	•	Baseline damages: lost wages, out-of-pocket, future care
+	•	Early case screen: statute limitations + notice-of-claim rules (varies)
+	•	Identify standard-of-care theory + causation theory (initial)
+
+Output:
+	•	“Medical Timeline v1”
+	•	Provider list + facility list + record request status board
+	•	Potential defendants list
+
+⸻
+
+Phase B — Pre-suit requirements (med mal often has them)
+
+Many places have some version of: pre-suit notice, affidavit/certificate of merit, screening panel, etc. (varies a lot).
+
+App should be configurable here, but default prompts:
+	•	“Is this jurisdiction requiring pre-suit notice/cert of merit?” (firm sets once per jurisdiction template)
+	•	If yes: generate the required checklist + dates.
+
+⸻
+
+Phase C — Filing + Service (same, but with med-specific exhibits)
+
+Prompts/tasks:
+	•	Complaint/petition + defendants proper names/entities
+	•	Service + track returns
+	•	Put all providers and insurance carriers into contacts
+
+⸻
+
+Phase D — Medical discovery engine (the big one)
+
+Prompts/tasks:
+	•	Subpoenas for complete medical file + billing
+	•	Imaging (DICOM) retrieval & review
+	•	Provider depositions / custodian-of-records depositions
+	•	Create “record completeness” checklist:
+	•	ED notes, nursing notes, MAR, orders, op notes, labs, radiology, billing, discharge, follow-up
+
+⸻
+
+Phase E — Experts + Causation package
+
+This is where med cases are won/lost.
+
+Prompts/tasks:
+	•	Retain experts: standard of care, causation, damages/life care, economics
+	•	Create expert packet: full records + timeline + key excerpts + questions list
+	•	Disclosure deadlines + report tracking
+
+⸻
+
+Phase F — Liens + Settlement mechanics (PI-specific reality)
+
+Prompts/tasks:
+	•	Identify liens (Medicare/Medicaid/ERISA/private)
+	•	Notice requirements, conditional payment amounts
+	•	Negotiate reductions, finalize demand
+	•	Settlement distribution worksheet + closing checklist
+
+⸻
+
+4) How your app should “prompt” like a real firm
+
+The magic is not a static checklist. It’s a rules engine that asks for trigger dates and then generates tasks.
+
+Matter setup questions (minimum)
+	•	Jurisdiction / venue / court
+	•	Case type template (civil, PI, med mal, employment, etc.)
+	•	Filing date (when it exists)
+	•	Service date per defendant (when it happens)
+	•	Scheduling order dates (when received)
+	•	Trial date (if set)
+	•	ADR/mediation date (if set)
+
+Trigger-based automations (examples)
+	•	When filing date entered → create service tasks + default response deadline placeholders
+	•	When service date entered → auto-calc answer/response due + set reminders + “default risk” flag
+	•	When scheduling order uploaded → parse dates → populate discovery cutoff / expert deadlines / dispositive deadline
+	•	When discovery served → response due date tasks + deficiency review tasks
+	•	When responses received → auto-create “review & deficiency” workflow
+	•	When depo scheduled → auto-create prep checklist + exhibit list + depo summary tasks
+	•	When expert retained → auto-create packet build + disclosure/report deadlines
+
+⸻
+
+5) What to build in your Clio×Monday UI
+
+For each matter template, generate these boards automatically:
+
+Boards every litigation matter should get
+	1.	Case Overview (phase, deadlines, key contacts)
+	2.	Pleadings & Filings (everything filed + upcoming)
+	3.	Discovery Tracker (served/received/deficiencies)
+	4.	Depositions (witness list + status)
+	5.	Evidence / Exhibits (inventory + authentication status)
+	6.	Motions (pipeline + drafting + filing)
+	7.	Settlement / ADR (offers, mediation prep)
+
+Additional boards for medical/PI
+	8.	Medical Records (provider list + request status)
+	9.	Medical Timeline (events, visits, procedures)
+	10.	Damages & Liens (ledger + lien tracking)
+
+And inside each section/group, your “Not Started / In Progress / Completed” swimlanes fit perfectly.
+
+⸻
+
+If you tell me the jurisdiction(s) you care about most (even just “Utah state court” vs “federal”), I can convert this into a rule table (trigger → deadline formula → tasks created) that your app can execute automatically.

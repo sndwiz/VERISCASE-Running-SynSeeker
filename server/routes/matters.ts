@@ -4,6 +4,8 @@ import { db } from "../db";
 import { teamMembers, matterDocuments, boards, groups, tasks } from "@shared/models/tables";
 import { eq, desc, inArray } from "drizzle-orm";
 import { seedDefaultDeadlineRules } from "../services/deadline-engine";
+import { getLitigationTemplate, getAllLitigationTemplates, type LitigationTemplate } from "./litigation-templates";
+import type { TriggerDates } from "@shared/schema";
 import {
   insertMatterSchema,
   updateMatterSchema,
@@ -71,6 +73,54 @@ const matterUpload = multer({
   },
 });
 
+async function createTriggerDateTasks(
+  template: LitigationTemplate,
+  triggerDates: TriggerDates,
+  boardIds: string[],
+  boardGroupIds: string[][],
+  matterName: string,
+): Promise<void> {
+  for (const rule of template.triggerDateRules) {
+    const dateValue = triggerDates[rule.triggerField as keyof TriggerDates];
+    if (!dateValue) continue;
+
+    const parsedBase = new Date(dateValue + "T00:00:00");
+    if (isNaN(parsedBase.getTime())) {
+      console.warn(`[LitigationTemplate] Invalid date for ${rule.triggerField}: "${dateValue}", skipping`);
+      continue;
+    }
+
+    for (const taskDef of rule.generatedTasks) {
+      const boardId = boardIds[taskDef.boardIndex];
+      const groupId = boardGroupIds[taskDef.boardIndex]?.[taskDef.groupIndex];
+      if (!boardId || !groupId) continue;
+
+      let dueDate: string | undefined;
+      if (taskDef.daysOffset !== undefined) {
+        const base = new Date(parsedBase);
+        base.setDate(base.getDate() + taskDef.daysOffset);
+        dueDate = base.toISOString().split("T")[0];
+      } else {
+        dueDate = dateValue;
+      }
+
+      try {
+        await db.insert(tasks).values({
+          title: taskDef.title,
+          description: taskDef.description || `Auto-generated from ${rule.label}: ${dateValue}`,
+          status: "not-started",
+          priority: taskDef.priority as any,
+          boardId,
+          groupId,
+          dueDate,
+        });
+      } catch (err) {
+        console.error(`[LitigationTemplate] Failed to create trigger task "${taskDef.title}":`, err);
+      }
+    }
+  }
+}
+
 export function registerMatterRoutes(app: Express): void {
   app.get("/api/matters", async (req, res) => {
     try {
@@ -94,9 +144,37 @@ export function registerMatterRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/litigation-templates", async (_req, res) => {
+    try {
+      res.json(getAllLitigationTemplates());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch litigation templates" });
+    }
+  });
+
+  app.get("/api/litigation-templates/:id", async (req, res) => {
+    try {
+      const template = getLitigationTemplate(req.params.id);
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
   app.post("/api/matters", async (req, res) => {
     try {
       const data = insertMatterSchema.parse(req.body);
+      const litigationTemplate = data.litigationTemplateId ? getLitigationTemplate(data.litigationTemplateId) : null;
+
+      if (litigationTemplate) {
+        (data as any).phases = litigationTemplate.phases.map(p => ({
+          ...p,
+          status: p.order === 0 ? "in-progress" : "not-started",
+        }));
+        (data as any).currentPhase = litigationTemplate.phases[0]?.id;
+      }
+
       const matter = await storage.createMatter(data);
 
       const workspaceId = req.body.workspaceId as string | undefined;
@@ -111,125 +189,170 @@ export function registerMatterRoutes(app: Express): void {
           teamNames.push(`${m.firstName} ${m.lastName}`);
         }
       }
-      const boardDesc = `Case board for ${matter.name} | Opened: ${matter.openedDate}${teamNames.length ? ` | Team: ${teamNames.join(", ")}` : ""}`;
 
-      const masterBoard = await storage.createBoard({
-        name: matter.name,
-        description: boardDesc,
-        color: "#6366f1",
-        icon: "briefcase",
-        clientId: matter.clientId,
-        matterId: matter.id,
-        workspaceId: workspaceId || undefined,
-      });
+      const { automationRules: automationRulesTable } = await import("@shared/models/tables");
 
-      const linkedBoards = [
-        { name: `${matter.name} - Filings`, color: "#3b82f6", icon: "file-text" },
-        { name: `${matter.name} - Discovery`, color: "#8b5cf6", icon: "search" },
-        { name: `${matter.name} - Motions`, color: "#ef4444", icon: "gavel" },
-        { name: `${matter.name} - Deadlines`, color: "#f59e0b", icon: "calendar-clock" },
-        { name: `${matter.name} - Evidence/Docs`, color: "#10b981", icon: "folder-archive" },
-      ];
+      if (litigationTemplate) {
+        const createdBoardIds: string[] = [];
+        const createdBoardGroupIds: string[][] = [];
 
-      for (const lb of linkedBoards) {
-        await storage.createBoard({
-          name: lb.name,
-          description: `${lb.name} board for ${matter.name}`,
-          color: lb.color,
-          icon: lb.icon,
+        for (const boardConfig of litigationTemplate.boards) {
+          const board = await storage.createBoard({
+            name: `${matter.name} - ${boardConfig.name}`,
+            description: boardConfig.description,
+            color: boardConfig.color,
+            icon: boardConfig.icon,
+            columns: boardConfig.columns,
+            clientId: matter.clientId,
+            matterId: matter.id,
+            workspaceId: workspaceId || undefined,
+          });
+          createdBoardIds.push(board.id);
+
+          const groupIds: string[] = [];
+          for (let gi = 0; gi < boardConfig.groups.length; gi++) {
+            const groupConfig = boardConfig.groups[gi];
+            const [group] = await db.insert(groups).values({
+              title: groupConfig.title,
+              color: groupConfig.color,
+              boardId: board.id,
+              order: gi,
+            }).returning();
+            groupIds.push(group.id);
+
+            for (const taskConfig of groupConfig.tasks) {
+              await db.insert(tasks).values({
+                title: taskConfig.title,
+                description: taskConfig.description || "",
+                status: taskConfig.status as any,
+                priority: taskConfig.priority as any,
+                boardId: board.id,
+                groupId: group.id,
+              });
+            }
+          }
+          createdBoardGroupIds.push(groupIds);
+
+          for (const autoDef of (boardConfig.automations || [])) {
+            try {
+              await db.insert(automationRulesTable).values({
+                boardId: board.id,
+                name: autoDef.name,
+                description: autoDef.description || "",
+                triggerType: autoDef.triggerType,
+                triggerField: autoDef.triggerField,
+                triggerValue: autoDef.triggerValue,
+                actionType: autoDef.actionType,
+                actionConfig: autoDef.actionConfig || {},
+                isActive: true,
+              });
+            } catch (err) {
+              console.error(`[LitigationTemplate] Failed to create automation "${autoDef.name}":`, err);
+            }
+          }
+        }
+
+        if (data.triggerDates) {
+          await createTriggerDateTasks(
+            litigationTemplate,
+            data.triggerDates,
+            createdBoardIds,
+            createdBoardGroupIds,
+            matter.name,
+          );
+        }
+      } else {
+        const boardDesc = `Case board for ${matter.name} | Opened: ${matter.openedDate}${teamNames.length ? ` | Team: ${teamNames.join(", ")}` : ""}`;
+
+        const masterBoard = await storage.createBoard({
+          name: matter.name,
+          description: boardDesc,
+          color: "#6366f1",
+          icon: "briefcase",
           clientId: matter.clientId,
           matterId: matter.id,
           workspaceId: workspaceId || undefined,
         });
-      }
 
-      const presetGroups = [
-        { title: "Waiting", color: "#f59e0b", order: 0 },
-        { title: "Tasks", color: "#6366f1", order: 1 },
-        { title: "Motions", color: "#ef4444", order: 2 },
-        { title: "Filings", color: "#3b82f6", order: 3 },
-        { title: "Files", color: "#10b981", order: 4 },
-        { title: "In Progress", color: "#8b5cf6", order: 5 },
-        { title: "Stuck", color: "#dc2626", order: 6 },
-        { title: "Finished", color: "#22c55e", order: 7 },
-      ];
+        const linkedBoards = [
+          { name: `${matter.name} - Filings`, color: "#3b82f6", icon: "file-text" },
+          { name: `${matter.name} - Discovery`, color: "#8b5cf6", icon: "search" },
+          { name: `${matter.name} - Motions`, color: "#ef4444", icon: "gavel" },
+          { name: `${matter.name} - Deadlines`, color: "#f59e0b", icon: "calendar-clock" },
+          { name: `${matter.name} - Evidence/Docs`, color: "#10b981", icon: "folder-archive" },
+        ];
 
-      const createdGroups: Record<string, string> = {};
-      for (const pg of presetGroups) {
-        const [g] = await db.insert(groups).values({
-          title: pg.title,
-          color: pg.color,
-          boardId: masterBoard.id,
-          order: pg.order,
-        }).returning();
-        createdGroups[pg.title] = g.id;
-      }
+        for (const lb of linkedBoards) {
+          await storage.createBoard({
+            name: lb.name,
+            description: `${lb.name} board for ${matter.name}`,
+            color: lb.color,
+            icon: lb.icon,
+            clientId: matter.clientId,
+            matterId: matter.id,
+            workspaceId: workspaceId || undefined,
+          });
+        }
 
-      const baselineTasks = [
-        { title: "Confirm service date", group: "Tasks", priority: "high" as const },
-        { title: "Check for scheduling order", group: "Tasks", priority: "high" as const },
-        { title: "Set discovery plan / disclosures deadline", group: "Tasks", priority: "medium" as const },
-        { title: "Review opposing counsel filings", group: "Tasks", priority: "medium" as const },
-        { title: "Upload initial case documents", group: "Tasks", priority: "medium" as const },
-      ];
+        const presetGroups = [
+          { title: "Waiting", color: "#f59e0b", order: 0 },
+          { title: "Tasks", color: "#6366f1", order: 1 },
+          { title: "Motions", color: "#ef4444", order: 2 },
+          { title: "Filings", color: "#3b82f6", order: 3 },
+          { title: "Files", color: "#10b981", order: 4 },
+          { title: "In Progress", color: "#8b5cf6", order: 5 },
+          { title: "Stuck", color: "#dc2626", order: 6 },
+          { title: "Finished", color: "#22c55e", order: 7 },
+        ];
 
-      for (const t of baselineTasks) {
-        await db.insert(tasks).values({
-          title: t.title,
-          status: "not-started",
-          priority: t.priority,
-          boardId: masterBoard.id,
-          groupId: createdGroups[t.group],
-        });
-      }
+        const createdGroups: Record<string, string> = {};
+        for (const pg of presetGroups) {
+          const [g] = await db.insert(groups).values({
+            title: pg.title,
+            color: pg.color,
+            boardId: masterBoard.id,
+            order: pg.order,
+          }).returning();
+          createdGroups[pg.title] = g.id;
+        }
 
-      const { automationRules: automationRulesTable } = await import("@shared/models/tables");
-      const statusAutomations = [
-        {
-          name: "Move to In Progress on status change",
-          triggerType: "task.updated",
-          triggerField: "status",
-          triggerValue: "working-on-it",
-          actionType: "move_to_group",
-          actionConfig: { groupId: createdGroups["In Progress"] },
-        },
-        {
-          name: "Move to Stuck on status change",
-          triggerType: "task.updated",
-          triggerField: "status",
-          triggerValue: "stuck",
-          actionType: "move_to_group",
-          actionConfig: { groupId: createdGroups["Stuck"] },
-        },
-        {
-          name: "Move to Finished on completion",
-          triggerType: "task.updated",
-          triggerField: "status",
-          triggerValue: "done",
-          actionType: "move_to_group",
-          actionConfig: { groupId: createdGroups["Finished"] },
-        },
-        {
-          name: "Move to Waiting on pending review",
-          triggerType: "task.updated",
-          triggerField: "status",
-          triggerValue: "pending-review",
-          actionType: "move_to_group",
-          actionConfig: { groupId: createdGroups["Waiting"] },
-        },
-      ];
+        const baselineTasks = [
+          { title: "Confirm service date", group: "Tasks", priority: "high" as const },
+          { title: "Check for scheduling order", group: "Tasks", priority: "high" as const },
+          { title: "Set discovery plan / disclosures deadline", group: "Tasks", priority: "medium" as const },
+          { title: "Review opposing counsel filings", group: "Tasks", priority: "medium" as const },
+          { title: "Upload initial case documents", group: "Tasks", priority: "medium" as const },
+        ];
 
-      for (const auto of statusAutomations) {
-        await db.insert(automationRulesTable).values({
-          boardId: masterBoard.id,
-          name: auto.name,
-          triggerType: auto.triggerType,
-          triggerField: auto.triggerField,
-          triggerValue: auto.triggerValue,
-          actionType: auto.actionType,
-          actionConfig: auto.actionConfig,
-          isActive: true,
-        });
+        for (const t of baselineTasks) {
+          await db.insert(tasks).values({
+            title: t.title,
+            status: "not-started",
+            priority: t.priority,
+            boardId: masterBoard.id,
+            groupId: createdGroups[t.group],
+          });
+        }
+
+        const statusAutomations = [
+          { name: "Move to In Progress on status change", triggerType: "task.updated", triggerField: "status", triggerValue: "working-on-it", actionType: "move_to_group", actionConfig: { groupId: createdGroups["In Progress"] } },
+          { name: "Move to Stuck on status change", triggerType: "task.updated", triggerField: "status", triggerValue: "stuck", actionType: "move_to_group", actionConfig: { groupId: createdGroups["Stuck"] } },
+          { name: "Move to Finished on completion", triggerType: "task.updated", triggerField: "status", triggerValue: "done", actionType: "move_to_group", actionConfig: { groupId: createdGroups["Finished"] } },
+          { name: "Move to Waiting on pending review", triggerType: "task.updated", triggerField: "status", triggerValue: "pending-review", actionType: "move_to_group", actionConfig: { groupId: createdGroups["Waiting"] } },
+        ];
+
+        for (const auto of statusAutomations) {
+          await db.insert(automationRulesTable).values({
+            boardId: masterBoard.id,
+            name: auto.name,
+            triggerType: auto.triggerType,
+            triggerField: auto.triggerField,
+            triggerValue: auto.triggerValue,
+            actionType: auto.actionType,
+            actionConfig: auto.actionConfig,
+            isActive: true,
+          });
+        }
       }
 
       seedDefaultDeadlineRules().catch(() => {});
@@ -239,6 +362,7 @@ export function registerMatterRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      console.error("[Matters] Failed to create matter:", error);
       res.status(500).json({ error: "Failed to create matter" });
     }
   });
@@ -265,6 +389,8 @@ export function registerMatterRoutes(app: Express): void {
         courtName: original.courtName || undefined,
         judgeAssigned: original.judgeAssigned || undefined,
         opposingCounsel: original.opposingCounsel || undefined,
+        parties: (original as any).parties || [],
+        claims: (original as any).claims || [],
       };
 
       const newMatter = await storage.createMatter(duplicateData);

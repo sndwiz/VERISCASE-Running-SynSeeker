@@ -47,6 +47,10 @@ import {
   Download,
   MoreVertical,
   Scale,
+  CalendarDays,
+  Users,
+  Gavel,
+  X,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +79,30 @@ interface TeamMember {
   isActive: boolean;
 }
 
+interface MatterParty {
+  name: string;
+  role: "plaintiff" | "defendant" | "third-party" | "cross-defendant" | "intervenor" | "other";
+  counsel?: string;
+}
+
+interface TriggerDatesForm {
+  filingDate?: string;
+  serviceDate?: string;
+  schedulingOrderDate?: string;
+  discoveryCutoff?: string;
+  expertDeadline?: string;
+  trialDate?: string;
+  mediationDate?: string;
+}
+
+interface LitigationTemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+  caseType: string;
+  phases: { id: string; name: string; order: number; description: string }[];
+}
+
 interface Matter {
   id: string;
   clientId: string;
@@ -90,6 +118,12 @@ interface Matter {
   courtName?: string;
   judgeAssigned?: string;
   opposingCounsel?: string;
+  venue?: string;
+  parties?: MatterParty[];
+  claims?: string[];
+  litigationTemplateId?: string;
+  currentPhase?: string;
+  triggerDates?: TriggerDatesForm;
   openedDate: string;
   closedDate?: string;
   createdAt: string;
@@ -241,7 +275,17 @@ export default function MattersPage() {
     assignedParalegals: [] as string[],
     courtName: "",
     judgeAssigned: "",
+    litigationTemplateId: "",
+    venue: "",
+    parties: [] as MatterParty[],
+    claims: [] as string[],
+    triggerDates: {} as TriggerDatesForm,
   });
+  const [newPartyName, setNewPartyName] = useState("");
+  const [newPartyRole, setNewPartyRole] = useState<MatterParty["role"]>("plaintiff");
+  const [newPartyCounsel, setNewPartyCounsel] = useState("");
+  const [newClaim, setNewClaim] = useState("");
+  const [showLitigationFields, setShowLitigationFields] = useState(false);
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -255,11 +299,24 @@ export default function MattersPage() {
     queryKey: ["/api/team-members"],
   });
 
+  const { data: litigationTemplates = [] } = useQuery<LitigationTemplateInfo[]>({
+    queryKey: ["/api/litigation-templates"],
+  });
+
   const attorneys = teamMembers.filter(m => ["attorney", "partner", "associate", "of_counsel"].includes(m.role) && m.isActive);
   const paralegals = teamMembers.filter(m => m.role === "paralegal" && m.isActive);
 
+  const defaultFormState = {
+    clientId: "", name: "", caseNumber: "", matterType: "", description: "",
+    practiceArea: "", responsiblePartyId: "", assignedAttorneys: [] as string[],
+    assignedParalegals: [] as string[], courtName: "", judgeAssigned: "",
+    litigationTemplateId: "", venue: "", parties: [] as MatterParty[],
+    claims: [] as string[], triggerDates: {} as TriggerDatesForm,
+  };
+
   const createMatterMutation = useMutation({
     mutationFn: async (data: typeof matterForm) => {
+      const hasNonEmptyTriggerDates = Object.values(data.triggerDates).some(v => v);
       const res = await apiRequest("POST", "/api/matters", {
         clientId: data.clientId,
         name: data.name,
@@ -275,15 +332,29 @@ export default function MattersPage() {
         judgeAssigned: data.judgeAssigned || undefined,
         openedDate: new Date().toISOString().split("T")[0],
         workspaceId: activeWorkspaceId,
+        litigationTemplateId: data.litigationTemplateId || undefined,
+        venue: data.venue || undefined,
+        parties: data.parties.length > 0 ? data.parties : undefined,
+        claims: data.claims.length > 0 ? data.claims : undefined,
+        triggerDates: hasNonEmptyTriggerDates ? data.triggerDates : undefined,
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/matters"] });
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       setShowCreateDialog(false);
-      setMatterForm({ clientId: "", name: "", caseNumber: "", matterType: "", description: "", practiceArea: "", responsiblePartyId: "", assignedAttorneys: [], assignedParalegals: [], courtName: "", judgeAssigned: "" });
-      toast({ title: "Matter created", description: "New matter has been opened." });
+      setShowLitigationFields(false);
+      setMatterForm(defaultFormState);
+      const templateName = variables.litigationTemplateId
+        ? litigationTemplates.find(t => t.id === variables.litigationTemplateId)?.name
+        : undefined;
+      toast({
+        title: "Matter created",
+        description: templateName
+          ? `New matter opened with "${templateName}" workflow boards.`
+          : "New matter has been opened.",
+      });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create matter.", variant: "destructive" });
@@ -424,7 +495,7 @@ export default function MattersPage() {
               New Matter
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Matter</DialogTitle>
               <DialogDescription>Open a new case or matter for a client.</DialogDescription>
@@ -473,7 +544,7 @@ export default function MattersPage() {
                   <Input
                     value={matterForm.name}
                     onChange={e => setMatterForm(p => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g., Estate Planning"
+                    placeholder="e.g., Smith v. Jones"
                     data-testid="input-matter-name"
                   />
                 </div>
@@ -558,6 +629,16 @@ export default function MattersPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>Venue</Label>
+                <Input
+                  value={matterForm.venue}
+                  onChange={e => setMatterForm(p => ({ ...p, venue: e.target.value }))}
+                  placeholder="e.g., Salt Lake County, Utah"
+                  data-testid="input-venue"
+                />
+              </div>
+
               {attorneys.length > 0 && (
                 <div className="space-y-2">
                   <Label>Assigned Attorneys</Label>
@@ -617,15 +698,308 @@ export default function MattersPage() {
                   data-testid="input-description"
                 />
               </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Gavel className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm font-medium">Litigation Workflow Template</Label>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const next = !showLitigationFields;
+                      setShowLitigationFields(next);
+                      if (!next) {
+                        setMatterForm(p => ({
+                          ...p,
+                          litigationTemplateId: "",
+                          parties: [],
+                          claims: [],
+                          triggerDates: {},
+                        }));
+                      }
+                    }}
+                    data-testid="button-toggle-litigation"
+                  >
+                    {showLitigationFields ? "Hide" : "Configure Litigation Workflow"}
+                  </Button>
+                </div>
+
+                {showLitigationFields && (
+                  <div className="space-y-4 p-3 border rounded-md bg-muted/30">
+                    <div className="space-y-2">
+                      <Label>Workflow Template</Label>
+                      <Select
+                        value={matterForm.litigationTemplateId}
+                        onValueChange={v => setMatterForm(p => ({ ...p, litigationTemplateId: v }))}
+                      >
+                        <SelectTrigger data-testid="select-litigation-template">
+                          <SelectValue placeholder="Select a litigation template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {litigationTemplates.map(t => (
+                            <SelectItem key={t.id} value={t.id} data-testid={`option-template-${t.id}`}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {matterForm.litigationTemplateId && (() => {
+                        const selected = litigationTemplates.find(t => t.id === matterForm.litigationTemplateId);
+                        return selected ? (
+                          <p className="text-xs text-muted-foreground">{selected.description}</p>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    {matterForm.litigationTemplateId && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Label className="text-sm">Parties</Label>
+                          </div>
+                          {matterForm.parties.length > 0 && (
+                            <div className="space-y-1">
+                              {matterForm.parties.map((party, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2 text-sm p-1.5 border rounded-md">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Badge variant="secondary" className="shrink-0">{party.role}</Badge>
+                                    <span className="truncate">{party.name}</span>
+                                    {party.counsel && (
+                                      <span className="text-muted-foreground truncate">({party.counsel})</span>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setMatterForm(p => ({
+                                      ...p,
+                                      parties: p.parties.filter((_, i) => i !== idx),
+                                    }))}
+                                    data-testid={`button-remove-party-${idx}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-end">
+                            <Input
+                              value={newPartyName}
+                              onChange={e => setNewPartyName(e.target.value)}
+                              placeholder="Party name"
+                              data-testid="input-party-name"
+                            />
+                            <Select value={newPartyRole} onValueChange={v => setNewPartyRole(v as MatterParty["role"])}>
+                              <SelectTrigger className="w-[130px]" data-testid="select-party-role">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="plaintiff">Plaintiff</SelectItem>
+                                <SelectItem value="defendant">Defendant</SelectItem>
+                                <SelectItem value="third-party">Third Party</SelectItem>
+                                <SelectItem value="cross-defendant">Cross-Defendant</SelectItem>
+                                <SelectItem value="intervenor">Intervenor</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              value={newPartyCounsel}
+                              onChange={e => setNewPartyCounsel(e.target.value)}
+                              placeholder="Counsel (optional)"
+                              data-testid="input-party-counsel"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!newPartyName.trim()}
+                              onClick={() => {
+                                if (!newPartyName.trim()) return;
+                                setMatterForm(p => ({
+                                  ...p,
+                                  parties: [...p.parties, {
+                                    name: newPartyName.trim(),
+                                    role: newPartyRole,
+                                    counsel: newPartyCounsel.trim() || undefined,
+                                  }],
+                                }));
+                                setNewPartyName("");
+                                setNewPartyCounsel("");
+                              }}
+                              data-testid="button-add-party"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm">Claims / Causes of Action</Label>
+                          {matterForm.claims.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {matterForm.claims.map((claim, idx) => (
+                                <Badge key={idx} variant="secondary" className="gap-1">
+                                  {claim}
+                                  <button
+                                    onClick={() => setMatterForm(p => ({
+                                      ...p,
+                                      claims: p.claims.filter((_, i) => i !== idx),
+                                    }))}
+                                    className="ml-0.5"
+                                    data-testid={`button-remove-claim-${idx}`}
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={newClaim}
+                              onChange={e => setNewClaim(e.target.value)}
+                              placeholder="e.g., Breach of Contract, Negligence"
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && newClaim.trim()) {
+                                  e.preventDefault();
+                                  setMatterForm(p => ({ ...p, claims: [...p.claims, newClaim.trim()] }));
+                                  setNewClaim("");
+                                }
+                              }}
+                              data-testid="input-claim"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!newClaim.trim()}
+                              onClick={() => {
+                                if (!newClaim.trim()) return;
+                                setMatterForm(p => ({ ...p, claims: [...p.claims, newClaim.trim()] }));
+                                setNewClaim("");
+                              }}
+                              data-testid="button-add-claim"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Label className="text-sm">Key Dates (triggers automatic deadlines)</Label>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Filing Date</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.filingDate || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, filingDate: e.target.value || undefined }
+                                }))}
+                                data-testid="input-filing-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Service Date</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.serviceDate || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, serviceDate: e.target.value || undefined }
+                                }))}
+                                data-testid="input-service-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Scheduling Order Date</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.schedulingOrderDate || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, schedulingOrderDate: e.target.value || undefined }
+                                }))}
+                                data-testid="input-scheduling-order-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Discovery Cutoff</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.discoveryCutoff || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, discoveryCutoff: e.target.value || undefined }
+                                }))}
+                                data-testid="input-discovery-cutoff"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Expert Deadline</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.expertDeadline || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, expertDeadline: e.target.value || undefined }
+                                }))}
+                                data-testid="input-expert-deadline"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Trial Date</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.trialDate || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, trialDate: e.target.value || undefined }
+                                }))}
+                                data-testid="input-trial-date"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Mediation Date</Label>
+                              <Input
+                                type="date"
+                                value={matterForm.triggerDates.mediationDate || ""}
+                                onChange={e => setMatterForm(p => ({
+                                  ...p, triggerDates: { ...p.triggerDates, mediationDate: e.target.value || undefined }
+                                }))}
+                                data-testid="input-mediation-date"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Dates can be added later. When entered, the system will automatically generate deadline tasks on the corresponding boards.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {showLitigationFields && !matterForm.litigationTemplateId && (
+                <p className="text-xs text-destructive">Please select a workflow template or hide the litigation section.</p>
+              )}
               <Button
                 onClick={() => createMatterMutation.mutate(matterForm)}
-                disabled={!matterForm.name || !matterForm.clientId || createMatterMutation.isPending}
+                disabled={
+                  !matterForm.name ||
+                  !matterForm.clientId ||
+                  createMatterMutation.isPending ||
+                  (showLitigationFields && !matterForm.litigationTemplateId)
+                }
                 data-testid="button-submit-matter"
               >
                 {createMatterMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Create Matter
+                {matterForm.litigationTemplateId ? "Create Matter with Workflow" : "Create Matter"}
               </Button>
             </DialogFooter>
           </DialogContent>

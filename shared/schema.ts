@@ -465,6 +465,33 @@ export interface Client {
   updatedAt: string;
 }
 
+export interface TriggerDates {
+  filingDate?: string;
+  serviceDate?: string;
+  schedulingOrderDate?: string;
+  discoveryCutoff?: string;
+  expertDeadline?: string;
+  trialDate?: string;
+  mediationDate?: string;
+}
+
+export interface MatterParty {
+  name: string;
+  role: "plaintiff" | "defendant" | "third-party" | "cross-defendant" | "intervenor" | "other";
+  counsel?: string;
+  serviceDate?: string;
+  answerDueDate?: string;
+}
+
+export interface MatterPhase {
+  id: string;
+  name: string;
+  order: number;
+  description: string;
+  advanceTrigger: string;
+  status: "not-started" | "in-progress" | "completed";
+}
+
 export interface Matter {
   id: string;
   clientId: string;
@@ -480,6 +507,13 @@ export interface Matter {
   courtName?: string;
   judgeAssigned?: string;
   opposingCounsel?: string;
+  venue?: string;
+  parties?: MatterParty[];
+  claims?: string[];
+  litigationTemplateId?: string;
+  currentPhase?: string;
+  phases?: MatterPhase[];
+  triggerDates?: TriggerDates;
   createdAt: string;
   updatedAt: string;
 }
@@ -1047,6 +1081,24 @@ export const updateTeamMemberSchema = insertTeamMemberSchema.partial();
 export type InsertTeamMemberInput = z.infer<typeof insertTeamMemberSchema>;
 
 // Matter schemas
+const triggerDatesSchema = z.object({
+  filingDate: z.string().optional(),
+  serviceDate: z.string().optional(),
+  schedulingOrderDate: z.string().optional(),
+  discoveryCutoff: z.string().optional(),
+  expertDeadline: z.string().optional(),
+  trialDate: z.string().optional(),
+  mediationDate: z.string().optional(),
+}).optional();
+
+const matterPartySchema = z.object({
+  name: z.string(),
+  role: z.enum(["plaintiff", "defendant", "third-party", "cross-defendant", "intervenor", "other"]),
+  counsel: z.string().optional(),
+  serviceDate: z.string().optional(),
+  answerDueDate: z.string().optional(),
+});
+
 export const insertMatterSchema = z.object({
   clientId: z.string(),
   name: z.string(),
@@ -1060,6 +1112,11 @@ export const insertMatterSchema = z.object({
   courtName: z.string().optional(),
   judgeAssigned: z.string().optional(),
   opposingCounsel: z.string().optional(),
+  venue: z.string().optional(),
+  parties: z.array(matterPartySchema).optional().default([]),
+  claims: z.array(z.string()).optional().default([]),
+  litigationTemplateId: z.string().optional(),
+  triggerDates: triggerDatesSchema,
   assignedAttorneys: z.array(z.string()).optional().default([]),
   assignedParalegals: z.array(z.string()).optional().default([]),
 });
