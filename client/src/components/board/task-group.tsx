@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { ChevronDown, ChevronRight, Plus, MoreHorizontal, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -178,7 +178,7 @@ interface TaskGroupProps {
   canDeleteTasks?: boolean;
 }
 
-export function TaskGroup({
+export const TaskGroup = memo(function TaskGroup({
   group,
   tasks,
   columns,
@@ -357,4 +357,4 @@ export function TaskGroup({
       )}
     </div>
   );
-}
+});

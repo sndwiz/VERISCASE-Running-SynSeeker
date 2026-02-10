@@ -1,16 +1,12 @@
-import { useState } from "react";
-import { Copy, Trash2, Archive, ArrowRight, FileDown, X, Edit, FolderInput, Tag, Minus, CheckSquare } from "lucide-react";
+import { Copy, Trash2, Archive, FileDown, X, Edit, FolderInput, Tag, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Task, Group } from "@shared/schema";
+import type { Group } from "@shared/schema";
 
 interface BulkActionsBarProps {
   selectedCount: number;
@@ -165,86 +161,3 @@ export function BulkActionsBar({
   );
 }
 
-interface SelectAllCheckboxProps {
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: (checked: boolean) => void;
-  totalCount: number;
-  selectedCount: number;
-}
-
-export function SelectAllCheckbox({
-  checked,
-  indeterminate = false,
-  onChange,
-  totalCount,
-  selectedCount,
-}: SelectAllCheckboxProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <Checkbox
-        checked={indeterminate ? "indeterminate" : checked}
-        onCheckedChange={(value) => onChange(value === true)}
-        data-testid="checkbox-select-all"
-      />
-      {selectedCount > 0 && (
-        <Badge variant="secondary" className="text-xs">
-          {selectedCount}/{totalCount}
-        </Badge>
-      )}
-    </div>
-  );
-}
-
-export function useTaskSelection(tasks: Task[]) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const isSelected = (taskId: string) => selectedIds.has(taskId);
-
-  const toggle = (taskId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(taskId)) {
-        next.delete(taskId);
-      } else {
-        next.add(taskId);
-      }
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(tasks.map((t) => t.id)));
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
-
-  const selectRange = (startId: string, endId: string) => {
-    const startIndex = tasks.findIndex((t) => t.id === startId);
-    const endIndex = tasks.findIndex((t) => t.id === endId);
-    if (startIndex === -1 || endIndex === -1) return;
-
-    const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
-    const rangeIds = tasks.slice(from, to + 1).map((t) => t.id);
-    
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      rangeIds.forEach((id) => next.add(id));
-      return next;
-    });
-  };
-
-  return {
-    selectedIds,
-    selectedCount: selectedIds.size,
-    isSelected,
-    toggle,
-    selectAll,
-    clearSelection,
-    selectRange,
-    isAllSelected: selectedIds.size === tasks.length && tasks.length > 0,
-    isIndeterminate: selectedIds.size > 0 && selectedIds.size < tasks.length,
-  };
-}

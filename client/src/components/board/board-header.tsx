@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, Type, Calendar, Users, BarChart3, Clock, CheckSquare, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, List, LayoutDashboard, CalendarDays, Paperclip, X, ChevronDown as ChevronDownIcon } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -121,18 +121,6 @@ export function BoardHeader({
               onChange={(e) => onSearchChange(e.target.value)}
               data-testid="input-search-tasks"
             />
-          </div>
-
-          <div className="flex items-center border rounded-md">
-            <Button variant="ghost" size="icon" className="rounded-r-none" data-testid="button-view-list">
-              <List className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-none border-x" data-testid="button-view-grid">
-              <LayoutDashboard className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-l-none" data-testid="button-view-calendar">
-              <CalendarDays className="h-4 w-4" />
-            </Button>
           </div>
 
           <Button 

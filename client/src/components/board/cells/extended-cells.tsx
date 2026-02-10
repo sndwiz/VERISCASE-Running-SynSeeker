@@ -63,13 +63,25 @@ import { format, parseISO } from "date-fns";
 interface CellProps {
   value: any;
   onChange: (value: any) => void;
-  onClick?: (e: React.MouseEvent) => void;
   options?: string[];
   taskId?: string;
 }
 
-// Email Cell
-export function EmailCell({ value, onChange, onClick }: CellProps) {
+function EditableTextCell({
+  value,
+  onChange,
+  icon: Icon,
+  placeholder,
+  inputType = "text",
+  testId,
+}: {
+  value: any;
+  onChange: (value: any) => void;
+  icon: React.ComponentType<{ className?: string }>;
+  placeholder: string;
+  inputType?: string;
+  testId: string;
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || "");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,13 +101,13 @@ export function EmailCell({ value, onChange, onClick }: CellProps) {
     return (
       <Input
         ref={inputRef}
-        type="email"
+        type={inputType}
         value={editValue}
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={(e) => e.key === "Enter" && handleBlur()}
         className="h-7 text-xs"
-        data-testid="email-cell-input"
+        data-testid={`${testId}-input`}
       />
     );
   }
@@ -104,60 +116,24 @@ export function EmailCell({ value, onChange, onClick }: CellProps) {
     <button
       className="w-full h-7 px-2 py-1 text-xs text-left truncate flex items-center gap-1 text-muted-foreground hover-elevate rounded"
       onClick={() => setIsEditing(true)}
-      data-testid="email-cell"
+      data-testid={testId}
     >
-      <Mail className="h-3 w-3 flex-shrink-0" />
-      {value || <span className="opacity-50">Add email</span>}
+      <Icon className="h-3 w-3 flex-shrink-0" />
+      {value || <span className="opacity-50">{placeholder}</span>}
     </button>
   );
 }
 
-// Phone Cell
-export function PhoneCell({ value, onChange, onClick }: CellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value || "");
-  const inputRef = useRef<HTMLInputElement>(null);
+export function EmailCell({ value, onChange }: CellProps) {
+  return <EditableTextCell value={value} onChange={onChange} icon={Mail} placeholder="Add email" inputType="email" testId="email-cell" />;
+}
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    if (editValue !== value) onChange(editValue);
-  };
-
-  if (isEditing) {
-    return (
-      <Input
-        ref={inputRef}
-        type="tel"
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={(e) => e.key === "Enter" && handleBlur()}
-        className="h-7 text-xs"
-        data-testid="phone-cell-input"
-      />
-    );
-  }
-
-  return (
-    <button
-      className="w-full h-7 px-2 py-1 text-xs text-left truncate flex items-center gap-1 text-muted-foreground hover-elevate rounded"
-      onClick={() => setIsEditing(true)}
-      data-testid="phone-cell"
-    >
-      <Phone className="h-3 w-3 flex-shrink-0" />
-      {value || <span className="opacity-50">Add phone</span>}
-    </button>
-  );
+export function PhoneCell({ value, onChange }: CellProps) {
+  return <EditableTextCell value={value} onChange={onChange} icon={Phone} placeholder="Add phone" inputType="tel" testId="phone-cell" />;
 }
 
 // Rating Cell
-export function RatingCell({ value, onChange, onClick }: CellProps) {
+export function RatingCell({ value, onChange }: CellProps) {
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const rating = value || 0;
   const displayRating = hoverRating !== null ? hoverRating : rating;
@@ -167,10 +143,7 @@ export function RatingCell({ value, onChange, onClick }: CellProps) {
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
-          onClick={(e) => {
-            onClick?.(e);
-            onChange(star === rating ? 0 : star);
-          }}
+          onClick={() => onChange(star === rating ? 0 : star)}
           onMouseEnter={() => setHoverRating(star)}
           onMouseLeave={() => setHoverRating(null)}
           className="p-0.5"
@@ -190,16 +163,13 @@ export function RatingCell({ value, onChange, onClick }: CellProps) {
 }
 
 // Vote Cell
-export function VoteCell({ value, onChange, onClick }: CellProps) {
+export function VoteCell({ value, onChange }: CellProps) {
   const votes = value || 0;
 
   return (
     <button
       className="flex items-center gap-1 px-2 h-7 text-xs hover-elevate rounded"
-      onClick={(e) => {
-        onClick?.(e);
-        onChange(votes + 1);
-      }}
+      onClick={() => onChange(votes + 1)}
       data-testid="vote-cell"
     >
       <ThumbsUp className={`h-3.5 w-3.5 ${votes > 0 ? "text-blue-500 fill-blue-500" : "text-muted-foreground"}`} />
@@ -291,7 +261,6 @@ export function ApprovalCell({ value, onChange, onClick, taskId }: CellProps) {
   const handleQuickClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowDialog(true);
-    onClick?.(e);
   };
 
   const handleStatusChange = (newStatus: string) => {
@@ -516,7 +485,7 @@ export function ApprovalCell({ value, onChange, onClick, taskId }: CellProps) {
 }
 
 // Link Cell
-export function LinkCell({ value, onChange, onClick }: CellProps) {
+export function LinkCell({ value, onChange }: CellProps) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState(value?.url || "");
   const [label, setLabel] = useState(value?.label || "");
@@ -573,52 +542,12 @@ export function LinkCell({ value, onChange, onClick }: CellProps) {
   );
 }
 
-// Location Cell
-export function LocationCell({ value, onChange, onClick }: CellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value || "");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  const handleBlur = () => {
-    setIsEditing(false);
-    if (editValue !== value) onChange(editValue);
-  };
-
-  if (isEditing) {
-    return (
-      <Input
-        ref={inputRef}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={(e) => e.key === "Enter" && handleBlur()}
-        className="h-7 text-xs"
-        placeholder="Enter address..."
-        data-testid="location-cell-input"
-      />
-    );
-  }
-
-  return (
-    <button
-      className="w-full h-7 px-2 py-1 text-xs text-left truncate flex items-center gap-1 text-muted-foreground hover-elevate rounded"
-      onClick={() => setIsEditing(true)}
-      data-testid="location-cell"
-    >
-      <MapPin className="h-3 w-3 flex-shrink-0" />
-      {value || <span className="opacity-50">Add location</span>}
-    </button>
-  );
+export function LocationCell({ value, onChange }: CellProps) {
+  return <EditableTextCell value={value} onChange={onChange} icon={MapPin} placeholder="Add location" testId="location-cell" />;
 }
 
 // Checkbox Cell
-export function CheckboxCell({ value, onChange, onClick }: CellProps) {
+export function CheckboxCell({ value, onChange }: CellProps) {
   return (
     <div className="flex items-center justify-center h-7 px-2">
       <Checkbox
@@ -633,7 +562,7 @@ export function CheckboxCell({ value, onChange, onClick }: CellProps) {
 }
 
 // Dropdown Cell
-export function DropdownCell({ value, onChange, options = [], onClick }: CellProps) {
+export function DropdownCell({ value, onChange, options = [] }: CellProps) {
   return (
     <Select value={value || ""} onValueChange={onChange}>
       <SelectTrigger className="h-7 text-xs border-0 shadow-none" data-testid="dropdown-cell">
@@ -651,7 +580,7 @@ export function DropdownCell({ value, onChange, options = [], onClick }: CellPro
 }
 
 // Tags Cell
-export function TagsCell({ value, onChange, onClick }: CellProps) {
+export function TagsCell({ value, onChange }: CellProps) {
   const [open, setOpen] = useState(false);
   const [newTag, setNewTag] = useState("");
   const tags: string[] = value || [];
@@ -1054,64 +983,12 @@ export function WorldClockCell({ value, onChange }: CellProps) {
   );
 }
 
-// Hour Cell
 export function HourCell({ value, onChange }: CellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-
-  if (isEditing) {
-    return (
-      <Input
-        type="time"
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => setIsEditing(false)}
-        className="h-7 text-xs"
-        autoFocus
-        data-testid="hour-cell-input"
-      />
-    );
-  }
-
-  return (
-    <button
-      className="w-full h-7 px-2 py-1 text-xs text-left flex items-center gap-1 text-muted-foreground hover-elevate rounded"
-      onClick={() => setIsEditing(true)}
-      data-testid="hour-cell"
-    >
-      <Clock className="h-3 w-3" />
-      {value || <span className="opacity-50">Set time</span>}
-    </button>
-  );
+  return <EditableTextCell value={value} onChange={onChange} icon={Clock} placeholder="Set time" inputType="time" testId="hour-cell" />;
 }
 
-// Week Cell
 export function WeekCell({ value, onChange }: CellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-
-  if (isEditing) {
-    return (
-      <Input
-        type="week"
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => setIsEditing(false)}
-        className="h-7 text-xs"
-        autoFocus
-        data-testid="week-cell-input"
-      />
-    );
-  }
-
-  return (
-    <button
-      className="w-full h-7 px-2 py-1 text-xs text-left flex items-center gap-1 text-muted-foreground hover-elevate rounded"
-      onClick={() => setIsEditing(true)}
-      data-testid="week-cell"
-    >
-      <Calendar className="h-3 w-3" />
-      {value || <span className="opacity-50">Select week</span>}
-    </button>
-  );
+  return <EditableTextCell value={value} onChange={onChange} icon={Calendar} placeholder="Select week" inputType="week" testId="week-cell" />;
 }
 
 // Formula Cell (read-only, displays computed value)
@@ -1124,11 +1001,10 @@ export function FormulaCell({ value }: CellProps) {
 }
 
 // Button Cell
-export function ButtonCell({ value, onChange, onClick }: CellProps) {
+export function ButtonCell({ value, onChange }: CellProps) {
   const buttonLabel = value?.label || "Click";
   
-  const handleClick = (e: React.MouseEvent) => {
-    onClick?.(e);
+  const handleClick = () => {
     onChange({ ...value, clicked: true, clickedAt: new Date().toISOString() });
   };
 
@@ -1182,7 +1058,7 @@ export function LabelCell({ value, onChange, options = [] }: CellProps) {
 }
 
 // AI Cell (for AI-powered columns)
-export function AICell({ value, onChange, onClick }: CellProps & { aiType?: string }) {
+export function AICell({ value, onChange }: CellProps & { aiType?: string }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleAIAction = async (e: React.MouseEvent) => {

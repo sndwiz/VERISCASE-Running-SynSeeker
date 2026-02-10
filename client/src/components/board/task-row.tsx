@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { GripVertical, MoreHorizontal, Trash2, ChevronRight, ChevronDown, Plus, Check, Circle } from "lucide-react";
+import { useState, memo, useCallback } from "react";
+import { MoreHorizontal, Trash2, ChevronRight, ChevronDown, Plus, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ interface TaskRowProps {
   canDelete?: boolean;
 }
 
-export function TaskRow({
+export const TaskRow = memo(function TaskRow({
   task,
   columns,
   statusLabels,
@@ -85,10 +85,6 @@ export function TaskRow({
   const subtasks = task.subtasks || [];
   const hasSubtasks = subtasks.length > 0;
   const completedSubtasks = subtasks.filter(s => s.completed).length;
-
-  const handleCellClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 
   const handleToggleSubtask = (subtaskId: string, completed: boolean) => {
     const updatedSubtasks = subtasks.map(s => 
@@ -120,10 +116,6 @@ export function TaskRow({
   };
 
   const renderCell = (column: ColumnDef) => {
-    const cellProps = {
-      onClick: handleCellClick,
-    };
-
     const getCustomFieldValue = () => task.customFields?.[column.id];
     const setCustomFieldValue = (value: any) =>
       onUpdate({ customFields: { ...task.customFields, [column.id]: value } });
@@ -136,7 +128,6 @@ export function TaskRow({
             onChange={(value: string) => onUpdate({ status: value as StatusType })}
             customLabels={statusLabels}
             onEditLabels={onEditStatusLabels}
-            {...cellProps}
           />
         );
       case "priority":
@@ -144,7 +135,6 @@ export function TaskRow({
           <PriorityCell
             value={task.priority}
             onChange={(value: Priority) => onUpdate({ priority: value })}
-            {...cellProps}
           />
         );
       case "date":
@@ -152,7 +142,6 @@ export function TaskRow({
           <DateCell
             value={task.dueDate}
             onChange={(value: string | null) => onUpdate({ dueDate: value })}
-            {...cellProps}
           />
         );
       case "person":
@@ -160,7 +149,6 @@ export function TaskRow({
           <PersonCell
             value={task.assignees}
             onChange={(value: Person[]) => onUpdate({ assignees: value })}
-            {...cellProps}
           />
         );
       case "progress":
@@ -168,7 +156,6 @@ export function TaskRow({
           <ProgressCell
             value={task.progress}
             onChange={(value: number) => onUpdate({ progress: value })}
-            {...cellProps}
           />
         );
       case "time":
@@ -176,7 +163,6 @@ export function TaskRow({
           <TimeCell
             value={task.timeTracked}
             onChange={(value: number) => onUpdate({ timeTracked: value })}
-            {...cellProps}
           />
         );
       case "files":
@@ -185,66 +171,65 @@ export function TaskRow({
             value={task.files || []}
             onChange={(value: FileAttachment[]) => onUpdate({ files: value })}
             taskId={task.id}
-            {...cellProps}
           />
         );
       case "email":
-        return <EmailCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <EmailCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "phone":
-        return <PhoneCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <PhoneCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "rating":
-        return <RatingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <RatingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "vote":
-        return <VoteCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <VoteCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "approval":
-        return <ApprovalCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <ApprovalCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "link":
-        return <LinkCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <LinkCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "location":
-        return <LocationCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <LocationCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "checkbox":
-        return <CheckboxCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <CheckboxCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "dropdown":
-        return <DropdownCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} {...cellProps} />;
+        return <DropdownCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} />;
       case "tags":
-        return <TagsCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <TagsCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "number":
       case "numbers":
-        return <NumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <NumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "long-text":
-        return <LongTextCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <LongTextCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "color-picker":
-        return <ColorPickerCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <ColorPickerCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "time-tracking":
-        return <TimeTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <TimeTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "item-id":
-        return <ItemIdCell value={getCustomFieldValue()} onChange={setCustomFieldValue} taskId={task.id} {...cellProps} />;
+        return <ItemIdCell value={getCustomFieldValue()} onChange={setCustomFieldValue} taskId={task.id} />;
       case "creation-log":
-        return <CreationLogCell value={{ createdAt: task.createdAt, createdBy: "User" }} onChange={() => {}} {...cellProps} />;
+        return <CreationLogCell value={{ createdAt: task.createdAt, createdBy: "User" }} onChange={() => {}} />;
       case "last-updated":
-        return <LastUpdatedCell value={task.updatedAt || task.createdAt} onChange={() => {}} {...cellProps} />;
+        return <LastUpdatedCell value={task.updatedAt || task.createdAt} onChange={() => {}} />;
       case "auto-number":
-        return <AutoNumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <AutoNumberCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "dependency":
-        return <DependencyCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <DependencyCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "country":
-        return <CountryCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <CountryCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "world-clock":
-        return <WorldClockCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <WorldClockCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "hour":
-        return <HourCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <HourCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "week":
-        return <WeekCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <WeekCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "formula":
-        return <FormulaCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <FormulaCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "button":
-        return <ButtonCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <ButtonCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "label":
-        return <LabelCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} {...cellProps} />;
+        return <LabelCell value={getCustomFieldValue()} onChange={setCustomFieldValue} options={column.options || []} />;
       case "timeline":
-        return <TimelineCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <TimelineCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "progress-tracking":
-        return <ProgressTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} {...cellProps} />;
+        return <ProgressTrackingCell value={getCustomFieldValue()} onChange={setCustomFieldValue} />;
       case "ai-improve":
       case "ai-write":
       case "ai-extract":
@@ -252,7 +237,7 @@ export function TaskRow({
       case "ai-translate":
       case "ai-sentiment":
       case "ai-categorize":
-        return <AICell value={getCustomFieldValue()} onChange={setCustomFieldValue} aiType={column.type} {...cellProps} />;
+        return <AICell value={getCustomFieldValue()} onChange={setCustomFieldValue} aiType={column.type} />;
       case "text":
       default:
         return (
@@ -263,7 +248,7 @@ export function TaskRow({
                 customFields: { ...task.customFields, [column.id]: value },
               })
             }
-            {...cellProps}
+           
           />
         );
     }
@@ -505,4 +490,4 @@ export function TaskRow({
     )}
     </>
   );
-}
+});

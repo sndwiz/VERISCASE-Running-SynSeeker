@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRoute } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,16 +24,24 @@ import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-
 import { ViewTabs, KanbanView, CalendarView, DashboardView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
+import { useBoardMutations } from "@/hooks/use-board-mutations";
 import type { Board, Group, Task, ColumnType, CustomStatusLabel } from "@shared/schema";
 import { defaultStatusLabels } from "@shared/schema";
 
 export default function BoardPage() {
   const [, params] = useRoute("/boards/:id");
   const boardId = params?.id;
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const {
+    createGroup: createGroupMutation,
+    createTask: createTaskMutation,
+    updateTask: updateTaskMutation,
+    deleteTask: deleteTaskMutation,
+    updateGroup: updateGroupMutation,
+    updateBoard: updateBoardMutation,
+    deleteGroup: deleteGroupMutation,
+  } = useBoardMutations(boardId);
   const { recordAction } = useWorkflowRecorder();
   const canDeleteTasks = user?.role === "admin";
 
@@ -99,87 +107,6 @@ export default function BoardPage() {
     enabled: !!boardId,
   });
 
-  const createGroupMutation = useMutation({
-    mutationFn: (data: { title: string; color: string }) =>
-      apiRequest("POST", `/api/boards/${boardId}/groups`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
-      toast({ title: "Group created successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to create group", variant: "destructive" });
-    },
-  });
-
-  const createTaskMutation = useMutation({
-    mutationFn: (data: { title: string; description?: string; groupId: string; priority: string }) =>
-      apiRequest("POST", `/api/boards/${boardId}/tasks`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
-      toast({ title: "Task created successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to create task", variant: "destructive" });
-    },
-  });
-
-  const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) =>
-      apiRequest("PATCH", `/api/tasks/${taskId}`, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId] });
-    },
-    onError: () => {
-      toast({ title: "Failed to update task", variant: "destructive" });
-    },
-  });
-
-  const deleteTaskMutation = useMutation({
-    mutationFn: (taskId: string) => apiRequest("DELETE", `/api/tasks/${taskId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
-      toast({ title: "Task deleted" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete task", variant: "destructive" });
-    },
-  });
-
-  const updateGroupMutation = useMutation({
-    mutationFn: ({ groupId, updates }: { groupId: string; updates: Partial<Group> }) =>
-      apiRequest("PATCH", `/api/groups/${groupId}`, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to update group", variant: "destructive" });
-    },
-  });
-
-  const updateBoardMutation = useMutation({
-    mutationFn: (updates: Partial<Board>) =>
-      apiRequest("PATCH", `/api/boards/${boardId}`, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
-    },
-    onError: () => {
-      toast({ title: "Failed to update board", variant: "destructive" });
-    },
-  });
-
-  const deleteGroupMutation = useMutation({
-    mutationFn: (groupId: string) => apiRequest("DELETE", `/api/groups/${groupId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
-      toast({ title: "Group deleted" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete group", variant: "destructive" });
-    },
-  });
 
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) return tasks;
