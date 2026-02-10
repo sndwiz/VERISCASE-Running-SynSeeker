@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, pgEnum, timestamp, varchar, text, integer, boolean, real } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, pgEnum, timestamp, varchar, text, integer, bigint, boolean, real } from "drizzle-orm/pg-core";
 
 // ============ TEAM MEMBERS ============
 export const teamMembers = pgTable("team_members", {
@@ -2045,10 +2045,10 @@ export const workspaceBilling = pgTable("workspace_billing", {
   workspaceId: varchar("workspace_id", { length: 36 }).notNull(),
   plan: varchar("plan", { length: 30 }).notNull().default("starter"),
   seatCount: integer("seat_count").notNull().default(1),
-  storageUsedBytes: integer("storage_used_bytes").default(0),
+  storageUsedBytes: bigint("storage_used_bytes", { mode: "number" }).default(0),
   aiTokensUsedMonth: integer("ai_tokens_used_month").default(0),
   ocrPagesUsedMonth: integer("ocr_pages_used_month").default(0),
-  storageLimit: integer("storage_limit").default(5368709120),
+  storageLimit: bigint("storage_limit", { mode: "number" }).default(5368709120),
   aiTokenLimit: integer("ai_token_limit").default(100000),
   ocrPageLimit: integer("ocr_page_limit").default(500),
   dataRetentionDays: integer("data_retention_days").default(2555),
