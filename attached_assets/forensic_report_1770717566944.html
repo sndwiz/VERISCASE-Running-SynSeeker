@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Forensic Report - test_manipulated.pdf</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        background: #0a0a0a; color: #e5e5e5; line-height: 1.6;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .header {
+        background: linear-gradient(135deg, #1a0a0a 0%, #0a0a1a 100%);
+        border: 1px solid #dc2626; border-radius: 12px;
+        padding: 32px; margin-bottom: 24px;
+    }
+    .header h1 { color: #ef4444; font-size: 28px; margin-bottom: 8px; }
+    .header .subtitle { color: #a3a3a3; font-size: 14px; }
+
+    .file-info {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        background: #141414; border-radius: 8px; padding: 20px;
+        margin-bottom: 24px; border: 1px solid #262626;
+    }
+    .file-info div { font-size: 13px; }
+    .file-info label { color: #737373; display: block; font-size: 11px; text-transform: uppercase; }
+    .file-info code { color: #f59e0b; font-size: 12px; word-break: break-all; }
+
+    .severity-summary {
+        display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .severity-card {
+        flex: 1; min-width: 120px; padding: 16px; border-radius: 8px;
+        text-align: center; border: 1px solid #262626;
+    }
+    .severity-card .count { font-size: 32px; font-weight: bold; }
+    .severity-card .label { font-size: 12px; text-transform: uppercase; }
+
+    .section {
+        background: #141414; border: 1px solid #262626; border-radius: 8px;
+        padding: 24px; margin-bottom: 20px;
+    }
+    .section h2 {
+        color: #f5f5f5; font-size: 20px; margin-bottom: 16px;
+        padding-bottom: 8px; border-bottom: 1px solid #262626;
+    }
+
+    .finding {
+        border-left: 4px solid #333; border-radius: 4px;
+        padding: 16px; margin-bottom: 12px; background: #1a1a1a;
+    }
+    .finding.severity-critical { border-left-color: #dc2626; background: #1a0a0a; }
+    .finding.severity-high { border-left-color: #ea580c; background: #1a120a; }
+    .finding.severity-medium { border-left-color: #ca8a04; background: #1a1a0a; }
+    .finding.severity-low { border-left-color: #2563eb; }
+    .finding.severity-info { border-left-color: #6b7280; }
+
+    .finding-header {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .severity-badge {
+        color: white; padding: 2px 8px; border-radius: 4px;
+        font-size: 11px; font-weight: bold; text-transform: uppercase;
+    }
+    .finding-category {
+        color: #737373; font-size: 12px; padding: 2px 8px;
+        border: 1px solid #333; border-radius: 4px;
+    }
+    .finding-detail { color: #a3a3a3; font-size: 14px; margin-bottom: 8px; }
+    .evidence { list-style: none; padding: 0; }
+    .evidence li {
+        font-size: 12px; color: #d4d4d4; padding: 4px 8px;
+        background: #0a0a0a; border-radius: 4px; margin: 4px 0;
+    }
+
+    table {
+        width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    th, td {
+        padding: 8px 12px; text-align: left; border-bottom: 1px solid #262626;
+    }
+    th { color: #737373; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+    td code { color: #38bdf8; }
+
+    .revision-item {
+        display: flex; gap: 16px; padding: 8px 12px;
+        background: #0a0a0a; border-radius: 4px; margin: 4px 0;
+        font-size: 13px; flex-wrap: wrap;
+    }
+    .revision-item strong { color: #f59e0b; }
+
+    .devil-section {
+        background: linear-gradient(135deg, #1a0a0a 0%, #1a0a1a 100%);
+        border: 1px solid #7f1d1d; border-radius: 8px;
+        padding: 24px; margin-bottom: 20px;
+    }
+    .devil-section h2 { color: #fca5a5; }
+    .abuse-item {
+        padding: 12px; margin: 8px 0; background: #0a0a0a;
+        border-radius: 4px; border-left: 3px solid #dc2626;
+    }
+    .abuse-item h4 { color: #f87171; margin-bottom: 4px; }
+    .abuse-item p { color: #a3a3a3; font-size: 13px; }
+    .counter { color: #4ade80; font-style: italic; font-size: 12px; margin-top: 4px; }
+
+    .disclaimer {
+        text-align: center; color: #525252; font-size: 12px;
+        padding: 24px; border-top: 1px solid #262626; margin-top: 24px;
+    }
+
+    @media print {
+        body { background: white; color: black; }
+        .finding { break-inside: avoid; }
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>&#x1f50d; PDF FORENSIC ANALYSIS REPORT</h1>
+        <div class="subtitle">
+            Generated: 2026-02-10T09:50:53.922761 |
+            Tool: PDF Forensic Analyzer v1.0 | Classification: CONFIDENTIAL
+        </div>
+    </div>
+
+    <div class="file-info">
+        <div>
+            <label>Filename</label>
+            <strong>test_manipulated.pdf</strong>
+        </div>
+        <div>
+            <label>File Size</label>
+            <strong>3,905 bytes</strong>
+        </div>
+        <div>
+            <label>MD5 Hash</label>
+            <code>591acc5a486af02a68ee9fb3391769f1</code>
+        </div>
+        <div>
+            <label>SHA-256 Hash</label>
+            <code>2bde078f2c5a556dfb8871b0b2ca7733acd896b1a8c6f0b24a1f20a5c5e672c2</code>
+        </div>
+    </div>
+
+    <div class="severity-summary">
+        <div class="severity-card" style="background:#1a0a0a;border-color:#dc2626">
+            <div class="count" style="color:#dc2626">2</div>
+            <div class="label" style="color:#fca5a5">Critical</div>
+        </div>
+        <div class="severity-card" style="background:#1a120a;border-color:#ea580c">
+            <div class="count" style="color:#ea580c">4</div>
+            <div class="label" style="color:#fdba74">High</div>
+        </div>
+        <div class="severity-card" style="background:#1a1a0a;border-color:#ca8a04">
+            <div class="count" style="color:#ca8a04">5</div>
+            <div class="label" style="color:#fde047">Medium</div>
+        </div>
+        <div class="severity-card" style="background:#0a0a1a;border-color:#2563eb">
+            <div class="count" style="color:#2563eb">0</div>
+            <div class="label" style="color:#93c5fd">Low</div>
+        </div>
+        <div class="severity-card" style="background:#141414;border-color:#4b5563">
+            <div class="count" style="color:#6b7280">2</div>
+            <div class="label" style="color:#9ca3af">Info</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>&#x26a0;&#xfe0f; All Findings (13)</h2>
+        
+        <div class="finding severity-high">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ea580c">HIGH</span>
+                <span class="finding-category">Metadata</span>
+                <strong>Multiple PDF creation tools detected</strong>
+            </div>
+            <p class="finding-detail">Document was processed by multiple tools, suggesting re-processing or manipulation.</p>
+            <ul class='evidence'><li><code>pdftk 2.02</code></li><li><code>Adobe Acrobat Pro DC</code></li></ul>
+        </div>
+        
+        <div class="finding severity-medium">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ca8a04">MEDIUM</span>
+                <span class="finding-category">Metadata</span>
+                <strong>PDF manipulation tool detected: pdftk</strong>
+            </div>
+            <p class="finding-detail">Field '/Producer' contains reference to 'pdftk'. This tool can modify PDF structure, flatten layers, or alter metadata.</p>
+            <ul class='evidence'><li><code>/Producer: pdftk 2.02</code></li></ul>
+        </div>
+        
+        <div class="finding severity-medium">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ca8a04">MEDIUM</span>
+                <span class="finding-category">Metadata</span>
+                <strong>PDF manipulation tool detected: itext</strong>
+            </div>
+            <p class="finding-detail">Field '_xmp_raw' contains reference to 'itext'. This tool can modify PDF structure, flatten layers, or alter metadata.</p>
+            <ul class='evidence'><li><code>_xmp_raw: <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="pikepdf">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:Description rdf:about=""><xmp:CreateDate xmlns:xmp="http://ns.adobe.com/xap/1.0/">2019-04-15T10:30:00-05:00</xmp:CreateDate><xmp:ModifyDate xmlns:xmp="http://ns.adobe.com/xap/1.0/">2023-11-20T03:45:00-05:00</xmp:ModifyDate><pdf:Producer xmlns:pdf="http://ns.adobe.com/pdf/1.3/">iText 7.1.15 (modified with Ghostscript 9.56)</pdf:Producer></rdf:Description></rdf:RDF>
+</x:xmpmeta>
+
+<?xpacket end="w"?>
+</code></li></ul>
+        </div>
+        
+        <div class="finding severity-medium">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ca8a04">MEDIUM</span>
+                <span class="finding-category">Metadata</span>
+                <strong>PDF manipulation tool detected: ghostscript</strong>
+            </div>
+            <p class="finding-detail">Field '_xmp_raw' contains reference to 'ghostscript'. This tool can modify PDF structure, flatten layers, or alter metadata.</p>
+            <ul class='evidence'><li><code>_xmp_raw: <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="pikepdf">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:Description rdf:about=""><xmp:CreateDate xmlns:xmp="http://ns.adobe.com/xap/1.0/">2019-04-15T10:30:00-05:00</xmp:CreateDate><xmp:ModifyDate xmlns:xmp="http://ns.adobe.com/xap/1.0/">2023-11-20T03:45:00-05:00</xmp:ModifyDate><pdf:Producer xmlns:pdf="http://ns.adobe.com/pdf/1.3/">iText 7.1.15 (modified with Ghostscript 9.56)</pdf:Producer></rdf:Description></rdf:RDF>
+</x:xmpmeta>
+
+<?xpacket end="w"?>
+</code></li></ul>
+        </div>
+        
+        <div class="finding severity-medium">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ca8a04">MEDIUM</span>
+                <span class="finding-category">Metadata</span>
+                <strong>PDF manipulation tool detected: pdftk</strong>
+            </div>
+            <p class="finding-detail">Field 'pypdf_/Producer' contains reference to 'pdftk'. This tool can modify PDF structure, flatten layers, or alter metadata.</p>
+            <ul class='evidence'><li><code>pypdf_/Producer: pdftk 2.02</code></li></ul>
+        </div>
+        
+        <div class="finding severity-critical">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#dc2626">CRITICAL</span>
+                <span class="finding-category">Hidden Text</span>
+                <strong>WHITE TEXT detected on 6 span(s)</strong>
+            </div>
+            <p class="finding-detail">Text rendered in white (or near-white) color found. This text is invisible on white backgrounds but contains readable content. Common technique for hiding information in plain sight.</p>
+            <ul class='evidence'><li><code>Page 1: "TRUST ACCOUNT: Smith Family Trust - Case #2021-CV-4492..." (color: (255,255,255))</code></li><li><code>Page 1: "Wire Transfer: $847,000 from offshore account 2020-03-15..." (color: (255,255,255))</code></li><li><code>Page 1: "Attorney notes: Move funds before audit deadline..." (color: (255,255,255))</code></li><li><code>Page 4: "TRUST ACCOUNT: Smith Family Trust - Case #2021-CV-4492..." (color: (255,255,255))</code></li><li><code>Page 4: "Wire Transfer: $847,000 from offshore account 2020-03-15..." (color: (255,255,255))</code></li><li><code>Page 4: "Attorney notes: Move funds before audit deadline..." (color: (255,255,255))</code></li></ul>
+        </div>
+        
+        <div class="finding severity-high">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ea580c">HIGH</span>
+                <span class="finding-category">Hidden Text</span>
+                <strong>MICROSCOPIC TEXT detected (2 spans)</strong>
+            </div>
+            <p class="finding-detail">Text smaller than 1 point found. This is too small to read and may be used to hide content while keeping it technically 'present' in the document.</p>
+            <ul class='evidence'><li><code>Page 1: "Document modified by J.Smith on 2023-11-15 to remove Schedule K-1..." (0.50pt)</code></li><li><code>Page 4: "Document modified by J.Smith on 2023-11-15 to remove Schedule K-1..." (0.50pt)</code></li></ul>
+        </div>
+        
+        <div class="finding severity-critical">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#dc2626">CRITICAL</span>
+                <span class="finding-category">Redactions</span>
+                <strong>FAKE REDACTIONS detected - 2 found</strong>
+            </div>
+            <p class="finding-detail">Black rectangles overlaying readable text found. These appear to be redactions but the text underneath is still present and extractable. True redactions permanently remove text. This is either incompetence or intentional deception.</p>
+            <ul class='evidence'><li><code>Page 1: Hidden text: "Transfer to: Cayman Islands Account #884729301..."</code></li><li><code>Page 4: Hidden text: "Transfer to: Cayman Islands Account #884729301..."</code></li></ul>
+        </div>
+        
+        <div class="finding severity-info">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#6b7280">INFO</span>
+                <span class="finding-category">Objects</span>
+                <strong>Object census: 14 total, 4 streams, 0 images</strong>
+            </div>
+            <p class="finding-detail">Object breakdown for reference.</p>
+            <ul class='evidence'><li><code>/Page: 4</code></li><li><code>/: 3</code></li><li><code>Dict: 2</code></li><li><code>/Font: 2</code></li><li><code>/Catalog: 1</code></li><li><code>/Metadata//XML: 1</code></li><li><code>/Pages: 1</code></li></ul>
+        </div>
+        
+        <div class="finding severity-info">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#6b7280">INFO</span>
+                <span class="finding-category">Signatures</span>
+                <strong>No digital signatures found</strong>
+            </div>
+            <p class="finding-detail">Court-approved documents should typically be digitally signed. Absence of signatures on court documents is notable.</p>
+            
+        </div>
+        
+        <div class="finding severity-medium">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ca8a04">MEDIUM</span>
+                <span class="finding-category">Structure</span>
+                <strong>Multiple cross-reference tables (2)</strong>
+            </div>
+            <p class="finding-detail">Multiple xref tables indicate the document was modified and saved incrementally. Each xref represents a modification session.</p>
+            
+        </div>
+        
+        <div class="finding severity-high">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ea580c">HIGH</span>
+                <span class="finding-category">Structure</span>
+                <strong>DATA FOUND AFTER FINAL %%EOF</strong>
+            </div>
+            <p class="finding-detail">There are 244 bytes of data after the document end marker. This data is not part of the PDF but could contain hidden information, original document fragments, or steganographic content.</p>
+            <ul class='evidence'><li><code>Trailing bytes: 244</code></li><li><code>Preview: b'<!-- HIDDEN DATA: Original unmodified document hash: a3f2b8c9d4e5f6a7b8c9d0e1f2a3b4c5 -->\nATTORNEY NOTES: Client instructed to remove Schedule K-1 showing partnership income from Smith Family Trust. M'</code></li></ul>
+        </div>
+        
+        <div class="finding severity-high">
+            <div class="finding-header">
+                <span class="severity-badge" style="background:#ea580c">HIGH</span>
+                <span class="finding-category">Pages</span>
+                <strong>Inconsistent page sizes on 1 page(s)</strong>
+            </div>
+            <p class="finding-detail">Some pages have different dimensions than the majority. In a 300-page tax return, all pages should typically be the same size. Different sizes suggest pages were inserted from a different document.</p>
+            <ul class='evidence'><li><code>Page 2: different from standard 612.0x792.0</code></li></ul>
+        </div>
+        
+    </div>
+
+    <div class="section">
+        <h2>&#x1f4cb; Metadata Details</h2>
+        <table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody><tr><td><code>/Title</code></td><td>2019 Tax Return - Doe</td></tr><tr><td><code>/CreationDate</code></td><td>D:20190415103000-05'00'</td></tr><tr><td><code>/Creator</code></td><td>Adobe Acrobat Pro DC</td></tr><tr><td><code>/Author</code></td><td>Tax Preparer - REDACTED</td></tr><tr><td><code>/ModDate</code></td><td>D:20240105142300-05'00'</td></tr><tr><td><code>/Trapped</code></td><td>/False</td></tr><tr><td><code>/Producer</code></td><td>pdftk 2.02</td></tr><tr><td><code>pypdf_/Title</code></td><td>2019 Tax Return - Doe</td></tr><tr><td><code>pypdf_/Author</code></td><td>Tax Preparer - REDACTED</td></tr><tr><td><code>pypdf_/Creator</code></td><td>Adobe Acrobat Pro DC</td></tr><tr><td><code>pypdf_/Producer</code></td><td>pdftk 2.02</td></tr><tr><td><code>pypdf_/CreationDate</code></td><td>D:20190415103000-05'00'</td></tr><tr><td><code>pypdf_/ModDate</code></td><td>D:20240105142300-05'00'</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>&#x1f4c5; Revision History</h2>
+        <p>Total revisions detected: 1</p>
+        <p style='color:#737373'>Single revision or no incremental saves detected.</p>
+    </div>
+
+    <div class="section">
+        <h2>&#x1f4c4; Page Analysis</h2>
+        <p>Total pages: 4</p>
+    </div>
+
+    <div class="devil-section">
+        <h2>&#x1f608; Devil's Advocate: Abuse Vectors & Countermeasures</h2>
+        <p style="color:#a3a3a3;margin-bottom:16px">
+            Every technique detected above maps to a known abuse vector. Here's the complete playbook
+            of how someone could manipulate legal PDFs, and how this tool catches each one:
+        </p>
+
+        <div class="abuse-item">
+            <h4>1. Layer Stacking &amp; Hidden Content</h4>
+            <p><strong>Attack:</strong> Add content on invisible layers (OCGs set to OFF). Stack trust documents
+            from unrelated cases behind visible content. Lock layers to prevent toggling.</p>
+            <p class="counter"><strong>Detection:</strong> This tool enumerates all OCGs, checks default visibility
+            states, identifies locked layers, and extracts content from hidden layers.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>2. Flattening to Destroy Evidence</h4>
+            <p><strong>Attack:</strong> After adding/hiding content via layers, flatten the PDF to merge everything
+            into a single layer. This destroys the ability to toggle visibility and hides the manipulation.</p>
+            <p class="counter"><strong>Detection:</strong> Scans for orphaned OCG references, BDC/EMC markers in
+            content streams that indicate layers once existed, and multiple font/style inconsistencies
+            that suggest merged content.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>3. Metadata Timestamp Manipulation</h4>
+            <p><strong>Attack:</strong> Backdate modification timestamps to make alterations appear original.
+            Strip metadata entirely. Mismatch XMP and DocInfo dates.</p>
+            <p class="counter"><strong>Detection:</strong> Compares creation vs modification dates, cross-references
+            XMP with DocInfo metadata, flags stripped metadata, identifies known manipulation tools
+            in producer/creator fields.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>4. Incremental Save Exploitation</h4>
+            <p><strong>Attack:</strong> Modify court-approved documents via incremental saves that append changes
+            without altering originals. Or re-save flat to destroy revision history entirely.</p>
+            <p class="counter"><strong>Detection:</strong> Counts %%EOF markers to find all revisions, extracts and
+            compares each revision's metadata/page count, detects linearization used to erase history.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>5. White Text / Invisible Text Injection</h4>
+            <p><strong>Attack:</strong> Add text in white color on white background, position text outside page
+            boundaries, or use microscopic font sizes to hide content that's technically present
+            but humanly invisible.</p>
+            <p class="counter"><strong>Detection:</strong> Scans every text span for color values near white (RGB > 240),
+            checks bounding boxes against page dimensions, flags text below 1pt size.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>6. Fake Redactions</h4>
+            <p><strong>Attack:</strong> Place black rectangles over sensitive text without actually removing
+            the underlying content. Appears redacted visually but text is fully extractable.</p>
+            <p class="counter"><strong>Detection:</strong> Identifies dark-filled rectangles, extracts text from
+            underneath each one, reports the hidden content verbatim.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>7. Page Insertion from Foreign Documents</h4>
+            <p><strong>Attack:</strong> Insert pages from different documents (like trust files from another case)
+            into tax returns. Match formatting to make it look natural.</p>
+            <p class="counter"><strong>Detection:</strong> Compares page dimensions across the entire document, flags
+            pages with different sizes, analyzes font census for inconsistencies that indicate
+            content from multiple source documents.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>8. Post-Signature Modification</h4>
+            <p><strong>Attack:</strong> Digitally sign a document, then modify it via incremental saves.
+            Some viewers won't flag this if done carefully.</p>
+            <p class="counter"><strong>Detection:</strong> Cross-references signature presence with revision count.
+            If revisions exist after signatures, flags as critical tampering.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>9. Embedded File Smuggling</h4>
+            <p><strong>Attack:</strong> Embed files within the PDF (original unaltered docs, communications,
+            scripts) that aren't visible in normal viewing but exist in the file structure.</p>
+            <p class="counter"><strong>Detection:</strong> Enumerates /EmbeddedFiles, /JavaScript, and action
+            dictionaries. Reports all hidden payloads.</p>
+        </div>
+
+        <div class="abuse-item">
+            <h4>10. Trailing Data / Steganography</h4>
+            <p><strong>Attack:</strong> Append data after the final %%EOF marker. PDF viewers ignore this
+            but it can contain hidden messages, original document fragments, or encoded data.</p>
+            <p class="counter"><strong>Detection:</strong> Reads raw bytes past final %%EOF, reports size and
+            preview of any trailing data.</p>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        <p>This report is generated by automated forensic analysis and should be reviewed by a qualified
+        forensic examiner. File hashes above can be used to verify document integrity in legal proceedings.</p>
+        <p>PDF Forensic Analyzer v1.0 | Built for legal &amp; investigative use</p>
+    </div>
+</div>
+</body>
+</html>

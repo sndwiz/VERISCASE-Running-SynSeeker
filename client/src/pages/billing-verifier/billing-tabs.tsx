@@ -13,9 +13,10 @@ import {
   AlertTriangle, XCircle, Clock, DollarSign, Scale, Shield,
   FileSpreadsheet, Loader2, ChevronDown, ChevronRight, Eye,
   SplitSquareHorizontal, ArrowUpDown, Search,
-  Filter, Save, Plus, Building, FileDown
+  Filter, Save, Plus, Building, FileDown, Layers, Hash
 } from "lucide-react";
-import type { TimeEntry, Flag, QualityIssue, VerifierSettings, DailySummary } from "./billing-types";
+import type { TimeEntry, Flag, QualityIssue, VerifierSettings, DailySummary, RoundingScenario } from "./billing-types";
+import { formatTimeRange } from "./billing-utils";
 
 export function UploadTab({ isProcessing, progress, rawEntries, handleFileUpload, handleManualEntry }: {
   isProcessing: boolean; progress: number; rawEntries: TimeEntry[];
@@ -177,6 +178,10 @@ export function SettingsTab({ settings, setSettings, aliasInput, setAliasInput, 
             <div className="space-y-2">
               <Label htmlFor="attorneyName">Attorney Name</Label>
               <Input id="attorneyName" value={settings.attorneyName} onChange={e => setSettings({ ...settings, attorneyName: e.target.value })} placeholder="Attorney name" data-testid="input-attorney-name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="matterName">Matter Name</Label>
+              <Input id="matterName" value={settings.matterName} onChange={e => setSettings({ ...settings, matterName: e.target.value })} placeholder="e.g., Gerber - legal services (internal case)" data-testid="input-matter-name" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="firmAddress">Firm Address</Label>
@@ -418,10 +423,11 @@ export function ResultsTab({ summary, filteredEntries, processedEntries, searchT
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="p-3 w-8"></th>
+                  <th className="p-3 text-left text-xs">Ref</th>
                   <th className="p-3 text-left cursor-pointer" onClick={() => handleSort("date")} data-testid="header-date">
                     <span className="flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></span>
                   </th>
-                  <th className="p-3 text-left">Attorney</th>
+                  <th className="p-3 text-left">Time</th>
                   <th className="p-3 text-left">Description</th>
                   <th className="p-3 text-right cursor-pointer" onClick={() => handleSort("hours")} data-testid="header-hours">
                     <span className="flex items-center justify-end gap-1">Hours <ArrowUpDown className="h-3 w-3" /></span>
@@ -471,9 +477,10 @@ export function EntryRow({ entry, isExpanded, toggleRow, toggleApproval, confide
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         </td>
+        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground font-mono">{entry.entryRef || "-"}</td>
         <td className="p-3 whitespace-nowrap">{entry.date}</td>
-        <td className="p-3 whitespace-nowrap">{entry.attorney}</td>
-        <td className="p-3 max-w-xs truncate">{entry.description}</td>
+        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">{formatTimeRange(entry.timeStart, entry.timeEnd) || "-"}</td>
+        <td className="p-3 max-w-xs truncate">{entry.clioNarrative || entry.description}</td>
         <td className="p-3 text-right whitespace-nowrap">
           {entry.roundedHours !== entry.hours ? (
             <span>
@@ -502,7 +509,7 @@ export function EntryRow({ entry, isExpanded, toggleRow, toggleApproval, confide
       </tr>
       {isExpanded && (
         <tr className="bg-muted/20">
-          <td colSpan={9} className="p-4">
+          <td colSpan={11} className="p-4">
             <div className="space-y-3">
               <p className="text-sm"><strong>Full Description:</strong> {entry.description}</p>
               {entry.flags.length > 0 && (
@@ -684,7 +691,7 @@ export function ReviewTab({ processedEntries, summary, settings }: { processedEn
   );
 }
 
-export function ExportTab({ processedEntries, summary, exportData }: { processedEntries: TimeEntry[]; summary: any; exportData: (format: "csv" | "json" | "pdf" | "review-log") => void }) {
+export function ExportTab({ processedEntries, summary, exportData }: { processedEntries: TimeEntry[]; summary: any; exportData: (format: "csv" | "json" | "pdf" | "review-log" | "clio-csv" | "branded-pdf") => void }) {
   if (!summary) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
@@ -696,13 +703,54 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
 
   const approvedEntries = processedEntries.filter(e => e.approved);
   const flaggedEntries = processedEntries.filter(e => e.flags.length > 0);
+  const highConfEntries = processedEntries.filter(e => e.confidence === "high");
+  const medConfEntries = processedEntries.filter(e => e.confidence === "medium");
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Export Options</CardTitle>
-          <CardDescription>Download your verified billing data in various formats</CardDescription>
+          <CardTitle>Professional Exports</CardTitle>
+          <CardDescription>Generate branded billing statements and Clio-ready data</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="hover-elevate">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileDown className="h-8 w-8 text-red-600" />
+                  <div>
+                    <p className="font-medium">Branded Billing Statement</p>
+                    <p className="text-xs text-muted-foreground">Professional PDF with firm branding, confidence sections, page numbers, and watermark</p>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={() => exportData("branded-pdf")} data-testid="button-export-branded-pdf">
+                  <Download className="h-4 w-4 mr-1" /> Download Branded PDF
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className="hover-elevate">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileSpreadsheet className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="font-medium">Clio-Ready CSV</p>
+                    <p className="text-xs text-muted-foreground">Enhanced CSV with evidence, confidence, review status, and Bates references</p>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={() => exportData("clio-csv")} data-testid="button-export-clio-csv">
+                  <Download className="h-4 w-4 mr-1" /> Download Clio CSV
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Standard Exports</CardTitle>
+          <CardDescription>Download verified billing data in standard formats</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -712,7 +760,7 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
                   <FileSpreadsheet className="h-8 w-8 text-green-600" />
                   <div>
                     <p className="font-medium">CSV Export</p>
-                    <p className="text-xs text-muted-foreground">Spreadsheet-compatible format</p>
+                    <p className="text-xs text-muted-foreground">Spreadsheet format</p>
                   </div>
                 </div>
                 <Button className="w-full" onClick={() => exportData("csv")} data-testid="button-export-csv">
@@ -726,7 +774,7 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
                   <FileDown className="h-8 w-8 text-red-600" />
                   <div>
                     <p className="font-medium">PDF Export</p>
-                    <p className="text-xs text-muted-foreground">Printable report format</p>
+                    <p className="text-xs text-muted-foreground">Simple report</p>
                   </div>
                 </div>
                 <Button className="w-full" onClick={() => exportData("pdf")} data-testid="button-export-pdf">
@@ -740,7 +788,7 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
                   <FileText className="h-8 w-8 text-blue-600" />
                   <div>
                     <p className="font-medium">JSON Export</p>
-                    <p className="text-xs text-muted-foreground">Full data with metadata</p>
+                    <p className="text-xs text-muted-foreground">Full data</p>
                   </div>
                 </div>
                 <Button className="w-full" onClick={() => exportData("json")} data-testid="button-export-json">
@@ -754,7 +802,7 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
                   <FileText className="h-8 w-8 text-purple-600" />
                   <div>
                     <p className="font-medium">Review Log</p>
-                    <p className="text-xs text-muted-foreground">Audit trail of review actions</p>
+                    <p className="text-xs text-muted-foreground">Audit trail</p>
                   </div>
                 </div>
                 <Button className="w-full" onClick={() => exportData("review-log")} data-testid="button-export-review-log">
@@ -771,10 +819,18 @@ export function ExportTab({ processedEntries, summary, exportData }: { processed
           <CardTitle className="text-base">Export Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Total Entries</p>
               <p className="font-medium">{summary.total}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">High Confidence</p>
+              <p className="font-medium text-green-500">{highConfEntries.length}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Medium Confidence</p>
+              <p className="font-medium text-yellow-500">{medConfEntries.length}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Approved</p>
@@ -984,6 +1040,109 @@ export function AdjustmentsTab({ processedEntries, setProcessedEntries, settings
                 ))}
               </tbody>
             </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function RoundingComparisonTab({ scenarios, settings }: { scenarios: RoundingScenario[]; settings: VerifierSettings }) {
+  if (scenarios.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Layers className="h-12 w-12 mb-4" />
+        <p>Process entries first to see rounding scenario comparisons.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Rounding Scenario Comparison</CardTitle>
+          <CardDescription>
+            Compare how different rounding policies affect total hours and fees at ${settings.hourlyRate.toFixed(2)}/hr
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="p-3 text-left">Rounding Policy</th>
+                  <th className="p-3 text-right">Total Hours</th>
+                  <th className="p-3 text-right">Total Fees</th>
+                  <th className="p-3 text-right">High Conf. Hours</th>
+                  <th className="p-3 text-right">High Conf. Fees</th>
+                  <th className="p-3 text-right">Med. Conf. Hours</th>
+                  <th className="p-3 text-right">Med. Conf. Fees</th>
+                  <th className="p-3 text-right">Delta (Hours)</th>
+                  <th className="p-3 text-right">Delta ($)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scenarios.map((s, i) => (
+                  <tr key={i} className={`border-b ${i === 0 ? "bg-muted/10" : ""}`} data-testid={`row-scenario-${i}`}>
+                    <td className="p-3 font-medium">{s.label}</td>
+                    <td className="p-3 text-right font-mono">{s.totalHours.toFixed(2)}</td>
+                    <td className="p-3 text-right font-mono">${s.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right font-mono text-green-600 dark:text-green-400">{s.highConfHours.toFixed(2)}</td>
+                    <td className="p-3 text-right font-mono text-green-600 dark:text-green-400">${s.highConfAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right font-mono text-yellow-600 dark:text-yellow-400">{s.medConfHours.toFixed(2)}</td>
+                    <td className="p-3 text-right font-mono text-yellow-600 dark:text-yellow-400">${s.medConfAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right font-mono">{s.delta > 0 ? "+" : ""}{s.delta.toFixed(2)}</td>
+                    <td className="p-3 text-right font-mono">{s.dollarDelta > 0 ? "+" : ""}${s.dollarDelta.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {scenarios.map((s, i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+              <p className="text-xl font-bold font-mono">${s.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+              <p className="text-sm text-muted-foreground">{s.totalHours.toFixed(2)} hours</p>
+              {i > 0 && (
+                <p className="text-xs mt-1">
+                  <span className={s.dollarDelta > 0 ? "text-green-500" : "text-red-500"}>
+                    {s.dollarDelta > 0 ? "+" : ""}${s.dollarDelta.toLocaleString("en-US", { minimumFractionDigits: 2 })} vs AS IS
+                  </span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Confidence Breakdown by Scenario</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {scenarios.map((s, i) => (
+              <div key={i} className="space-y-2">
+                <p className="text-sm font-medium">{s.label}</p>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>Confirmed: {s.highConfHours.toFixed(2)}h / ${s.highConfAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                    <span>Verification pending: {s.medConfHours.toFixed(2)}h / ${s.medConfAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+                {i < scenarios.length - 1 && <Separator />}
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

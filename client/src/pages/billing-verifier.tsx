@@ -10,15 +10,19 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Upload, Settings, BarChart3, Download, CheckCircle2,
   AlertTriangle, XCircle, Clock, Scale, Eye,
-  ArrowUpDown, Save
+  ArrowUpDown, Save, Layers
 } from "lucide-react";
 import jsPDF from "jspdf";
 
-import type { TimeEntry, TabKey, DailySummary } from "./billing-verifier/billing-types";
-import { DEFAULT_SETTINGS, parseCSV, detectColumns, runPipeline, computeDailySummary } from "./billing-verifier/billing-utils";
+import type { TimeEntry, TabKey, DailySummary, RoundingScenario } from "./billing-verifier/billing-types";
+import {
+  DEFAULT_SETTINGS, parseCSV, detectColumns, runPipeline, computeDailySummary,
+  assignBatesIds, computeRoundingScenarios, generateClioCSV, formatTimeRange,
+  getLatestActivityDate, formatDateForDisplay
+} from "./billing-verifier/billing-utils";
 import {
   UploadTab, SettingsTab, ResultsTab, ReviewTab,
-  ExportTab, DailySummaryTab, AdjustmentsTab
+  ExportTab, DailySummaryTab, AdjustmentsTab, RoundingComparisonTab
 } from "./billing-verifier/billing-tabs";
 
 export default function BillingVerifierPage() {
@@ -40,6 +44,7 @@ export default function BillingVerifierPage() {
   const [dailySummary, setDailySummary] = useState<DailySummary[]>([]);
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [splitEntry, setSplitEntry] = useState<TimeEntry | null>(null);
+  const [roundingScenarios, setRoundingScenarios] = useState<RoundingScenario[]>([]);
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["/api/billing-profiles"],
@@ -94,24 +99,39 @@ export default function BillingVerifierPage() {
           qualityIssues: [],
           reviewStatus: "pending" as const,
           writeOff: false,
+          evidenceShort: item.evidenceShort || item.evidence_short || item["Evidence (short)"] || "",
+          evidenceSuggested: item.evidenceSuggested || item.evidence_suggested || item["Evidence Suggested"] || "",
+          timeStart: item.timeStart || item.time_start || "",
+          timeEnd: item.timeEnd || item.time_end || "",
         }));
       } else if (file.name.endsWith(".csv") || file.name.endsWith(".tsv")) {
         const rows = parseCSV(text);
         if (rows.length < 2) throw new Error("CSV file appears empty");
         const colMap = detectColumns(rows[0]);
+        const lowerHeaders = rows[0].map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+        const evidenceShortIdx = lowerHeaders.findIndex(h => /evidenceshort|evidence/.test(h));
+        const evidenceSuggestedIdx = lowerHeaders.findIndex(h => /evidencesuggested/.test(h));
+        const confIdx = lowerHeaders.findIndex(h => /^confidence$/.test(h));
+        const reviewIdx = lowerHeaders.findIndex(h => /reviewneeded/.test(h));
+        const clioIdx = lowerHeaders.findIndex(h => /clionarrative|cionarrative/.test(h));
+
         entries = rows.slice(1).map((row, i) => ({
           id: `entry-${i}`,
           date: row[colMap.date ?? 0]?.trim() || "",
           attorney: row[colMap.attorney ?? 1]?.trim() || "",
-          description: row[colMap.description ?? 2]?.trim() || "",
+          description: row[colMap.description ?? 2]?.trim() || (clioIdx >= 0 ? row[clioIdx]?.trim() || "" : ""),
           hours: parseFloat(row[colMap.hours ?? 3]?.trim() || "0") || 0,
           rate: parseFloat(row[colMap.rate ?? -1]?.trim() || String(settings.hourlyRate)) || settings.hourlyRate,
           amount: parseFloat(row[colMap.amount ?? -1]?.trim() || "0") || 0,
-          confidence: "high" as const,
+          confidence: (confIdx >= 0 && row[confIdx]?.toLowerCase() === "medium") ? "medium" as const : "high" as const,
           flags: [],
           qualityIssues: [],
           reviewStatus: "pending" as const,
           writeOff: false,
+          evidenceShort: evidenceShortIdx >= 0 ? row[evidenceShortIdx]?.trim() || "" : "",
+          evidenceSuggested: evidenceSuggestedIdx >= 0 ? row[evidenceSuggestedIdx]?.trim() || "" : "",
+          clioNarrative: clioIdx >= 0 ? row[clioIdx]?.trim() || "" : undefined,
+          reviewNeeded: (reviewIdx >= 0 && row[reviewIdx]?.toUpperCase() === "YES") ? "YES" as const : undefined,
         }));
       } else {
         const lines = text.split("\n").filter(l => l.trim());
@@ -134,7 +154,7 @@ export default function BillingVerifierPage() {
         });
       }
 
-      entries = entries.filter(e => e.description && e.hours > 0);
+      entries = entries.filter(e => (e.description || e.clioNarrative) && e.hours > 0);
       if (entries.length === 0) throw new Error("No valid time entries found in file");
 
       entries.forEach(e => {
@@ -144,12 +164,14 @@ export default function BillingVerifierPage() {
       setRawEntries(entries);
       setProgress(70);
 
-      const processed = runPipeline(entries, settings);
+      let processed = runPipeline(entries, settings);
+      processed = assignBatesIds(processed);
       setProcessedEntries(processed);
       setDailySummary(computeDailySummary(processed, settings));
+      setRoundingScenarios(computeRoundingScenarios(processed, settings));
       setProgress(100);
       setActiveTab("results");
-      toast({ title: "File processed", description: `${processed.length} entries analyzed` });
+      toast({ title: "File processed", description: `${processed.length} entries analyzed with Bates IDs assigned` });
     } catch (err: any) {
       toast({ title: "Error processing file", description: err.message, variant: "destructive" });
     } finally {
@@ -183,9 +205,11 @@ export default function BillingVerifierPage() {
     setProgress(0);
     setTimeout(() => {
       setProgress(50);
-      const processed = runPipeline(rawEntries, settings);
+      let processed = runPipeline(rawEntries, settings);
+      processed = assignBatesIds(processed);
       setProcessedEntries(processed);
       setDailySummary(computeDailySummary(processed, settings));
+      setRoundingScenarios(computeRoundingScenarios(processed, settings));
       setProgress(100);
       setIsProcessing(false);
       toast({ title: "Pipeline re-run complete" });
@@ -218,7 +242,9 @@ export default function BillingVerifierPage() {
       result = result.filter(e =>
         e.description.toLowerCase().includes(lower) ||
         e.attorney.toLowerCase().includes(lower) ||
-        e.date.includes(lower)
+        e.date.includes(lower) ||
+        (e.entryRef && e.entryRef.toLowerCase().includes(lower)) ||
+        (e.clioNarrative && e.clioNarrative.toLowerCase().includes(lower))
       );
     }
     if (filterConfidence !== "all") {
@@ -265,9 +291,253 @@ export default function BillingVerifierPage() {
     }
   };
 
-  const exportData = useCallback((format: "csv" | "json" | "pdf" | "review-log") => {
+  const generateBrandedPDF = useCallback(() => {
+    const entries = processedEntries;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let pageNum = 1;
+
+    const addWatermarkAndFooter = () => {
+      doc.setTextColor(200, 200, 200);
+      doc.setFontSize(40);
+      doc.setFont("helvetica", "italic");
+      doc.text("CONFIDENTIAL", pageWidth / 2, pageHeight / 2, { align: "center", angle: 45 });
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "italic");
+      doc.text("Confidential - Attorney Work Product (billing statement)", 14, pageHeight - 10);
+      doc.text(`Page ${pageNum}`, pageWidth - 14, pageHeight - 10, { align: "right" });
+      pageNum++;
+    };
+
+    const checkPage = (y: number, needed: number = 20): number => {
+      if (y + needed > pageHeight - 20) {
+        addWatermarkAndFooter();
+        doc.addPage();
+        y = 20;
+      }
+      return y;
+    };
+
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(settings.firmName || "SYNERGY LAW", pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Billing Statement", pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(14, y, pageWidth - 14, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const metaLeft = 14;
+    const metaRight = 90;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Client:", metaLeft, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(settings.clientName || "Client", metaRight, y);
+    y += 6;
+
+    if (settings.matterName) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Matter:", metaLeft, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(settings.matterName, metaRight, y);
+      y += 6;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Billing Period:", metaLeft, y);
+    doc.setFont("helvetica", "normal");
+    const startStr = settings.startDate ? formatDateForDisplay(settings.startDate) : "N/A";
+    const endStr = settings.endDate ? formatDateForDisplay(settings.endDate) : "N/A";
+    doc.text(`${startStr} through ${endStr}`, metaRight, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Statement Date:", metaLeft, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), metaRight, y);
+    y += 6;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Hourly Rate:", metaLeft, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`$${settings.hourlyRate.toFixed(2)}/hr`, metaRight, y);
+    y += 6;
+
+    const roundingLabel = settings.roundingIncrement > 0
+      ? `Rounded up to ${Math.round(settings.roundingIncrement * 60)} minutes (${settings.roundingIncrement} hr)`
+      : "As recorded (no rounding)";
+    doc.setFont("helvetica", "bold");
+    doc.text("Rounding Policy:", metaLeft, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(roundingLabel, metaRight, y);
+    y += 10;
+
+    const highEntries = entries.filter(e => e.confidence === "high" && !e.writeOff);
+    const medEntries = entries.filter(e => e.confidence === "medium" && !e.writeOff);
+    const highHours = highEntries.reduce((s, e) => s + (e.adjustedHours || e.hours), 0);
+    const highAmount = highEntries.reduce((s, e) => s + (e.adjustedAmount || e.amount), 0);
+    const medHours = medEntries.reduce((s, e) => s + (e.adjustedHours || e.hours), 0);
+    const medAmount = medEntries.reduce((s, e) => s + (e.adjustedAmount || e.amount), 0);
+    const totalHours = highHours + medHours;
+    const totalAmount = highAmount + medAmount;
+
+    doc.setFillColor(240, 240, 245);
+    doc.rect(14, y, pageWidth - 28, 30, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Summary", 20, y + 7);
+
+    doc.setFontSize(8);
+    const summaryColX = [20, 100, 150];
+    doc.text("", summaryColX[0], y + 12);
+    doc.text("Hours", summaryColX[1], y + 12);
+    doc.text("Fees", summaryColX[2], y + 12);
+
+    doc.setFont("helvetica", "normal");
+    doc.text("Confirmed work items (High confidence)", summaryColX[0], y + 17);
+    doc.text(highHours.toFixed(2), summaryColX[1], y + 17);
+    doc.text(`$${highAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, summaryColX[2], y + 17);
+
+    doc.text("Items requiring attorney verification (Medium confidence)", summaryColX[0], y + 22);
+    doc.text(medHours.toFixed(2), summaryColX[1], y + 22);
+    doc.text(`$${medAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, summaryColX[2], y + 22);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Total proposed if all items approved", summaryColX[0], y + 27);
+    doc.text(totalHours.toFixed(2), summaryColX[1], y + 27);
+    doc.text(`$${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, summaryColX[2], y + 27);
+    y += 34;
+
+    const latestDate = getLatestActivityDate(entries);
+    if (latestDate) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        `Note: The latest activity reflected in the provided exports is ${formatDateForDisplay(latestDate)}. Medium-confidence items are included for review`,
+        14, y
+      );
+      y += 4;
+      doc.text(
+        "because they reference key parties associated with the matter; they should be approved or excluded by counsel before invoicing.",
+        14, y
+      );
+      doc.setTextColor(0, 0, 0);
+      y += 8;
+    }
+
+    const renderEntryTable = (sectionEntries: TimeEntry[], sectionTitle: string, showVerificationTag: boolean) => {
+      y = checkPage(y, 20);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(sectionTitle, 14, y);
+      y += 6;
+
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "bold");
+      const cols = [14, 38, 68, 140, 160, 180];
+      doc.text("Date", cols[0], y);
+      doc.text("Time", cols[1], y);
+      doc.text("Description of Services", cols[2], y);
+      doc.text("Ref", cols[3], y);
+      doc.text("Hrs", cols[4], y);
+      doc.text("Amount", cols[5], y);
+      y += 2;
+      doc.setLineWidth(0.3);
+      doc.line(14, y, pageWidth - 14, y);
+      y += 4;
+
+      doc.setFont("helvetica", "normal");
+      for (const entry of sectionEntries) {
+        y = checkPage(y, 10);
+        doc.text(entry.date.substring(0, 10), cols[0], y);
+        const timeRange = formatTimeRange(entry.timeStart, entry.timeEnd);
+        doc.text(timeRange || "", cols[1], y);
+        const desc = (entry.clioNarrative || entry.description).substring(0, 50);
+        doc.text(desc, cols[2], y);
+        doc.text(entry.entryRef || "", cols[3], y);
+        doc.text((entry.adjustedHours || entry.hours).toFixed(2), cols[4], y);
+        doc.text(`$${(entry.adjustedAmount || entry.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}`, cols[5], y);
+        y += 4;
+
+        if (showVerificationTag) {
+          doc.setFontSize(6);
+          doc.setTextColor(180, 130, 0);
+          doc.text("(verification pending)", cols[2], y);
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(7);
+          y += 3;
+        }
+      }
+      y += 4;
+    };
+
+    if (highEntries.length > 0) {
+      renderEntryTable(highEntries, "Itemized Services - Confirmed (High confidence)", false);
+    }
+
+    if (medEntries.length > 0) {
+      y = checkPage(y, 20);
+      doc.setLineWidth(0.5);
+      doc.line(14, y, pageWidth - 14, y);
+      y += 8;
+      renderEntryTable(medEntries, "Appendix - Items Requiring Verification (Medium confidence)", true);
+    }
+
+    y = checkPage(y, 30);
+    y += 5;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Entries reflect recorded work blocks summarized for invoice readability.", 14, y);
+    y += 4;
+    doc.text("Reference identifiers correspond to internal source rows for rapid verification.", 14, y);
+    doc.setTextColor(0, 0, 0);
+
+    addWatermarkAndFooter();
+
+    const dateSuffix = new Date().toISOString().slice(0, 10);
+    const roundSuffix = settings.roundingIncrement > 0 ? `ROUND_${Math.round(settings.roundingIncrement * 60)}` : "AS_IS";
+    const clientSlug = (settings.clientName || "Client").replace(/\s+/g, "_");
+    doc.save(`SynergyLaw_${clientSlug}_${dateSuffix}_${roundSuffix}.pdf`);
+    toast({ title: "Branded billing statement exported" });
+  }, [processedEntries, settings, toast]);
+
+  const exportData = useCallback((format: "csv" | "json" | "pdf" | "review-log" | "clio-csv" | "branded-pdf") => {
     const entries = processedEntries;
     const dateSuffix = new Date().toISOString().slice(0, 10);
+
+    if (format === "branded-pdf") {
+      generateBrandedPDF();
+      return;
+    }
+
+    if (format === "clio-csv") {
+      const csvContent = generateClioCSV(entries, settings);
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const clientSlug = (settings.clientName || "Client").replace(/\s+/g, "_");
+      a.download = `${clientSlug}_ClioReady_${dateSuffix}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Clio-ready CSV exported" });
+      return;
+    }
 
     if (format === "review-log") {
       const log = {
@@ -275,11 +545,13 @@ export default function BillingVerifierPage() {
         settings,
         reviewLog: entries.map(e => ({
           id: e.id, date: e.date, hours: e.hours,
+          entryRef: e.entryRef || "",
           reviewStatus: e.reviewStatus || "pending",
           approved: e.approved || false,
           writeOff: e.writeOff || false,
           notes: e.notes || "",
           clioNarrative: e.clioNarrative || "",
+          confidence: e.confidence,
         })),
         summary: {
           total: entries.length,
@@ -352,12 +624,6 @@ export default function BillingVerifierPage() {
       doc.text(`Payment Terms: ${termsMap[settings.paymentTerms] || "Due Upon Receipt"}`, 14, y);
       y += 8;
 
-      doc.setFontSize(9);
-      doc.text(`Dear ${settings.clientName || "Client"},`, 14, y);
-      y += 5;
-      doc.text("Please find below a summary of legal services rendered during the billing period.", 14, y);
-      y += 10;
-
       doc.setFillColor(240, 240, 240);
       doc.rect(14, y, 182, 24, "F");
       doc.setFontSize(9);
@@ -373,8 +639,8 @@ export default function BillingVerifierPage() {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.text("Date", 14, y);
-      doc.text("Attorney", 40, y);
-      doc.text("Description", 75, y);
+      doc.text("Ref", 35, y);
+      doc.text("Description", 50, y);
       doc.text("Hours", 150, y);
       doc.text("Amount", 168, y);
       doc.text("Conf.", 190, y);
@@ -384,18 +650,12 @@ export default function BillingVerifierPage() {
       entries.forEach(e => {
         if (y > 265) { doc.addPage(); y = 20; }
         doc.text(e.date.substring(0, 10), 14, y);
-        doc.text(e.attorney.substring(0, 15), 40, y);
-        doc.text((e.clioNarrative || e.description).substring(0, 45), 75, y);
-        doc.text((e.adjustedHours || e.hours).toFixed(1), 150, y);
+        doc.text(e.entryRef || "", 35, y);
+        doc.text((e.clioNarrative || e.description).substring(0, 55), 50, y);
+        doc.text((e.adjustedHours || e.hours).toFixed(2), 150, y);
         doc.text(`$${(e.adjustedAmount || e.amount).toFixed(2)}`, 168, y);
         doc.text(e.confidence, 190, y);
         y += 5;
-        if (e.flags.length > 0) {
-          doc.setTextColor(200, 100, 0);
-          doc.text(`  Flags: ${e.flags.map(f => f.message).join("; ").substring(0, 80)}`, 14, y);
-          doc.setTextColor(0, 0, 0);
-          y += 4;
-        }
       });
 
       y += 10;
@@ -416,9 +676,9 @@ export default function BillingVerifierPage() {
     let ext: string;
 
     if (format === "csv") {
-      const headers = ["Date", "Attorney", "Description", "Hours", "Rounded Hours", "Rate", "Amount", "Adjusted Amount", "UTBMS Code", "Phase", "Confidence", "Flags", "Quality Issues", "Approved"];
+      const headers = ["Date", "Ref", "Attorney", "Description", "Hours", "Rounded Hours", "Rate", "Amount", "Adjusted Amount", "UTBMS Code", "Phase", "Confidence", "Flags", "Quality Issues", "Approved"];
       const rows = entries.map(e => [
-        e.date, e.attorney, `"${e.description.replace(/"/g, '""')}"`,
+        e.date, e.entryRef || "", e.attorney, `"${e.description.replace(/"/g, '""')}"`,
         e.hours, e.roundedHours || e.hours, e.rate, e.amount,
         e.adjustedAmount || e.amount, e.utbmsCode || "", e.utbmsPhase || "",
         e.confidence, e.flags.map(f => f.message).join("; "),
@@ -428,7 +688,7 @@ export default function BillingVerifierPage() {
       mime = "text/csv";
       ext = "csv";
     } else {
-      content = JSON.stringify({ entries, summary, settings, exportedAt: new Date().toISOString() }, null, 2);
+      content = JSON.stringify({ entries, summary, settings, roundingScenarios, exportedAt: new Date().toISOString() }, null, 2);
       mime = "application/json";
       ext = "json";
     }
@@ -441,7 +701,7 @@ export default function BillingVerifierPage() {
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: `Exported as ${ext.toUpperCase()}` });
-  }, [processedEntries, summary, settings, toast]);
+  }, [processedEntries, summary, settings, roundingScenarios, toast, generateBrandedPDF]);
 
   const handleSaveResults = useCallback(() => {
     if (!processedEntries.length) return;
@@ -471,7 +731,7 @@ export default function BillingVerifierPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap p-4 border-b">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Billing Verifier</h1>
-          <p className="text-sm text-muted-foreground">Time entry verification, UTBMS coding, quality checks, and export</p>
+          <p className="text-sm text-muted-foreground">Time entry verification, multi-rounding comparison, Clio-ready export, and branded billing statements</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {processedEntries.length > 0 && (
@@ -488,11 +748,12 @@ export default function BillingVerifierPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabKey)} className="flex-1 flex flex-col">
-        <div className="border-b px-4">
+        <div className="border-b px-4 overflow-x-auto">
           <TabsList className="bg-transparent" data-testid="tabs-list">
             <TabsTrigger value="upload" data-testid="tab-upload"><Upload className="h-4 w-4 mr-1" /> Upload</TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-settings"><Settings className="h-4 w-4 mr-1" /> Settings</TabsTrigger>
             <TabsTrigger value="results" data-testid="tab-results"><BarChart3 className="h-4 w-4 mr-1" /> Results</TabsTrigger>
+            <TabsTrigger value="rounding" data-testid="tab-rounding"><Layers className="h-4 w-4 mr-1" /> Rounding</TabsTrigger>
             <TabsTrigger value="daily" data-testid="tab-daily"><Clock className="h-4 w-4 mr-1" /> Daily</TabsTrigger>
             <TabsTrigger value="adjustments" data-testid="tab-adjustments"><Scale className="h-4 w-4 mr-1" /> Adjustments</TabsTrigger>
             <TabsTrigger value="review" data-testid="tab-review"><Eye className="h-4 w-4 mr-1" /> Review</TabsTrigger>
@@ -543,6 +804,10 @@ export default function BillingVerifierPage() {
               setSplitEntry={setSplitEntry}
               setShowSplitDialog={setShowSplitDialog}
             />
+          </TabsContent>
+
+          <TabsContent value="rounding" className="mt-0">
+            <RoundingComparisonTab scenarios={roundingScenarios} settings={settings} />
           </TabsContent>
 
           <TabsContent value="daily" className="mt-0">

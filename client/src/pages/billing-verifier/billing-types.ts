@@ -20,9 +20,15 @@ export interface TimeEntry {
   adjustedAmount?: number;
   clioNarrative?: string;
   evidenceSuggested?: string;
+  evidenceShort?: string;
+  reviewNeeded?: "YES" | "NO";
+  taskCode?: string;
   reviewStatus: "pending" | "confirmed" | "edited";
   notes?: string;
   writeOff?: boolean;
+  entryRef?: string;
+  timeStart?: string;
+  timeEnd?: string;
 }
 
 export interface Flag {
@@ -40,6 +46,21 @@ export interface QualityIssue {
 export interface SplitSuggestion {
   entries: { description: string; hours: number }[];
   reason: string;
+}
+
+export interface RoundingScenario {
+  label: string;
+  increment: number;
+  direction: "up" | "down" | "nearest";
+  totalHours: number;
+  totalAmount: number;
+  highConfHours: number;
+  highConfAmount: number;
+  medConfHours: number;
+  medConfAmount: number;
+  delta: number;
+  dollarDelta: number;
+  entries: { id: string; originalHours: number; roundedHours: number; amount: number }[];
 }
 
 export interface VerifierSettings {
@@ -67,6 +88,7 @@ export interface VerifierSettings {
   retainerBalance: number;
   startDate: string;
   endDate: string;
+  matterName: string;
 }
 
 export interface DailySummary {
@@ -78,4 +100,4 @@ export interface DailySummary {
   overThreshold: boolean;
 }
 
-export type TabKey = "upload" | "settings" | "results" | "daily" | "adjustments" | "review" | "export";
+export type TabKey = "upload" | "settings" | "results" | "daily" | "adjustments" | "review" | "export" | "rounding";

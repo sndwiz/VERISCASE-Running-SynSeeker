@@ -1,4 +1,4 @@
-import type { TimeEntry, Flag, QualityIssue, SplitSuggestion, VerifierSettings, DailySummary } from "./billing-types";
+import type { TimeEntry, Flag, QualityIssue, SplitSuggestion, VerifierSettings, DailySummary, RoundingScenario } from "./billing-types";
 
 export const UTBMS_CODES: Record<string, { phase: string; description: string }> = {
   "L100": { phase: "Case Assessment", description: "Case Assessment, Development, and Administration" },
@@ -77,6 +77,7 @@ export const DEFAULT_SETTINGS: VerifierSettings = {
   retainerBalance: 0,
   startDate: "",
   endDate: "",
+  matterName: "",
 };
 
 export function parseCSV(text: string): string[][] {
@@ -406,6 +407,129 @@ export function runPipeline(rawEntries: TimeEntry[], settings: VerifierSettings)
       clioNarrative,
       reviewStatus: "pending" as const,
       writeOff: false,
+      reviewNeeded: (warningCount > 0 || errorCount > 0) ? "YES" as const : "NO" as const,
+      taskCode: confidence === "medium" || confidence === "low" ? "VERIFY" : "OK",
     };
   });
+}
+
+export function assignBatesIds(entries: TimeEntry[], startNum: number = 1500): TimeEntry[] {
+  const sorted = [...entries].sort((a, b) => {
+    const dc = a.date.localeCompare(b.date);
+    if (dc !== 0) return dc;
+    if (a.timeStart && b.timeStart) return a.timeStart.localeCompare(b.timeStart);
+    return 0;
+  });
+  let seq = startNum;
+  return sorted.map(e => {
+    const ref = `B${seq}`;
+    seq += 2;
+    return { ...e, entryRef: ref };
+  });
+}
+
+export function computeRoundingScenarios(entries: TimeEntry[], settings: VerifierSettings): RoundingScenario[] {
+  const scenarios: { label: string; increment: number; direction: "up" | "down" | "nearest" }[] = [
+    { label: "AS IS (No Rounding)", increment: 0, direction: "up" },
+    { label: "Round to 15 min (0.25 hr)", increment: 0.25, direction: "up" },
+    { label: "Round to 30 min (0.50 hr)", increment: 0.50, direction: "up" },
+    { label: "Round to 45 min (0.75 hr)", increment: 0.75, direction: "up" },
+  ];
+
+  return scenarios.map(scenario => {
+    let totalHours = 0;
+    let highConfHours = 0;
+    let medConfHours = 0;
+    const entryDetails: { id: string; originalHours: number; roundedHours: number; amount: number }[] = [];
+
+    for (const entry of entries) {
+      const rh = scenario.increment > 0
+        ? roundHours(entry.hours, scenario.increment, scenario.direction)
+        : entry.hours;
+      const amt = rh * (entry.rate || settings.hourlyRate);
+      totalHours += rh;
+      if (entry.confidence === "high") highConfHours += rh;
+      else if (entry.confidence === "medium") medConfHours += rh;
+      entryDetails.push({ id: entry.id, originalHours: entry.hours, roundedHours: rh, amount: amt });
+    }
+
+    const totalAmount = totalHours * settings.hourlyRate;
+    const highConfAmount = highConfHours * settings.hourlyRate;
+    const medConfAmount = medConfHours * settings.hourlyRate;
+    const originalTotal = entries.reduce((s, e) => s + e.hours, 0);
+    const delta = totalHours - originalTotal;
+
+    return {
+      label: scenario.label,
+      increment: scenario.increment,
+      direction: scenario.direction,
+      totalHours: +totalHours.toFixed(2),
+      totalAmount: +totalAmount.toFixed(2),
+      highConfHours: +highConfHours.toFixed(2),
+      highConfAmount: +highConfAmount.toFixed(2),
+      medConfHours: +medConfHours.toFixed(2),
+      medConfAmount: +medConfAmount.toFixed(2),
+      delta: +delta.toFixed(2),
+      dollarDelta: +(delta * settings.hourlyRate).toFixed(2),
+      entries: entryDetails,
+    };
+  });
+}
+
+export function generateClioCSV(entries: TimeEntry[], settings: VerifierSettings): string {
+  const headers = [
+    "Date", "Hours", "Rate", "Amount", "Clio Narrative",
+    "Evidence (short)", "Evidence Suggested", "Confidence",
+    "Review Needed", "Task Code", "Ref"
+  ];
+  const escCSV = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
+  const rows = entries.map(e => [
+    e.date,
+    (e.adjustedHours || e.hours).toFixed(2),
+    (e.rate || settings.hourlyRate).toString(),
+    (e.adjustedAmount || e.amount).toFixed(2),
+    escCSV(e.clioNarrative || e.description),
+    escCSV(e.evidenceShort || ""),
+    escCSV(e.evidenceSuggested || ""),
+    e.confidence.charAt(0).toUpperCase() + e.confidence.slice(1),
+    e.reviewNeeded || "NO",
+    e.taskCode || "OK",
+    e.entryRef || ""
+  ].join(","));
+  return [headers.join(","), ...rows].join("\n");
+}
+
+export function formatTimeRange(start?: string, end?: string): string {
+  if (!start && !end) return "";
+  const fmt = (t: string) => {
+    try {
+      const parts = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (!parts) return t;
+      let h = parseInt(parts[1]);
+      const m = parts[2];
+      const ampm = parts[3];
+      if (ampm) return `${h}:${m} ${ampm.toUpperCase()}`;
+      const suffix = h >= 12 ? "PM" : "AM";
+      if (h > 12) h -= 12;
+      if (h === 0) h = 12;
+      return `${h}:${m} ${suffix}`;
+    } catch { return t; }
+  };
+  if (start && end) return `${fmt(start)} - ${fmt(end)}`;
+  if (start) return fmt(start);
+  return "";
+}
+
+export function getLatestActivityDate(entries: TimeEntry[]): string {
+  if (entries.length === 0) return "";
+  const dates = entries.map(e => e.date).filter(Boolean).sort();
+  return dates[dates.length - 1] || "";
+}
+
+export function formatDateForDisplay(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  } catch { return dateStr; }
 }
