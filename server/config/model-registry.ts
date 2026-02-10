@@ -1,6 +1,6 @@
 export type ProviderType = "external_api" | "local_runner" | "synseekr";
 export type DataPolicy = "local_only" | "sanitized_ok" | "unrestricted";
-export type ModelCapability = "chat" | "embeddings" | "vision" | "rerank" | "transcription" | "code";
+export type ModelCapability = "chat" | "embeddings" | "vision" | "rerank" | "transcription" | "code" | "ner" | "rel_extraction" | "pii_detection" | "document_analysis" | "rag";
 
 export interface ModelRegistryEntry {
   modelId: string;
@@ -190,72 +190,114 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       available: checkEnv("DEEPSEEK_API_KEY"),
     },
     {
-      modelId: "synergy-default",
-      displayName: "Synergy Private Model",
-      provider: "private",
-      providerType: "local_runner",
-      capabilities: ["chat"],
+      modelId: "synseekr-qwen2.5-7b",
+      displayName: "SynSeekr Qwen2.5 7B",
+      provider: "synseekr",
+      providerType: "synseekr",
+      capabilities: ["chat", "rag", "document_analysis", "code"],
       dataPolicy: "local_only",
       requiresInternet: false,
-      maxContext: 32000,
-      maxTokens: 4096,
-      costHint: "free",
-      latencyHint: "medium",
-      supportsVision: false,
-      available: checkEnv("PRIVATE_AI_SERVER_URL"),
-    },
-    {
-      modelId: "synergy-legal",
-      displayName: "Synergy Legal Assistant",
-      provider: "private",
-      providerType: "local_runner",
-      capabilities: ["chat"],
-      dataPolicy: "local_only",
-      requiresInternet: false,
-      maxContext: 32000,
-      maxTokens: 4096,
-      costHint: "free",
-      latencyHint: "medium",
-      supportsVision: false,
-      available: checkEnv("PRIVATE_AI_SERVER_URL"),
-    },
-    {
-      modelId: "synergy-research",
-      displayName: "Synergy Research",
-      provider: "private",
-      providerType: "local_runner",
-      capabilities: ["chat"],
-      dataPolicy: "local_only",
-      requiresInternet: false,
-      maxContext: 32000,
+      maxContext: 32768,
       maxTokens: 8192,
       costHint: "free",
       latencyHint: "medium",
       supportsVision: false,
-      available: checkEnv("PRIVATE_AI_SERVER_URL"),
+      available: checkEnv("SYNSEEKR_URL"),
     },
     {
-      modelId: "synseekr-default",
-      displayName: "SynSeekr AI",
+      modelId: "synseekr-bge-m3",
+      displayName: "SynSeekr BGE-M3 Embeddings",
       provider: "synseekr",
       providerType: "synseekr",
-      capabilities: ["chat", "embeddings"],
+      capabilities: ["embeddings", "rerank"],
       dataPolicy: "local_only",
       requiresInternet: false,
-      maxContext: 32000,
-      maxTokens: 4096,
+      maxContext: 8192,
+      maxTokens: 0,
       costHint: "free",
       latencyHint: "fast",
       supportsVision: false,
       available: checkEnv("SYNSEEKR_URL"),
+    },
+    {
+      modelId: "synseekr-whisper",
+      displayName: "SynSeekr Whisper (Audio)",
+      provider: "synseekr",
+      providerType: "synseekr",
+      capabilities: ["transcription"],
+      dataPolicy: "local_only",
+      requiresInternet: false,
+      maxContext: 0,
+      maxTokens: 0,
+      costHint: "free",
+      latencyHint: "slow",
+      supportsVision: false,
+      available: checkEnv("SYNSEEKR_URL"),
+    },
+    {
+      modelId: "synseekr-gliner",
+      displayName: "SynSeekr GLiNER (NER)",
+      provider: "synseekr",
+      providerType: "synseekr",
+      capabilities: ["ner", "rel_extraction"],
+      dataPolicy: "local_only",
+      requiresInternet: false,
+      maxContext: 0,
+      maxTokens: 0,
+      costHint: "free",
+      latencyHint: "fast",
+      supportsVision: false,
+      available: checkEnv("SYNSEEKR_URL"),
+    },
+    {
+      modelId: "synseekr-presidio",
+      displayName: "SynSeekr Presidio (PII)",
+      provider: "synseekr",
+      providerType: "synseekr",
+      capabilities: ["pii_detection"],
+      dataPolicy: "local_only",
+      requiresInternet: false,
+      maxContext: 0,
+      maxTokens: 0,
+      costHint: "free",
+      latencyHint: "fast",
+      supportsVision: false,
+      available: checkEnv("SYNSEEKR_URL"),
+    },
+    {
+      modelId: "synergy-private",
+      displayName: "Synergy Private LLM",
+      provider: "private",
+      providerType: "local_runner",
+      capabilities: ["chat"],
+      dataPolicy: "local_only",
+      requiresInternet: false,
+      maxContext: 32768,
+      maxTokens: 4096,
+      costHint: "free",
+      latencyHint: "medium",
+      supportsVision: false,
+      available: checkEnv("PRIVATE_AI_SERVER_URL"),
     },
   ];
 }
 
 export const MODEL_REGISTRY = buildModelRegistry();
 
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+  "synergy-default": "synseekr-qwen2.5-7b",
+  "synergy-legal": "synseekr-qwen2.5-7b",
+  "synergy-research": "synseekr-qwen2.5-7b",
+  "synseekr-default": "synseekr-qwen2.5-7b",
+};
+
+export function resolveModelId(modelId: string): string {
+  return LEGACY_MODEL_ALIASES[modelId] || modelId;
+}
+
 export function getRegistryModel(modelId: string): ModelRegistryEntry | undefined {
-  return MODEL_REGISTRY.find((m) => m.modelId === modelId);
+  const resolved = resolveModelId(modelId);
+  return MODEL_REGISTRY.find((m) => m.modelId === resolved);
 }
 
 export function getAvailableModels(): ModelRegistryEntry[] {
@@ -268,4 +310,19 @@ export function getLocalModels(): ModelRegistryEntry[] {
 
 export function getExternalModels(): ModelRegistryEntry[] {
   return MODEL_REGISTRY.filter((m) => m.requiresInternet && m.available);
+}
+
+export function getSynSeekrModels(): ModelRegistryEntry[] {
+  return MODEL_REGISTRY.filter((m) => m.providerType === "synseekr" && m.available);
+}
+
+export function getSynSeekrChatModel(): ModelRegistryEntry | undefined {
+  return MODEL_REGISTRY.find((m) => m.providerType === "synseekr" && m.available && m.capabilities.includes("chat"));
+}
+
+export function getPreferredLocalFallback(): ModelRegistryEntry | undefined {
+  const synseekrChat = getSynSeekrChatModel();
+  if (synseekrChat) return synseekrChat;
+  const locals = getLocalModels();
+  return locals.find((m) => m.capabilities.includes("chat")) || locals[0];
 }

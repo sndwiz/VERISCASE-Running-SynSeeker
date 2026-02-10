@@ -237,6 +237,70 @@ class SynSeekrClient {
     return this.proxy("GET", "/system/gpu-scheduler");
   }
 
+  async queueAnalysis(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/analysis/queue", { document_id: documentId });
+  }
+
+  async getAnalysisResults(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/analysis/${documentId}`);
+  }
+
+  async getHotDocuments(caseId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/analysis/hot-documents/${caseId}`);
+  }
+
+  async getPrivilegeReview(caseId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/analysis/privilege-review/${caseId}`);
+  }
+
+  async verifyDocumentIntegrity(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/documents/${documentId}/verify`);
+  }
+
+  async getDocumentCustodyChain(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/documents/${documentId}/custody-chain`);
+  }
+
+  async exportForCourt(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/documents/${documentId}/export-for-court`, undefined, 30000);
+  }
+
+  async createMemorySession(caseId?: string, title?: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/memory/sessions", { case_id: caseId, title });
+  }
+
+  async getMemorySessionMessages(sessionId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/memory/sessions/${sessionId}/messages`);
+  }
+
+  async semanticMemorySearch(query: string, caseId?: string, limit?: number): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/memory/semantic-search", { query, case_id: caseId, limit: limit || 10 });
+  }
+
+  async smartSearch(query: string, caseId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/smart-search", { query, case_id: caseId }, 60000);
+  }
+
+  async detectPII(text: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/pii/detect", { text });
+  }
+
+  async anonymizePII(text: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/pii/anonymize", { text });
+  }
+
+  async analyzeAll(query: string, caseId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("POST", "/analyze-all", { query, case_id: caseId }, 60000);
+  }
+
+  async getDocumentType(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/documents/${documentId}/type`);
+  }
+
+  async getFullAnalysis(documentId: string): Promise<SynSeekrProxyResponse> {
+    return this.proxy("GET", `/documents/${documentId}/full-analysis`);
+  }
+
   private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

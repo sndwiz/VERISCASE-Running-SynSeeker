@@ -6,7 +6,7 @@ import { evaluatePolicy, getMode, getSelectedModel, recordPolicyDecision, type P
 import { getRegistryModel } from "../config/model-registry";
 import { logger } from "../utils/logger";
 
-export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private";
+export type AIProvider = "anthropic" | "openai" | "gemini" | "deepseek" | "private" | "synseekr";
 
 function getDeepSeekClient(): OpenAI {
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -150,30 +150,21 @@ export const AVAILABLE_MODELS: AIModel[] = [
     available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
   },
   {
-    id: "synergy-default",
-    name: "Synergy Private Model",
-    provider: "private",
-    supportsVision: false,
-    maxTokens: 4096,
-    contextWindow: 32000,
-    available: !!process.env.PRIVATE_AI_SERVER_URL,
-  },
-  {
-    id: "synergy-legal",
-    name: "Synergy Legal Assistant",
-    provider: "private",
-    supportsVision: false,
-    maxTokens: 4096,
-    contextWindow: 32000,
-    available: !!process.env.PRIVATE_AI_SERVER_URL,
-  },
-  {
-    id: "synergy-research",
-    name: "Synergy Research",
-    provider: "private",
+    id: "synseekr-qwen2.5-7b",
+    name: "SynSeekr Qwen2.5 7B",
+    provider: "synseekr",
     supportsVision: false,
     maxTokens: 8192,
-    contextWindow: 32000,
+    contextWindow: 32768,
+    available: !!process.env.SYNSEEKR_URL,
+  },
+  {
+    id: "synergy-private",
+    name: "Synergy Private LLM",
+    provider: "private",
+    supportsVision: false,
+    maxTokens: 4096,
+    contextWindow: 32768,
     available: !!process.env.PRIVATE_AI_SERVER_URL,
   },
 ];
@@ -418,7 +409,7 @@ function resolveProviderFromModel(modelId: string): AIProvider {
     gemini: "gemini",
     deepseek: "deepseek",
     private: "private",
-    synseekr: "private",
+    synseekr: "synseekr",
   };
   return providerMap[entry.provider] || "anthropic";
 }
@@ -474,6 +465,39 @@ export async function* streamResponse(
       case "private":
         innerGen = streamPrivateServerResponse(messages, config);
         break;
+      case "synseekr": {
+        async function* streamSynSeekrResponse(msgs: ChatMessage[], cfg: AIConfig): AsyncGenerator<StreamChunk> {
+          try {
+            const { synseekrClient } = await import("../services/synseekr-client");
+            if (!synseekrClient.isEnabled()) {
+              yield { error: "SynSeekr server not available. Check SYNSEEKR_URL configuration." };
+              yield { done: true };
+              return;
+            }
+            const result = await synseekrClient.proxy("POST", "/api/v1/completions", {
+              messages: msgs.map(m => ({ role: m.role, content: typeof m.content === "string" ? m.content : "[multimodal]" })),
+              model: cfg.model || "default",
+              max_tokens: cfg.maxTokens || 2048,
+              system: cfg.systemPrompt,
+              stream: false,
+            });
+            if (result.success && result.data?.content) {
+              const text = typeof result.data.content === "string"
+                ? result.data.content
+                : result.data.content?.[0]?.text || JSON.stringify(result.data.content);
+              yield { content: text };
+            } else {
+              yield { error: result.error || "SynSeekr returned no content" };
+            }
+            yield { done: true };
+          } catch (err: any) {
+            yield { error: err.message || "SynSeekr stream failed" };
+            yield { done: true };
+          }
+        }
+        innerGen = streamSynSeekrResponse(messages, config);
+        break;
+      }
       default:
         completeAIOp(id, startTime, "", "error", `Provider ${config.provider} not supported`);
         yield { error: `Provider ${config.provider} not supported` };
@@ -726,6 +750,16 @@ export async function generateCompletion(
   }
 
   const { id, startTime } = startAIOp(effectiveProvider, effectiveModel, "completion", messages.map(m => m.content).join("\n").slice(0, 200), caller);
+
+  if (effectiveProvider === "synseekr") {
+    const synseekrResult = await generateCompletionViaSynSeekr(messages, { ...options, model: effectiveModel });
+    if (synseekrResult !== null) {
+      completeAIOp(id, startTime, synseekrResult.slice(0, 500), "success");
+      return synseekrResult;
+    }
+    completeAIOp(id, startTime, "", "error", "SynSeekr server not available or returned no result");
+    throw new Error("SynSeekr server not available. Check SYNSEEKR_URL configuration and server status.");
+  }
 
   const synseekrResult = await generateCompletionViaSynSeekr(messages, options);
   if (synseekrResult !== null) {

@@ -248,4 +248,200 @@ router.get("/metrics", requireAdmin, async (_req, res) => {
   }
 });
 
+router.post("/analysis/queue", requireAuth, async (req, res) => {
+  try {
+    const { documentId } = req.body;
+    if (!documentId) {
+      return res.status(400).json({ error: "documentId is required" });
+    }
+    const result = await synseekrClient.queueAnalysis(documentId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to queue analysis" });
+  }
+});
+
+router.get("/analysis/:documentId", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getAnalysisResults(req.params.documentId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get analysis results" });
+  }
+});
+
+router.get("/hot-documents/:caseId", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getHotDocuments(req.params.caseId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get hot documents" });
+  }
+});
+
+router.get("/privilege-review/:caseId", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getPrivilegeReview(req.params.caseId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get privilege review" });
+  }
+});
+
+router.get("/documents/:documentId/verify", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.verifyDocumentIntegrity(req.params.documentId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to verify document integrity" });
+  }
+});
+
+router.get("/documents/:documentId/custody-chain", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getDocumentCustodyChain(req.params.documentId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get custody chain" });
+  }
+});
+
+router.get("/documents/:documentId/export-court", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.exportForCourt(req.params.documentId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to export for court" });
+  }
+});
+
+router.post("/memory/sessions", requireAuth, async (req, res) => {
+  try {
+    const { caseId, title } = req.body;
+    const result = await synseekrClient.createMemorySession(caseId, title);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create memory session" });
+  }
+});
+
+router.get("/memory/sessions/:sessionId/messages", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getMemorySessionMessages(req.params.sessionId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get session messages" });
+  }
+});
+
+router.post("/memory/semantic-search", requireAuth, async (req, res) => {
+  try {
+    const { query, caseId, limit } = req.body;
+    if (!query) {
+      return res.status(400).json({ error: "query is required" });
+    }
+    const result = await synseekrClient.semanticMemorySearch(query, caseId, limit);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to search memory" });
+  }
+});
+
+router.post("/smart-search", requireAuth, async (req, res) => {
+  try {
+    const { query, caseId } = req.body;
+    if (!query || !caseId) {
+      return res.status(400).json({ error: "query and caseId are required" });
+    }
+    const result = await synseekrClient.smartSearch(query, caseId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to run smart search" });
+  }
+});
+
+router.post("/pii/detect", requireAuth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
+    const result = await synseekrClient.detectPII(text);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to detect PII" });
+  }
+});
+
+router.post("/pii/anonymize", requireAuth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
+    const result = await synseekrClient.anonymizePII(text);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to anonymize PII" });
+  }
+});
+
+router.post("/analyze-all", requireAuth, async (req, res) => {
+  try {
+    const { query, caseId } = req.body;
+    if (!query || !caseId) {
+      return res.status(400).json({ error: "query and caseId are required" });
+    }
+    const result = await synseekrClient.analyzeAll(query, caseId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to analyze all" });
+  }
+});
+
+router.get("/documents/:documentId/full-analysis", requireAuth, async (req, res) => {
+  try {
+    const result = await synseekrClient.getFullAnalysis(req.params.documentId);
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get full analysis" });
+  }
+});
+
+router.get("/gpu-status", requireAdmin, async (_req, res) => {
+  try {
+    const result = await synseekrClient.getGPUStatus();
+    if (!result.success) {
+      return res.status(result.statusCode || 503).json({ error: result.error });
+    }
+    res.json(result.data);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get GPU status" });
+  }
+});
+
 export default router;

@@ -1,4 +1,4 @@
-import { getRegistryModel, getLocalModels, getAvailableModels, type ModelRegistryEntry } from "../config/model-registry";
+import { getRegistryModel, getLocalModels, getAvailableModels, getPreferredLocalFallback, resolveModelId, type ModelRegistryEntry } from "../config/model-registry";
 import { logger } from "../utils/logger";
 
 export type RuntimeMode = "online" | "batmode";
@@ -45,8 +45,8 @@ export function getSelectedModel(): string {
 }
 
 export function setSelectedModel(modelId: string): void {
-  selectedModelId = modelId;
-  logger.info(`[policy-engine] Selected model changed to: ${modelId}`);
+  selectedModelId = resolveModelId(modelId);
+  logger.info(`[policy-engine] Selected model changed to: ${selectedModelId}`);
 }
 
 export function evaluatePolicy(request: PolicyRequest): PolicyDecision {
@@ -179,9 +179,10 @@ export function evaluatePolicy(request: PolicyRequest): PolicyDecision {
 
 function findFallbackModel(mode: RuntimeMode): ModelRegistryEntry | undefined {
   if (mode === "batmode") {
-    const locals = getLocalModels();
-    return locals.find((m) => m.capabilities.includes("chat")) || locals[0];
+    return getPreferredLocalFallback();
   }
+  const preferred = getPreferredLocalFallback();
+  if (preferred) return preferred;
   const available = getAvailableModels();
   return available.find((m) => m.capabilities.includes("chat")) || available[0];
 }

@@ -1,4 +1,4 @@
-import { buildModelRegistry, getRegistryModel, getAvailableModels, getLocalModels, getExternalModels, MODEL_REGISTRY } from "./server/config/model-registry";
+import { buildModelRegistry, getRegistryModel, getAvailableModels, getLocalModels, getExternalModels, getSynSeekrModels, getSynSeekrChatModel, getPreferredLocalFallback, resolveModelId, MODEL_REGISTRY } from "./server/config/model-registry";
 import { evaluatePolicy, getMode, setMode, getSelectedModel, setSelectedModel, recordPolicyDecision, getPolicyAuditLog, getPolicyState, type PolicyRequest, type PolicyDecision } from "./server/ai/policy-engine";
 
 let passed = 0;
@@ -22,8 +22,12 @@ const modelIds = registry.map(m => m.modelId);
 assert(modelIds.includes("claude-sonnet-4-5"), "Has claude-sonnet-4-5");
 assert(modelIds.includes("gpt-4o"), "Has gpt-4o");
 assert(modelIds.includes("gemini-2.5-flash"), "Has gemini-2.5-flash");
-assert(modelIds.includes("synergy-default"), "Has synergy-default");
-assert(modelIds.includes("synseekr-default"), "Has synseekr-default");
+assert(modelIds.includes("synergy-private"), "Has synergy-private");
+assert(modelIds.includes("synseekr-qwen2.5-7b"), "Has synseekr-qwen2.5-7b");
+assert(modelIds.includes("synseekr-bge-m3"), "Has synseekr-bge-m3");
+assert(modelIds.includes("synseekr-whisper"), "Has synseekr-whisper");
+assert(modelIds.includes("synseekr-gliner"), "Has synseekr-gliner");
+assert(modelIds.includes("synseekr-presidio"), "Has synseekr-presidio");
 assert(modelIds.includes("deepseek-chat"), "Has deepseek-chat");
 
 for (const m of registry) {
@@ -32,12 +36,22 @@ for (const m of registry) {
   assert(["local_only", "sanitized_ok", "unrestricted"].includes(m.dataPolicy), `Model ${m.modelId}: valid dataPolicy=${m.dataPolicy}`);
   assert(typeof m.requiresInternet === "boolean", `Model ${m.modelId}: requiresInternet is boolean`);
   assert(m.capabilities.length > 0, `Model ${m.modelId}: has capabilities`);
-  assert(m.maxContext > 0 && m.maxTokens > 0, `Model ${m.modelId}: valid context/tokens`);
+  const isUtilityModel = m.capabilities.some(c => ["embeddings", "transcription", "ner", "rel_extraction", "pii_detection", "rerank"].includes(c)) && !m.capabilities.includes("chat");
+  assert(isUtilityModel || (m.maxContext > 0 && m.maxTokens > 0), `Model ${m.modelId}: valid context/tokens`);
 }
 
 // Helpers
 assert(!!getRegistryModel("claude-sonnet-4-5"), "getRegistryModel(claude-sonnet-4-5) works");
 assert(getRegistryModel("fake")  === undefined, "getRegistryModel(fake) = undefined");
+
+// Legacy model ID aliasing
+assert(resolveModelId("synergy-default") === "synseekr-qwen2.5-7b", "Legacy alias: synergy-default -> synseekr-qwen2.5-7b");
+assert(resolveModelId("synergy-legal") === "synseekr-qwen2.5-7b", "Legacy alias: synergy-legal -> synseekr-qwen2.5-7b");
+assert(resolveModelId("synergy-research") === "synseekr-qwen2.5-7b", "Legacy alias: synergy-research -> synseekr-qwen2.5-7b");
+assert(resolveModelId("synseekr-default") === "synseekr-qwen2.5-7b", "Legacy alias: synseekr-default -> synseekr-qwen2.5-7b");
+assert(resolveModelId("claude-sonnet-4-5") === "claude-sonnet-4-5", "Non-legacy ID passes through unchanged");
+assert(!!getRegistryModel("synergy-default"), "getRegistryModel resolves legacy synergy-default");
+assert(!!getRegistryModel("synseekr-default"), "getRegistryModel resolves legacy synseekr-default");
 
 const localModels = registry.filter(m => !m.requiresInternet);
 const extModels = registry.filter(m => m.requiresInternet);
@@ -166,16 +180,16 @@ if (localAvail.length > 0) {
   assert(d.allowed === false, "Bat+Claude+NoLocalAvail: blocked");
 }
 
-// Batmode + local = direct allow
+// Batmode + local = direct allow (legacy alias resolves to synseekr-qwen2.5-7b)
 d = evaluatePolicy({ mode: "batmode", requestedModelId: "synergy-default" });
 if (synergyEntry) {
   assert(d.allowed === true, "Bat+Synergy: allowed");
   assert(d.wasFallback === false, "Bat+Synergy: no fallback");
-  assert(d.effectiveModelId === "synergy-default", "Bat+Synergy: effective correct");
+  assert(d.effectiveModelId === "synseekr-qwen2.5-7b", "Bat+Synergy: effective correct (resolved via alias)");
   assert(d.reason.includes("Local model approved"), "Bat+Synergy: reason OK");
 }
 
-// Batmode + synseekr = direct allow (local)
+// Batmode + synseekr = direct allow (legacy alias resolves to synseekr-qwen2.5-7b)
 d = evaluatePolicy({ mode: "batmode", requestedModelId: "synseekr-default" });
 const synseekrEntry = getRegistryModel("synseekr-default");
 if (synseekrEntry) {
@@ -265,6 +279,92 @@ for (const rs of ["not_run", "passed", "failed"] as const) {
   d = evaluatePolicy({ mode: "online", requestedModelId: "claude-sonnet-4-5", redactionStatus: rs });
   assert(typeof d.allowed === "boolean", `Redaction ${rs}: returns valid decision`);
 }
+
+console.log("\n=== 7. SYNSEEKR MODEL REGISTRY ===");
+
+const synseekrModels = getSynSeekrModels();
+assert(Array.isArray(synseekrModels), "getSynSeekrModels returns array");
+
+const qwenModel = getRegistryModel("synseekr-qwen2.5-7b");
+assert(!!qwenModel, "Qwen2.5-7B registered");
+assert(qwenModel?.providerType === "synseekr", "Qwen2.5-7B: providerType=synseekr");
+assert(qwenModel?.dataPolicy === "local_only", "Qwen2.5-7B: dataPolicy=local_only");
+assert(qwenModel?.requiresInternet === false, "Qwen2.5-7B: no internet required");
+assert(qwenModel?.maxContext === 32768, "Qwen2.5-7B: maxContext=32768");
+assert(qwenModel?.capabilities.includes("chat"), "Qwen2.5-7B: has chat capability");
+assert(qwenModel?.capabilities.includes("rag"), "Qwen2.5-7B: has rag capability");
+assert(qwenModel?.capabilities.includes("document_analysis"), "Qwen2.5-7B: has document_analysis");
+
+const bgeModel = getRegistryModel("synseekr-bge-m3");
+assert(!!bgeModel, "BGE-M3 registered");
+assert(bgeModel?.capabilities.includes("embeddings"), "BGE-M3: has embeddings");
+assert(bgeModel?.capabilities.includes("rerank"), "BGE-M3: has rerank");
+assert(bgeModel?.dataPolicy === "local_only", "BGE-M3: local_only");
+
+const whisperModel = getRegistryModel("synseekr-whisper");
+assert(!!whisperModel, "Whisper registered");
+assert(whisperModel?.capabilities.includes("transcription"), "Whisper: has transcription");
+
+const glinerModel = getRegistryModel("synseekr-gliner");
+assert(!!glinerModel, "GLiNER registered");
+assert(glinerModel?.capabilities.includes("ner"), "GLiNER: has NER");
+assert(glinerModel?.capabilities.includes("rel_extraction"), "GLiNER: has relation extraction");
+
+const presidioModel = getRegistryModel("synseekr-presidio");
+assert(!!presidioModel, "Presidio registered");
+assert(presidioModel?.capabilities.includes("pii_detection"), "Presidio: has pii_detection");
+
+for (const synModel of [qwenModel, bgeModel, whisperModel, glinerModel, presidioModel]) {
+  if (synModel) {
+    assert(synModel.costHint === "free", `${synModel.modelId}: free`);
+    assert(synModel.requiresInternet === false, `${synModel.modelId}: offline`);
+    assert(synModel.dataPolicy === "local_only", `${synModel.modelId}: local_only`);
+  }
+}
+
+const synChat = getSynSeekrChatModel();
+if (synseekrModels.length > 0) {
+  assert(synChat?.modelId === "synseekr-qwen2.5-7b", "getSynSeekrChatModel returns Qwen2.5-7B");
+}
+
+console.log("\n=== 8. PREFERRED LOCAL FALLBACK ===");
+
+const preferredFallback = getPreferredLocalFallback();
+if (synseekrModels.length > 0) {
+  assert(preferredFallback?.modelId === "synseekr-qwen2.5-7b", "Preferred fallback is SynSeekr Qwen2.5-7B");
+  assert(preferredFallback?.providerType === "synseekr", "Preferred fallback providerType=synseekr");
+}
+
+setMode("batmode");
+d = evaluatePolicy({ mode: "batmode", requestedModelId: "claude-sonnet-4-5" });
+if (synseekrModels.length > 0) {
+  assert(d.wasFallback === true, "Batmode+Claude: falls back");
+  assert(d.effectiveModelId === "synseekr-qwen2.5-7b", "Batmode+Claude: falls back to SynSeekr Qwen2.5-7B");
+} else {
+  assert(d.allowed === false || d.wasFallback === true, "Batmode+Claude: blocked or fallback");
+}
+setMode("online");
+
+d = evaluatePolicy({ mode: "online", requestedModelId: "claude-sonnet-4-5", casePolicy: "privileged" });
+if (synseekrModels.length > 0) {
+  assert(d.wasFallback === true, "Privileged+Claude: falls back");
+  assert(d.effectiveModelId === "synseekr-qwen2.5-7b", "Privileged+Claude: falls back to SynSeekr Qwen2.5-7B");
+}
+
+d = evaluatePolicy({ mode: "online", requestedModelId: "synseekr-qwen2.5-7b" });
+if (qwenModel?.available) {
+  assert(d.allowed === true, "SynSeekr Qwen direct: allowed");
+  assert(d.wasFallback === false, "SynSeekr Qwen direct: no fallback needed");
+  assert(d.effectiveModelId === "synseekr-qwen2.5-7b", "SynSeekr Qwen direct: correct model");
+}
+
+setMode("batmode");
+d = evaluatePolicy({ mode: "batmode", requestedModelId: "synseekr-qwen2.5-7b" });
+if (qwenModel?.available) {
+  assert(d.allowed === true, "Batmode+SynSeekr Qwen: allowed (local model)");
+  assert(d.wasFallback === false, "Batmode+SynSeekr Qwen: no fallback");
+}
+setMode("online");
 
 console.log(`\n${"=".repeat(50)}`);
 console.log(`RESULTS: ${passed} passed, ${failed} failed out of ${passed + failed} total`);
