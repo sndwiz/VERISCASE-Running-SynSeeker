@@ -259,4 +259,22 @@
     padding-bottom: 0;
     font-size: 0.625rem;
   }
+
+  @keyframes research-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes research-slide-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .animate-research-fade-in {
+    animation: research-fade-in 0.35s ease-out both;
+  }
+
+  .animate-research-slide-in {
+    animation: research-slide-in 0.3s ease-out both;
+  }
 }

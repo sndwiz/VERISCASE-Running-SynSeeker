@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { getSessionInfo } from "../security/session";
 import { getClientIp } from "../security/audit";
+import { killSwitchService } from "../services/kill-switch";
 
 export function registerSecurityRoutes(app: Express): void {
   app.get("/api/security/threat-summary", async (_req, res) => {
@@ -184,6 +185,67 @@ export function registerSecurityRoutes(app: Express): void {
     } catch (error) {
       console.error("Failed to fetch security status:", error);
       res.status(500).json({ error: "Failed to fetch security status" });
+    }
+  });
+
+  app.get("/api/security/kill-switch", (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const state = killSwitchService.getState();
+    res.json(state);
+  });
+
+  app.post("/api/security/kill-switch/activate", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (req.dbUser?.role !== "admin") {
+      return res.status(403).json({ error: "Admin role required" });
+    }
+    try {
+      const { reason } = req.body || {};
+      const userId = req.user.id || "unknown";
+      const recoveryKey = killSwitchService.activate(userId, reason);
+      await storage.createSecurityEvent({
+        eventType: "kill_switch_activated",
+        userId,
+        ipAddress: getClientIp(req),
+        userAgent: req.headers["user-agent"] || null,
+        details: { reason: reason || "Emergency lockdown activated" },
+        severity: "critical",
+      });
+      res.json({ recoveryKey });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to activate kill switch" });
+    }
+  });
+
+  app.post("/api/security/kill-switch/deactivate", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (req.dbUser?.role !== "admin") {
+      return res.status(403).json({ error: "Admin role required" });
+    }
+    try {
+      const { recoveryKey } = req.body || {};
+      if (!recoveryKey) {
+        return res.status(400).json({ error: "Recovery key is required" });
+      }
+      const userId = req.user.id || "unknown";
+      killSwitchService.deactivate(userId, recoveryKey);
+      await storage.createSecurityEvent({
+        eventType: "kill_switch_deactivated",
+        userId,
+        ipAddress: getClientIp(req),
+        userAgent: req.headers["user-agent"] || null,
+        details: { message: "Kill switch deactivated" },
+        severity: "critical",
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to deactivate kill switch" });
     }
   });
 }

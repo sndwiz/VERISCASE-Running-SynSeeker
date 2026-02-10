@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { KillSwitch } from "@/components/kill-switch";
 import { AppSidebar } from "@/components/app-sidebar";
 import { UserMenu } from "@/components/user-menu";
 import { CreateBoardDialog } from "@/components/dialogs/create-board-dialog";
@@ -259,6 +260,7 @@ function AppLayout() {
               <BatmodeBadge />
               <ModelPicker />
               <HelpGuide />
+              <KillSwitch />
               <ThemeToggle />
               <UserMenu />
             </div>
