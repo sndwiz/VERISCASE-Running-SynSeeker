@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, Express } from "express";
 import { db } from "../db";
 import { incomingFiles, organizeRuns, organizePlanItems, fileChangeLog } from "../../shared/models/tables";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -284,5 +284,7 @@ router.get("/change-log", async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+export function registerOrganizerRoutes(app: Express) { app.use('/api/organizer', router); }
 
 export default router;

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type Express } from "express";
 import { db } from "../db";
 import { washJobs, washEntities } from "@shared/models/tables";
 import { insertWashJobSchema } from "@shared/schema";
@@ -132,5 +132,7 @@ router.delete("/api/wash/jobs/:id", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to delete wash job" });
   }
 });
+
+export function registerWashRoutes(app: Express) { app.use(router); }
 
 export default router;

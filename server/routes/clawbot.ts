@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, type Express } from 'express';
 import { clawbotService } from '../services/clawbot';
 import { isAuthenticated } from "../replit_integrations/auth/replitAuth";
 import { authStorage } from "../replit_integrations/auth/storage";
@@ -244,5 +244,7 @@ router.delete('/sessions/:sessionId', isAuthenticated, async (req: Request, res:
     });
   }
 });
+
+export function registerClawbotRoutes(app: Express) { app.use('/api/clawbot', router); }
 
 export default router;

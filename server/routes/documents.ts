@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type Express } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth/replitAuth";
 import { 
@@ -560,5 +560,7 @@ router.get("/utah-format", isAuthenticated, async (_req: Request, res: Response)
     ],
   });
 });
+
+export function registerDocumentRoutes(app: Express) { app.use('/api/documents', router); }
 
 export default router;

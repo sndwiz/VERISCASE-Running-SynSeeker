@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, Express } from "express";
 import { db } from "../db";
 import {
   boardChats, chatMessages, chatMessageEntities, chatAttachments,
@@ -390,5 +390,7 @@ async function executeProposalItem(item: any, proposal: any) {
       return { skipped: true, reason: `Unknown action type: ${item.actionType}` };
   }
 }
+
+export function registerChatRoutes(app: Express) { app.use('/api/chats', router); }
 
 export default router;

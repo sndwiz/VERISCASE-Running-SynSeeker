@@ -13,43 +13,39 @@ import { registerTimeTrackingRoutes } from "./time-tracking";
 import { registerCalendarRoutes } from "./calendar";
 import { registerApprovalRoutes } from "./approvals";
 import { registerBriefingRoutes } from "./briefing";
-import clawbotRouter from "./clawbot";
-import documentsRouter from "./documents";
-import synseekrRouter from "./synseekr";
+import { registerClawbotRoutes } from "./clawbot";
+import { registerDocumentRoutes } from "./documents";
+import { registerSynSeekrRoutes } from "./synseekr";
 import { registerMeetingRoutes } from "./meetings";
 import { registerVibeCodeRoutes } from "./vibe-code";
 import { registerSecurityRoutes } from "./security";
 import { registerBillingRoutes } from "./billing";
-import insightsRouter from "./insights";
-import organizerRouter from "./organizer";
-import chatRouter from "./chat";
-import washRouter from "./wash";
+import { registerInsightsRoutes } from "./insights";
+import { registerOrganizerRoutes } from "./organizer";
+import { registerChatRoutes } from "./chat";
+import { registerWashRoutes } from "./wash";
 import { registerBillingVerifierRoutes } from "./billing-verifier";
-import aiOpsRouter from "./ai-ops";
+import { registerAIOpsRoutes } from "./ai-ops";
 import { registerTemplateRoutes } from "./templates";
 import { registerProcessRecorderRoutes } from "./process-recorder";
 import { registerWorkspaceRoutes } from "./workspaces";
 import { registerTeamMemberRoutes } from "./team-members";
 import { registerDataLinkageRoutes } from "./data-linkage";
-import pdfProRouter from "./pdf-pro";
-import efilingRouter from "./efiling";
+import { registerPdfProRoutes } from "./pdf-pro";
+import { registerEfilingRoutes } from "./efiling";
 import { registerLegalResearchRoutes } from "./legal-research";
 import { registerAIPolicyRoutes } from "./ai-policy";
 import { registerModelIntelligenceRoutes } from "./model-intelligence";
-import legalVideoRouter from "./legal-video";
-import pdfForensicsRouter from "./pdf-forensics";
-import caseInsightsRouter from "./case-insights";
+import { registerLegalVideoRoutes } from "./legal-video";
+import { registerPdfForensicsRoutes } from "./pdf-forensics";
+import { registerCaseInsightsRoutes } from "./case-insights";
 import { registerEmailIntelRoutes } from "./email-intel";
 
 export function registerAllRoutes(app: Express): void {
-  // Clawbot gateway integration
-  app.use('/api/clawbot', clawbotRouter);
-  // Document and Form Maker
-  app.use('/api/documents', documentsRouter);
-  // SynSeekr server gateway
-  app.use('/api/synseekr', synseekrRouter);
-  // Upload Organizer
-  app.use('/api/organizer', organizerRouter);
+  registerClawbotRoutes(app);
+  registerDocumentRoutes(app);
+  registerSynSeekrRoutes(app);
+  registerOrganizerRoutes(app);
   registerBoardRoutes(app);
   registerGroupRoutes(app);
   registerTaskRoutes(app);
@@ -68,31 +64,23 @@ export function registerAllRoutes(app: Express): void {
   registerVibeCodeRoutes(app);
   registerSecurityRoutes(app);
   registerBillingRoutes(app);
-  app.use(insightsRouter);
-  app.use('/api/chats', chatRouter);
-  app.use(washRouter);
+  registerInsightsRoutes(app);
+  registerChatRoutes(app);
+  registerWashRoutes(app);
   registerBillingVerifierRoutes(app);
   registerTemplateRoutes(app);
   registerProcessRecorderRoutes(app);
   registerWorkspaceRoutes(app);
   registerTeamMemberRoutes(app);
   registerDataLinkageRoutes(app);
-  app.use(aiOpsRouter);
-  app.use('/api/pdf-pro', pdfProRouter);
-  app.use('/api/efiling', efilingRouter);
+  registerAIOpsRoutes(app);
+  registerPdfProRoutes(app);
+  registerEfilingRoutes(app);
   registerLegalResearchRoutes(app);
   registerAIPolicyRoutes(app);
   registerModelIntelligenceRoutes(app);
-
-  // Legal Video Pipeline
-  app.use('/api/video-pipeline', legalVideoRouter);
-
-  // PDF Forensic Analysis
-  app.use('/api/pdf-forensics', pdfForensicsRouter);
-
-  // Case Insights & Analysis Modules API (Plug-and-Play Spec)
-  app.use(caseInsightsRouter);
-
-  // Email Intelligence Module
+  registerLegalVideoRoutes(app);
+  registerPdfForensicsRoutes(app);
+  registerCaseInsightsRoutes(app);
   registerEmailIntelRoutes(app);
 }

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type Express } from "express";
 import { db } from "../db";
 import {
   caseFilings,
@@ -723,5 +723,7 @@ router.get("/matters/:matterId/dashboard", async (req: Request, res: Response) =
     res.status(500).json({ error: error.message });
   }
 });
+
+export function registerEfilingRoutes(app: Express) { app.use('/api/efiling', router); }
 
 export default router;

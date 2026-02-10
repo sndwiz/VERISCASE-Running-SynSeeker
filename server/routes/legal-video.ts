@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import multer from "multer";
 import * as path from "path";
 import * as fs from "fs";
@@ -226,5 +226,7 @@ async function linkToBoard(job: any) {
     logger.warn(`[video-pipeline] Board linking failed: ${err.message}`);
   }
 }
+
+export function registerLegalVideoRoutes(app: Express) { app.use('/api/video-pipeline', router); }
 
 export default router;

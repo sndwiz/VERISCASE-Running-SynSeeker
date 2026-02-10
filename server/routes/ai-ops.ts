@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type Express } from "express";
 import { getAIOpsRecords, getAIOpsSummary } from "../ai/ai-ops";
 
 const router = Router();
@@ -14,5 +14,7 @@ router.get("/api/ai-ops/records", (req: Request, res: Response) => {
   const records = getAIOpsRecords(limit, offset);
   res.json({ records, limit, offset });
 });
+
+export function registerAIOpsRoutes(app: Express) { app.use(router); }
 
 export default router;

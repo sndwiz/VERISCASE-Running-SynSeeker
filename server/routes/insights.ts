@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction, Express } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -376,5 +376,7 @@ router.post(
     res.status(201).json({ created: createdTasks.length, tasks: createdTasks, boardId: board.id });
   }),
 );
+
+export function registerInsightsRoutes(app: Express) { app.use(router); }
 
 export default router;

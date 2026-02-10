@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import { z } from "zod";
 import { synseekrClient } from "../services/synseekr-client";
 
@@ -443,5 +443,7 @@ router.get("/gpu-status", requireAdmin, async (_req, res) => {
     res.status(500).json({ error: "Failed to get GPU status" });
   }
 });
+
+export function registerSynSeekrRoutes(app: Express) { app.use('/api/synseekr', router); }
 
 export default router;

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import multer from "multer";
 import { createHash } from "crypto";
 import fs from "fs";
@@ -444,5 +444,7 @@ router.get("/matters/:matterId/reports", (req, res) => {
   const reports = reportIds.map(id => reportsStore.get(id)).filter(Boolean);
   res.json(reports);
 });
+
+export function registerPdfForensicsRoutes(app: Express) { app.use('/api/pdf-forensics', router); }
 
 export default router;

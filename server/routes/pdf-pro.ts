@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import { db } from "../db";
 import * as tables from "@shared/models/tables";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -401,5 +401,7 @@ router.delete("/documents/:docId", async (req, res) => {
     res.status(500).json({ error: "Failed to delete document" });
   }
 });
+
+export function registerPdfProRoutes(app: Express) { app.use('/api/pdf-pro', router); }
 
 export default router;

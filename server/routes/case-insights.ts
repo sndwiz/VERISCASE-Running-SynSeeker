@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import { randomUUID } from "crypto";
 import { createHash } from "crypto";
 import { db } from "../db";
@@ -498,5 +498,7 @@ router.get("/api/documents/:id/custody-chain", async (req, res) => {
     res.status(500).json({ error: "Failed to get custody chain" });
   }
 });
+
+export function registerCaseInsightsRoutes(app: Express) { app.use(router); }
 
 export default router;
