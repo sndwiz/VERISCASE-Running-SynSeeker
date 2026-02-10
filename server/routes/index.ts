@@ -36,6 +36,7 @@ import efilingRouter from "./efiling";
 import { registerLegalResearchRoutes } from "./legal-research";
 import { registerAIPolicyRoutes } from "./ai-policy";
 import { registerModelIntelligenceRoutes } from "./model-intelligence";
+import legalVideoRouter from "./legal-video";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -79,4 +80,7 @@ export function registerAllRoutes(app: Express): void {
   registerLegalResearchRoutes(app);
   registerAIPolicyRoutes(app);
   registerModelIntelligenceRoutes(app);
+
+  // Legal Video Pipeline
+  app.use('/api/video-pipeline', legalVideoRouter);
 }

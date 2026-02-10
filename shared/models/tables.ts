@@ -1623,3 +1623,38 @@ export type ModelRecommendation = typeof modelRecommendations.$inferSelect;
 export type InsertModelRecommendation = typeof modelRecommendations.$inferInsert;
 export type ModelAlert = typeof modelAlerts.$inferSelect;
 export type InsertModelAlert = typeof modelAlerts.$inferInsert;
+
+// ============ VIDEO PIPELINE JOBS ============
+export const videoPipelineJobs = pgTable("video_pipeline_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id"),
+  boardId: varchar("board_id"),
+  evidenceFileId: varchar("evidence_file_id"),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: text("file_path").notNull(),
+  status: varchar("status", { length: 50 }).default("pending"),
+  currentStage: varchar("current_stage", { length: 50 }).default("validate"),
+  progress: integer("progress").default(0),
+  config: jsonb("config").default({}),
+  stageResults: jsonb("stage_results").default({}),
+  rawFrameCount: integer("raw_frame_count").default(0),
+  uniqueFrameCount: integer("unique_frame_count").default(0),
+  ocrFragments: jsonb("ocr_fragments").default([]),
+  stitchedText: text("stitched_text").default(""),
+  entities: jsonb("entities").default([]),
+  outputPaths: jsonb("output_paths").default({}),
+  warnings: jsonb("warnings").default([]),
+  error: text("error"),
+  totalDuration: real("total_duration"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_video_pipeline_status").on(table.status),
+  index("IDX_video_pipeline_matter").on(table.matterId),
+  index("IDX_video_pipeline_board").on(table.boardId),
+]);
+
+export type VideoPipelineJob = typeof videoPipelineJobs.$inferSelect;
+export type InsertVideoPipelineJob = typeof videoPipelineJobs.$inferInsert;

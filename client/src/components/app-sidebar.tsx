@@ -64,6 +64,7 @@ import {
   BookOpen,
   Search,
   Brain,
+  FileVideo,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,7 @@ const aiInvestigationItems = [
   { title: "Detective Board", url: "/detective", icon: Network },
   { title: "Automations", url: "/automations", icon: Zap },
   { title: "E-Filing Brain", url: "/efiling", icon: Scale },
+  { title: "Video Pipeline", url: "/video-pipeline", icon: FileVideo },
 ];
 
 function NavSection({ label, items, isOpen, toggle, location, testId }: {
