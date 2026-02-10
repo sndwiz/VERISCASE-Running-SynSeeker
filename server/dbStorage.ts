@@ -458,7 +458,7 @@ export class DbStorage {
       id: r.id,
       matterId: r.matterId,
       originalName: r.originalName,
-      originalUrl: r.originalUrl,
+      originalUrl: r.originalUrl || "",
       originalHash: r.originalHash,
       originalSize: r.originalSize,
       originalMimeType: r.originalMimeType,
@@ -469,6 +469,10 @@ export class DbStorage {
       uploadedBy: r.uploadedBy,
       uploadedAt: toISOString(r.uploadedAt) || new Date().toISOString(),
       chainOfCustody: (r.chainOfCustody as any[]) || [],
+      storageKey: r.storageKey || undefined,
+      isArchived: r.isArchived || false,
+      archivedAt: r.archivedAt ? toISOString(r.archivedAt) : undefined,
+      archivedBy: r.archivedBy || undefined,
       ocrJobId: r.ocrJobId || undefined,
       extractedText: r.extractedText || undefined,
       aiAnalysis: r.aiAnalysis as any || undefined,
@@ -483,10 +487,11 @@ export class DbStorage {
       id,
       matterId: data.matterId,
       originalName: data.originalName,
-      originalUrl: data.originalUrl,
+      originalUrl: data.originalUrl || "",
       originalHash: data.originalHash,
       originalSize: data.originalSize,
       originalMimeType: data.originalMimeType,
+      storageKey: data.storageKey || null,
       evidenceType: data.evidenceType || "document",
       confidentiality: data.confidentiality || "confidential",
       description: data.description || "",
@@ -508,6 +513,9 @@ export class DbStorage {
     if (data.extractedText !== undefined) safeUpdate.extractedText = data.extractedText;
     if (data.aiAnalysis !== undefined) safeUpdate.aiAnalysis = data.aiAnalysis as any;
     if (data.ocrJobId !== undefined) safeUpdate.ocrJobId = data.ocrJobId;
+    if (data.isArchived !== undefined) safeUpdate.isArchived = data.isArchived;
+    if (data.archivedAt !== undefined) safeUpdate.archivedAt = new Date(data.archivedAt);
+    if (data.archivedBy !== undefined) safeUpdate.archivedBy = data.archivedBy;
     
     const [row] = await db.update(tables.evidenceVaultFiles).set(safeUpdate).where(eq(tables.evidenceVaultFiles.id, id)).returning();
     if (!row) return undefined;

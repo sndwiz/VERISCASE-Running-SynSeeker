@@ -337,6 +337,10 @@ export interface EvidenceVaultFile {
   uploadedBy: string;
   uploadedAt: string;
   chainOfCustody: { action: string; by: string; at: string; notes?: string }[];
+  storageKey?: string;
+  isArchived: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
   ocrJobId?: string;
   extractedText?: string;
   aiAnalysis?: Record<string, any>;
@@ -893,10 +897,11 @@ export const insertAIMessageSchema = z.object({
 export const insertEvidenceVaultFileSchema = z.object({
   matterId: z.string(),
   originalName: z.string(),
-  originalUrl: z.string(),
+  originalUrl: z.string().optional().default(""),
   originalHash: z.string(),
   originalSize: z.number(),
   originalMimeType: z.string(),
+  storageKey: z.string().optional(),
   evidenceType: z.enum(["document", "photo", "video", "audio", "email", "other"]).optional().default("document"),
   confidentiality: z.enum(["public", "confidential", "privileged", "work-product"]).optional().default("confidential"),
   description: z.string().optional().default(""),
@@ -911,6 +916,9 @@ export const updateEvidenceVaultFileSchema = z.object({
   tags: z.array(z.string()).optional(),
   extractedText: z.string().optional(),
   aiAnalysis: z.record(z.any()).optional(),
+  isArchived: z.boolean().optional(),
+  archivedAt: z.string().optional(),
+  archivedBy: z.string().optional(),
 });
 
 // OCR schemas
