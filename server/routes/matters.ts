@@ -226,7 +226,7 @@ export function registerMatterRoutes(app: Express): void {
     try {
       const originalMatter = await storage.getMatter(req.params.id);
       const data = updateMatterSchema.parse(req.body);
-      const matter = await storage.updateMatter(req.params.id, data);
+      const matter = await storage.updateMatter(req.params.id, data as any);
       if (!matter) {
         return res.status(404).json({ error: "Matter not found" });
       }
@@ -665,7 +665,7 @@ export function registerMatterRoutes(app: Express): void {
           fileSize: file.size,
           mimeType: file.mimetype,
           filePath: file.path,
-        }).returning();
+        } as any).returning();
         inserted.push(doc);
       }
 

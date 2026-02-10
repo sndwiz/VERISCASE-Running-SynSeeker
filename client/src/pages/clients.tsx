@@ -27,6 +27,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Search as SearchIcon,
+  LayoutGrid,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -215,6 +216,24 @@ export default function ClientsPage() {
     setShowNextStepDialog(false);
     setMatterForm({ name: "", matterType: "", practiceArea: "", description: "", caseNumber: "" });
     setShowQuickMatterDialog(true);
+  };
+
+  const handleOpenCaseBoard = async () => {
+    setShowMatterSuccessDialog(false);
+    if (newlyCreatedMatter) {
+      try {
+        const res = await fetch("/api/boards");
+        const boards = await res.json();
+        const matterBoard = boards.find((b: any) => b.matterId === newlyCreatedMatter.id && !b.name.includes(" - "));
+        if (matterBoard) {
+          setLocation(`/boards/${matterBoard.id}`);
+        } else {
+          setLocation(`/matters/${newlyCreatedMatter.id}`);
+        }
+      } catch {
+        setLocation(`/matters/${newlyCreatedMatter.id}`);
+      }
+    }
   };
 
   const handleOpenDetectiveBoard = () => {
@@ -792,6 +811,19 @@ export default function ClientsPage() {
               <span>Step 3 of 3: Start investigating</span>
             </div>
             <Button 
+              className="w-full justify-start gap-3"
+              onClick={handleOpenCaseBoard}
+              data-testid="button-open-case-board"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              <div className="text-left">
+                <div className="font-medium">Open Case Board</div>
+                <div className="text-xs opacity-80">Start adding tasks, filings, and evidence to the board</div>
+              </div>
+              <ArrowRight className="h-4 w-4 ml-auto" />
+            </Button>
+            <Button 
+              variant="outline"
               className="w-full justify-start gap-3"
               onClick={handleOpenDetectiveBoard}
               data-testid="button-open-detective-board"

@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Calendar, Plus, Trash2, MapPin, Users, ChevronLeft, ChevronRight,
   Gavel, Clock, FileText, Bell, RefreshCw, Zap, DollarSign,
-  CheckSquare, ClipboardList, Filter
+  CheckSquare, ClipboardList, Filter, Briefcase
 } from "lucide-react";
 import type { CalendarEvent, Matter, CalendarEventType } from "@shared/schema";
 
@@ -95,6 +95,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [matterFilters, setMatterFilters] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [formData, setFormData] = useState({
     matterId: "",
@@ -195,12 +196,29 @@ export default function CalendarPage() {
     });
   };
 
-  const filteredEvents = activeFilters.size === 0
-    ? events
-    : events.filter(e => {
-        const src = (e as any).sourceType || "manual";
-        return activeFilters.has(src);
-      });
+  const toggleMatterFilter = (matterId: string) => {
+    setMatterFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(matterId)) {
+        next.delete(matterId);
+      } else {
+        next.add(matterId);
+      }
+      return next;
+    });
+  };
+
+  const filteredEvents = events.filter(e => {
+    if (activeFilters.size > 0) {
+      const src = (e as any).sourceType || "manual";
+      if (!activeFilters.has(src)) return false;
+    }
+    if (matterFilters.size > 0) {
+      const mid = e.matterId || "__no_matter__";
+      if (!matterFilters.has(mid)) return false;
+    }
+    return true;
+  });
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -436,7 +454,7 @@ export default function CalendarPage() {
 
       {showFilters && (
         <Card>
-          <CardContent className="pt-4 pb-3">
+          <CardContent className="pt-4 pb-3 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-muted-foreground mr-1">Sources:</span>
               {(Object.keys(sourceTypeLabels) as SourceType[]).map(src => {
@@ -457,12 +475,49 @@ export default function CalendarPage() {
                   </Badge>
                 );
               })}
-              {activeFilters.size > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setActiveFilters(new Set())} data-testid="button-clear-filters">
-                  Clear
-                </Button>
-              )}
             </div>
+            {matters.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-muted-foreground mr-1">Cases:</span>
+                {matters.map(matter => {
+                  const matterEventCount = events.filter(e => e.matterId === matter.id).length;
+                  if (matterEventCount === 0) return null;
+                  const isActive = matterFilters.has(matter.id);
+                  return (
+                    <Badge
+                      key={matter.id}
+                      variant={isActive ? "default" : "outline"}
+                      className={`cursor-pointer toggle-elevate ${isActive ? "toggle-elevated" : ""}`}
+                      onClick={() => toggleMatterFilter(matter.id)}
+                      data-testid={`filter-matter-${matter.id}`}
+                    >
+                      <Briefcase className="h-3 w-3 mr-1" />
+                      {matter.name} ({matterEventCount})
+                    </Badge>
+                  );
+                })}
+                {(() => {
+                  const noMatterCount = events.filter(e => !e.matterId).length;
+                  if (noMatterCount === 0) return null;
+                  const isActive = matterFilters.has("__no_matter__");
+                  return (
+                    <Badge
+                      variant={isActive ? "default" : "outline"}
+                      className={`cursor-pointer toggle-elevate ${isActive ? "toggle-elevated" : ""}`}
+                      onClick={() => toggleMatterFilter("__no_matter__")}
+                      data-testid="filter-matter-none"
+                    >
+                      General ({noMatterCount})
+                    </Badge>
+                  );
+                })()}
+              </div>
+            )}
+            {(activeFilters.size > 0 || matterFilters.size > 0) && (
+              <Button variant="ghost" size="sm" onClick={() => { setActiveFilters(new Set()); setMatterFilters(new Set()); }} data-testid="button-clear-filters">
+                Clear All Filters
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

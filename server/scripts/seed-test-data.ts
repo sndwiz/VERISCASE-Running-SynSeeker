@@ -633,8 +633,230 @@ async function seedAIConversations(matterIds: string[]) {
   }
 }
 
+async function seedEFilingData(matterIds: string[], boardIds: string[]) {
+  console.log("\n═══ STEP 15: E-FILING (FILINGS, DEADLINES, ACTIONS) ═══");
+
+  const filings = [
+    {
+      matterId: matterIds[0],
+      originalFileName: "Petition_Modify_Custody_Wilson.pdf",
+      filePath: "/uploads/efiling/petition-custody-wilson.pdf",
+      docType: "Petition",
+      docSubtype: "Petition to Modify Custody",
+      docCategory: "pleading",
+      filedDate: oneMonthAgo,
+      servedDate: twoWeeksAgo,
+      responseDeadlineAnchor: twoWeeksAgo,
+      sourceType: "manual",
+      sha256Hash: sha256("Wilson custody petition content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.94,
+    },
+    {
+      matterId: matterIds[0],
+      originalFileName: "Scheduling_Order_Wilson.pdf",
+      filePath: "/uploads/efiling/scheduling-order-wilson.pdf",
+      docType: "Order",
+      docSubtype: "Scheduling Order",
+      docCategory: "order",
+      filedDate: twoWeeksAgo,
+      hearingDate: twoWeeks,
+      sourceType: "manual",
+      sha256Hash: sha256("Wilson scheduling order content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.97,
+    },
+    {
+      matterId: matterIds[1],
+      originalFileName: "Complaint_Ridgeline_v_Apex.pdf",
+      filePath: "/uploads/efiling/complaint-ridgeline-apex.pdf",
+      docType: "Complaint",
+      docSubtype: "Construction Defect Complaint",
+      docCategory: "pleading",
+      filedDate: twoWeeksAgo,
+      servedDate: lastWeek,
+      responseDeadlineAnchor: lastWeek,
+      sourceType: "manual",
+      sha256Hash: sha256("Ridgeline complaint content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.92,
+    },
+    {
+      matterId: matterIds[1],
+      originalFileName: "Expert_Report_EnviroTech.pdf",
+      filePath: "/uploads/efiling/expert-report-envirotech.pdf",
+      docType: "Expert Report",
+      docSubtype: "Damage Assessment",
+      docCategory: "evidence",
+      filedDate: lastWeek,
+      sourceType: "upload",
+      sha256Hash: sha256("EnviroTech expert report content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.89,
+    },
+    {
+      matterId: matterIds[2],
+      originalFileName: "Complaint_Garrett_v_Foster.pdf",
+      filePath: "/uploads/efiling/complaint-garrett-foster.pdf",
+      docType: "Complaint",
+      docSubtype: "Medical Malpractice Complaint",
+      docCategory: "pleading",
+      filedDate: oneMonthAgo,
+      servedDate: twoWeeksAgo,
+      responseDeadlineAnchor: twoWeeksAgo,
+      sourceType: "manual",
+      sha256Hash: sha256("Garrett complaint content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.96,
+    },
+    {
+      matterId: matterIds[2],
+      originalFileName: "Subpoena_Medical_Records_Foster.pdf",
+      filePath: "/uploads/efiling/subpoena-medical-records.pdf",
+      docType: "Subpoena",
+      docSubtype: "Medical Records",
+      docCategory: "discovery",
+      filedDate: lastWeek,
+      sourceType: "manual",
+      sha256Hash: sha256("Medical records subpoena content"),
+      status: "classified",
+      classifiedBy: "ai",
+      createdBy: USER_ID,
+      classificationConfidence: 0.91,
+    },
+  ];
+
+  const filingIds: string[] = [];
+  for (const f of filings) {
+    try {
+      const [created] = await db.insert(tables.caseFilings).values(f as any).returning();
+      filingIds.push(created.id);
+      log(`Filing: ${f.originalFileName}`, "ok", created.id, `${f.docType} in ${f.matterId.slice(0, 8)}...`);
+    } catch (e: any) {
+      log(`Filing: ${f.originalFileName}`, "error", undefined, e.message);
+    }
+  }
+
+  const deadlines = [
+    { matterId: matterIds[0], filingId: filingIds[0], title: "Answer to Custody Modification Petition", dueDate: tomorrow, criticality: "hard", ruleSource: "URCP 12(a)", status: "pending", requiredAction: "File Answer or responsive pleading" },
+    { matterId: matterIds[0], filingId: filingIds[1], title: "Initial Disclosures Due - Wilson", dueDate: nextWeek, criticality: "hard", ruleSource: "URCP 26(a)(1)", status: "pending", requiredAction: "Serve initial disclosures on opposing counsel" },
+    { matterId: matterIds[0], title: "GAL Report Deadline", dueDate: twoWeeks, criticality: "soft", ruleSource: "Court Order", status: "pending", requiredAction: "Follow up with GAL Torres for report" },
+    { matterId: matterIds[1], filingId: filingIds[2], title: "Answer to Construction Defect Complaint", dueDate: nextWeek, criticality: "hard", ruleSource: "URCP 12(a)", status: "pending", requiredAction: "File Answer on behalf of Apex Plumbing" },
+    { matterId: matterIds[1], title: "Discovery Cut-off - Ridgeline v. Apex", dueDate: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0], criticality: "hard", ruleSource: "Scheduling Order", status: "pending", requiredAction: "Complete all fact discovery" },
+    { matterId: matterIds[2], filingId: filingIds[4], title: "Answer to Medical Malpractice Complaint", dueDate: tomorrow, criticality: "hard", ruleSource: "FRCP 12(a)(1)(A)", status: "pending", requiredAction: "File Answer or Motion to Dismiss" },
+    { matterId: matterIds[2], title: "Expert Disclosure Deadline - Foster", dueDate: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0], criticality: "hard", ruleSource: "FRCP 26(a)(2)", status: "pending", requiredAction: "Disclose expert witnesses and reports" },
+    { matterId: matterIds[2], title: "IME Completion Deadline", dueDate: twoWeeks, criticality: "soft", ruleSource: "FRCP 35", status: "pending", requiredAction: "Complete independent medical examination of plaintiff" },
+  ];
+
+  const deadlineIds: string[] = [];
+  for (const d of deadlines) {
+    try {
+      const [created] = await db.insert(tables.caseDeadlines).values(d as any).returning();
+      deadlineIds.push(created.id);
+      log(`Deadline: ${d.title}`, "ok", created.id, `due ${d.dueDate}, ${d.criticality}`);
+    } catch (e: any) {
+      log(`Deadline: ${d.title}`, "error", undefined, e.message);
+    }
+  }
+
+  const actions = [
+    { matterId: matterIds[0], deadlineId: deadlineIds[0], title: "Draft Answer to Custody Petition", actionType: "draft_document", priority: "high", dueDate: today, status: "review", description: "Draft responsive pleading to father's custody modification petition" },
+    { matterId: matterIds[0], deadlineId: deadlineIds[1], title: "Prepare Initial Disclosures Package", actionType: "prepare_disclosure", priority: "high", dueDate: nextWeek, status: "draft", description: "Compile initial disclosures including witness list and document inventory" },
+    { matterId: matterIds[0], title: "Request School Attendance Records", actionType: "discovery_request", priority: "medium", dueDate: nextWeek, status: "draft", description: "Subpoena school attendance records for Emma and Noah from Wasatch Elementary" },
+    { matterId: matterIds[1], deadlineId: deadlineIds[3], title: "File Answer - Ridgeline v. Apex", actionType: "draft_document", priority: "high", dueDate: tomorrow, status: "final", description: "Answer with affirmative defenses and counterclaim" },
+    { matterId: matterIds[1], title: "Schedule Unit Inspections", actionType: "coordinate_expert", priority: "medium", dueDate: nextWeek, status: "draft", description: "Coordinate with Enviro-Tech for inspection of remaining 94 units" },
+    { matterId: matterIds[2], deadlineId: deadlineIds[5], title: "Draft Answer - Garrett v. Foster", actionType: "draft_document", priority: "high", dueDate: today, status: "review", description: "Answer denying negligence with affirmative defenses of comparative fault" },
+    { matterId: matterIds[2], title: "Prepare IME Documents for Dr. Park", actionType: "prepare_expert", priority: "medium", dueDate: nextWeek, status: "draft", description: "Compile surgical records and imaging for Dr. Park's review" },
+    { matterId: matterIds[2], title: "Draft Motion for Protective Order", actionType: "draft_motion", priority: "low", dueDate: twoWeeks, status: "draft", description: "Motion to protect Dr. Foster's peer review committee records" },
+  ];
+
+  for (const a of actions) {
+    try {
+      const [created] = await db.insert(tables.caseActions).values(a as any).returning();
+      log(`Action: ${a.title}`, "ok", created.id, `${a.actionType}, ${a.status}`);
+    } catch (e: any) {
+      log(`Action: ${a.title}`, "error", undefined, e.message);
+    }
+  }
+}
+
+async function seedAutomationRules(boardIds: string[]) {
+  console.log("\n═══ STEP 16: AUTOMATION RULES ═══");
+
+  const rules = [
+    {
+      boardId: boardIds[0],
+      name: "Auto-assign high priority to overdue tasks",
+      description: "When a task status changes to 'stuck', automatically escalate priority to high",
+      triggerType: "status_changed",
+      triggerField: "status",
+      triggerValue: "stuck",
+      actionType: "change_priority",
+      actionConfig: { priority: "high" },
+    },
+    {
+      boardId: boardIds[0],
+      name: "Notify team on task completion",
+      description: "Send notification when any task is marked as done",
+      triggerType: "status_changed",
+      triggerField: "status",
+      triggerValue: "done",
+      actionType: "send_notification",
+      actionConfig: { message: "Task completed!", channel: "team" },
+    },
+    {
+      boardId: boardIds[1],
+      name: "Auto-categorize new tasks with AI",
+      description: "When a new task is created, use AI to categorize it",
+      triggerType: "item_created",
+      actionType: "ai_categorize",
+      actionConfig: { model: "claude" },
+    },
+    {
+      boardId: boardIds[2],
+      name: "Escalate medical malpractice deadlines",
+      description: "When deadline approaches within 3 days, escalate to senior attorney",
+      triggerType: "date_approaching",
+      triggerField: "dueDate",
+      triggerValue: "3",
+      actionType: "escalate_review",
+      actionConfig: { escalateTo: "David Chen", daysThreshold: 3 },
+    },
+  ];
+
+  for (const r of rules) {
+    try {
+      const rule = await storage.createAutomationRule(r);
+      log(`Automation: ${r.name}`, "ok", rule.id, `${r.triggerType} → ${r.actionType}`);
+    } catch (e: any) {
+      log(`Automation: ${r.name}`, "error", undefined, e.message);
+    }
+  }
+}
+
+async function runCalendarSync() {
+  console.log("\n═══ STEP 17: CALENDAR SYNC ═══");
+  try {
+    const { fullCalendarSync } = await import("../services/calendar-sync");
+    const result = await fullCalendarSync(USER_ID);
+    log("Full calendar sync", "ok", undefined, `created=${result.created}, updated=${result.updated}`);
+  } catch (e: any) {
+    log("Full calendar sync", "error", undefined, e.message);
+  }
+}
+
 async function verifyDataLinkage(clientIds: string[], matterIds: string[]) {
-  console.log("\n═══ STEP 15: DATA LINKAGE VERIFICATION ═══");
+  console.log("\n═══ STEP 18: DATA LINKAGE VERIFICATION ═══");
 
   for (let i = 0; i < clientIds.length; i++) {
     const matters = await storage.getMatters(clientIds[i]);
@@ -661,6 +883,8 @@ async function verifyDataLinkage(clientIds: string[], matterIds: string[]) {
 
   const calEvents = await storage.getCalendarEvents();
   log(`Total calendar events: ${calEvents.length}`, calEvents.length >= 7 ? "ok" : "error");
+  const autoSynced = calEvents.filter((e: any) => e.autoSynced);
+  log(`  Auto-synced calendar events: ${autoSynced.length}`, autoSynced.length > 0 ? "ok" : "error");
 
   const expenses = await storage.getExpenses();
   log(`Total expenses: ${expenses.length}`, expenses.length >= 6 ? "ok" : "error");
@@ -675,6 +899,18 @@ async function verifyDataLinkage(clientIds: string[], matterIds: string[]) {
 
   const meetings = await storage.getMeetings();
   log(`Total meetings: ${meetings.length}`, meetings.length >= 2 ? "ok" : "error");
+
+  const allFilings = await db.select().from(tables.caseFilings);
+  log(`Total e-filing filings: ${allFilings.length}`, allFilings.length >= 6 ? "ok" : "error");
+
+  const allDeadlines = await db.select().from(tables.caseDeadlines);
+  log(`Total e-filing deadlines: ${allDeadlines.length}`, allDeadlines.length >= 8 ? "ok" : "error");
+
+  const allActions = await db.select().from(tables.caseActions);
+  log(`Total case actions: ${allActions.length}`, allActions.length >= 8 ? "ok" : "error");
+
+  const automations = await db.select().from(tables.automationRules);
+  log(`Total automation rules: ${automations.length}`, automations.length >= 4 ? "ok" : "error");
 }
 
 async function main() {
@@ -700,6 +936,9 @@ async function main() {
     await seedTimelineEvents(matterIds);
     await seedThreads(matterIds);
     await seedAIConversations(matterIds);
+    await seedEFilingData(matterIds, boardIds);
+    await seedAutomationRules(boardIds);
+    await runCalendarSync();
     await verifyDataLinkage(clientIds, matterIds);
 
     console.log("\n╔══════════════════════════════════════════════════════╗");
