@@ -39,6 +39,10 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **AI Operations Monitor:** In-memory AI usage tracking system for cost, latency, and performance, with an admin-only dashboard.
 - **PDF Pro:** Advanced legal document processing module for matter-scoped PDFs, featuring SHA-256 integrity hashing, async job queue (OCR, Bates numbering, PII wash/detection), document version tracking, and Bates set management.
 - **Legal Research:** Deep AI-powered legal research feature with a multi-step pipeline for query planning, sequential execution, and final compilation into structured legal memos.
+- **Analysis Modules API (Plug-and-Play Spec):** 5 standardized weapon modules (contradiction_finder, timeline_builder, entity_graph_builder, damages_ledger, discovery_sniper) with policy-engine-gated execution, standardized evidence citations (documentId, pageNumber, textSpan, confidence, sourceType), auditId tracking, and AI ops monitoring. Accessible via `/api/analysis/queue` and `/api/analysis/modules`.
+- **Case Insights API:** Comprehensive case-level intelligence at `/api/cases/:caseId/insights` with element coverage analysis, key findings, and recommendations. Sub-endpoints for `/graph`, `/timeline`, `/contradictions`, and `/query` (RAG).
+- **Court-Ready Export:** Standalone JSON export at `/api/documents/:id/export-for-court` with SHA-256 recomputation verification, custody chain, and attestation. Document verification at `/api/documents/:id/verify` and `/api/documents/:id/custody-chain`.
+- **RAG Query System:** In-memory keyword-based retrieval across detective nodes, evidence vault, and matter timeline with relevance scoring, citations, and auditId tracking at `/api/cases/:caseId/query`.
 - **Unified Calendar Sync:** Calendar events auto-sync from 7 entity types.
 - **Cross-Entity Data Linkage System:** Backend linking all entities (clients, matters, contacts, billing, time entries, boards, evidence).
 - **Workspace Architecture:** Supports multiple workspaces with independent boards and data.

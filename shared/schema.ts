@@ -2686,6 +2686,96 @@ export const reclassifyFilingSchema = z.object({
   hearingDate: z.string().optional(),
 });
 
+// ─── Evidence Citation Standard (Spec §4) ────────────────────────────────
+export const evidenceCitationSchema = z.object({
+  documentId: z.string(),
+  documentTitle: z.string().optional(),
+  pageNumber: z.number().optional(),
+  textSpan: z.string().optional(),
+  boundingBox: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+  confidence: z.number().min(0).max(1),
+  sourceType: z.enum(["observed", "inferred"]).default("observed"),
+  excerpt: z.string().optional(),
+});
+export type EvidenceCitation = z.infer<typeof evidenceCitationSchema>;
+
+// ─── Analysis Result Standard (Spec §7) ──────────────────────────────────
+export const analysisResultSchema = z.object({
+  moduleId: z.string(),
+  moduleName: z.string(),
+  matterId: z.string(),
+  runAt: z.string(),
+  auditId: z.string(),
+  mode: z.enum(["online", "batmode"]),
+  effectiveModel: z.string(),
+  items: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    title: z.string(),
+    description: z.string(),
+    severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
+    confidence: z.number().min(0).max(1),
+    sourceType: z.enum(["observed", "inferred"]),
+    citations: z.array(evidenceCitationSchema),
+    alternatives: z.array(z.string()).optional(),
+    metadata: z.record(z.any()).optional(),
+  })),
+  summary: z.string(),
+  totalItems: z.number(),
+});
+export type AnalysisResult = z.infer<typeof analysisResultSchema>;
+
+// ─── Case Insights Summary (Spec §8) ─────────────────────────────────────
+export const caseInsightsSummarySchema = z.object({
+  matterId: z.string(),
+  matterName: z.string(),
+  generatedAt: z.string(),
+  auditId: z.string(),
+  overview: z.object({
+    totalDocuments: z.number(),
+    totalEntities: z.number(),
+    totalEvents: z.number(),
+    totalContradictions: z.number(),
+    totalGaps: z.number(),
+    evidenceStrength: z.enum(["strong", "moderate", "weak"]),
+  }),
+  elementCoverage: z.array(z.object({
+    element: z.string(),
+    coverage: z.number().min(0).max(100),
+    supportingEvidence: z.number(),
+    gaps: z.number(),
+    status: z.enum(["well_supported", "partial", "weak", "missing"]),
+  })),
+  keyFindings: z.array(z.object({
+    finding: z.string(),
+    type: z.enum(["contradiction", "gap", "pattern", "corroboration", "timeline_issue"]),
+    severity: z.enum(["critical", "high", "medium", "low"]),
+    citations: z.array(evidenceCitationSchema),
+  })),
+  recommendations: z.array(z.string()),
+});
+export type CaseInsightsSummary = z.infer<typeof caseInsightsSummarySchema>;
+
+// ─── RAG Query (Spec §8) ─────────────────────────────────────────────────
+export const ragQuerySchema = z.object({
+  query: z.string().min(1),
+  matterId: z.string().optional(),
+  maxResults: z.number().min(1).max(50).optional().default(10),
+  includeInferred: z.boolean().optional().default(true),
+});
+export type RagQuery = z.infer<typeof ragQuerySchema>;
+
+export const ragResponseSchema = z.object({
+  answer: z.string(),
+  citations: z.array(evidenceCitationSchema),
+  auditId: z.string(),
+  mode: z.enum(["online", "batmode"]),
+  effectiveModel: z.string(),
+  confidence: z.number().min(0).max(1),
+  relatedEntities: z.array(z.string()).optional(),
+});
+export type RagResponse = z.infer<typeof ragResponseSchema>;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 

@@ -38,6 +38,7 @@ import { registerAIPolicyRoutes } from "./ai-policy";
 import { registerModelIntelligenceRoutes } from "./model-intelligence";
 import legalVideoRouter from "./legal-video";
 import pdfForensicsRouter from "./pdf-forensics";
+import caseInsightsRouter from "./case-insights";
 
 export function registerAllRoutes(app: Express): void {
   // Clawbot gateway integration
@@ -87,4 +88,7 @@ export function registerAllRoutes(app: Express): void {
 
   // PDF Forensic Analysis
   app.use('/api/pdf-forensics', pdfForensicsRouter);
+
+  // Case Insights & Analysis Modules API (Plug-and-Play Spec)
+  app.use(caseInsightsRouter);
 }
