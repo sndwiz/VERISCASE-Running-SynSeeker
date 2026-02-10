@@ -71,6 +71,7 @@ const ModelAdvisorPage = lazy(() => import("@/pages/model-advisor"));
 const VideoPipelinePage = lazy(() => import("@/pages/video-pipeline"));
 const PdfForensicsPage = lazy(() => import("@/pages/pdf-forensics"));
 const EmailIntelPage = lazy(() => import("@/pages/email-intel"));
+const ReportsPage = lazy(() => import("@/pages/reports"));
 
 function PageLoader() {
   return (
@@ -127,6 +128,8 @@ function Router() {
       <Route path="/video-pipeline" component={VideoPipelinePage} />
       <Route path="/pdf-forensics" component={PdfForensicsPage} />
       <Route path="/email-intel" component={EmailIntelPage} />
+      <Route path="/reports/:reportId" component={ReportsPage} />
+      <Route path="/reports" component={ReportsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

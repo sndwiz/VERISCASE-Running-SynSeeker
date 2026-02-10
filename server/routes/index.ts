@@ -40,6 +40,7 @@ import { registerLegalVideoRoutes } from "./legal-video";
 import { registerPdfForensicsRoutes } from "./pdf-forensics";
 import { registerCaseInsightsRoutes } from "./case-insights";
 import { registerEmailIntelRoutes } from "./email-intel";
+import { registerReportsRoutes } from "./reports";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -83,4 +84,5 @@ export function registerAllRoutes(app: Express): void {
   registerPdfForensicsRoutes(app);
   registerCaseInsightsRoutes(app);
   registerEmailIntelRoutes(app);
+  registerReportsRoutes(app);
 }

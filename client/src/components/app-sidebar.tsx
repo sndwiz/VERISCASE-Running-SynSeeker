@@ -69,6 +69,7 @@ import {
   Mail,
   Pin,
   History,
+  BarChart3,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -177,6 +178,7 @@ const adminItems = [
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
   { title: "Model Advisor", url: "/model-advisor", icon: Brain },
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 
 const aiInvestigationItems = [
