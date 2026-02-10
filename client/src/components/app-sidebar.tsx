@@ -51,7 +51,6 @@ import {
   Mic,
   ShieldCheck,
   Server,
-  Sparkles,
   DollarSign,
   ClipboardList,
   MessageSquare,
@@ -638,9 +637,9 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={location === "/vibe-code"} tooltip={getTooltipForRoute("/vibe-code")}>
-                <Link href="/vibe-code" data-testid="link-vibe-code">
-                  <Sparkles className="h-4 w-4" />
-                  <span>Vibe Code</span>
+                <Link href="/vibe-code" data-testid="link-vibe-automator">
+                  <Zap className="h-4 w-4" />
+                  <span>Vibe Automator</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

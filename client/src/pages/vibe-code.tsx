@@ -18,14 +18,15 @@ import {
   Users,
   BookOpen,
   Gavel,
-  Handshake,
-  Lightbulb,
-  Building2,
-  Home,
-  Heart,
-  Globe,
   Loader2,
-  Star,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Bot,
+  Bell,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ interface VibeTemplate {
   icon: string;
   color: string;
   category: string;
+  automationCount: number;
+  automationSummary: string[];
 }
 
 const templateIcons: Record<string, any> = {
@@ -57,22 +60,29 @@ const templateIcons: Record<string, any> = {
   "users": Users,
   "book-open": BookOpen,
   "gavel": Gavel,
-  "handshake": Handshake,
-  "lightbulb": Lightbulb,
-  "building-2": Building2,
-  "home": Home,
-  "heart": Heart,
-  "globe": Globe,
   "layout-grid": LayoutGrid,
 };
 
+const actionTypeIcons: Record<string, any> = {
+  send_notification: Bell,
+  change_priority: AlertTriangle,
+  ai_categorize: Bot,
+  ai_summarize: Bot,
+  ai_extract: Bot,
+  ai_write: Bot,
+  log_compliance: CheckCircle2,
+  request_approval: CheckCircle2,
+  due_date_approaching: Clock,
+  due_date_passed: AlertTriangle,
+};
+
 const quickSuggestions = [
-  "Case Intake Tracker",
-  "Deposition Scheduler",
-  "Billing Dashboard",
-  "Client Onboarding",
-  "Discovery Tracker",
-  "Court Filing Tracker",
+  "Case intake tracker with conflict checks and auto-assignment",
+  "Deposition prep board with AI transcript analysis",
+  "E-discovery pipeline with deadline alerts",
+  "Motion practice tracker with approval gates",
+  "Client billing board with overdue escalation",
+  "Trial preparation checklist with witness coordination",
 ];
 
 const categoryLabels: Record<string, string> = {
@@ -84,10 +94,11 @@ const categoryLabels: Record<string, string> = {
 
 const categoryOrder = ["legal", "business", "operations", "finance"];
 
-export default function VibeCodePage() {
+export default function VibeAutomatorPage() {
   const [prompt, setPrompt] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -101,14 +112,17 @@ export default function VibeCodePage() {
       const res = await apiRequest("POST", "/api/vibe/generate", data);
       return res.json();
     },
-    onSuccess: (data: { boardId: string; name: string }) => {
+    onSuccess: (data: { boardId: string; name: string; automationsCreated: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
-      toast({ title: `"${data.name}" created successfully` });
+      toast({
+        title: `"${data.name}" created`,
+        description: `Board ready with ${data.automationsCreated} automation${data.automationsCreated === 1 ? "" : "s"} wired up`,
+      });
       setLocation(`/boards/${data.boardId}`);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to generate app",
+        title: "Failed to generate",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -126,6 +140,11 @@ export default function VibeCodePage() {
 
   const handleQuickSuggestion = (suggestion: string) => {
     setPrompt(suggestion);
+  };
+
+  const toggleExpanded = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTemplate(expandedTemplate === id ? null : id);
   };
 
   const filteredTemplates = templates.filter((t) => {
@@ -155,13 +174,13 @@ export default function VibeCodePage() {
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
               <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-                <Sparkles className="h-8 w-8 text-primary-foreground animate-pulse" />
+                <Zap className="h-8 w-8 text-primary-foreground animate-pulse" />
               </div>
             </div>
             <div className="text-center">
-              <h3 className="text-lg font-semibold">Building your app...</h3>
+              <h3 className="text-lg font-semibold" data-testid="text-generating-title">Building your board...</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                AI is configuring your board with columns, groups, and tasks
+                Configuring columns, groups, tasks, and wiring up automations
               </p>
             </div>
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -173,13 +192,13 @@ export default function VibeCodePage() {
         <div className="max-w-4xl mx-auto px-6 py-12">
           <div className="text-center mb-10">
             <div className="flex items-center justify-center gap-2 mb-3">
-              <Sparkles className="h-6 w-6 text-primary" />
+              <Zap className="h-6 w-6 text-primary" />
               <h1 className="text-3xl font-bold" data-testid="text-vibe-heading">
-                Build with Vibe Code
+                Vibe Automator
               </h1>
             </div>
             <p className="text-muted-foreground text-lg">
-              Describe what you need, and AI will build a fully configured board for you
+              Describe what you need and get a fully configured board with live automations wired up
             </p>
           </div>
 
@@ -188,7 +207,7 @@ export default function VibeCodePage() {
               <Textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Build your new application... (e.g., 'A case intake tracker with client info, case type, status, and priority')"
+                placeholder="Describe what you need... (e.g., 'A discovery tracker that alerts me when deadlines approach and uses AI to categorize incoming documents')"
                 className="min-h-[120px] border-0 resize-none text-base focus-visible:ring-0 focus-visible:ring-offset-0"
                 data-testid="input-vibe-prompt"
                 onKeyDown={(e) => {
@@ -197,9 +216,9 @@ export default function VibeCodePage() {
                   }
                 }}
               />
-              <div className="flex items-center justify-between gap-2 px-3 pb-3">
+              <div className="flex items-center justify-between gap-2 px-3 pb-3 flex-wrap">
                 <p className="text-xs text-muted-foreground">
-                  Press Ctrl+Enter to generate
+                  Ctrl+Enter to generate
                 </p>
                 <Button
                   onClick={handlePromptSubmit}
@@ -207,8 +226,8 @@ export default function VibeCodePage() {
                   className="gap-2"
                   data-testid="button-generate-vibe"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  Generate App
+                  <Zap className="h-4 w-4" />
+                  Build Board + Automations
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -222,10 +241,10 @@ export default function VibeCodePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickSuggestion(suggestion)}
-                className="gap-1"
-                data-testid={`button-suggestion-${suggestion.toLowerCase().replace(/\s+/g, "-")}`}
+                className="gap-1 text-xs"
+                data-testid={`button-suggestion-${suggestion.slice(0, 20).toLowerCase().replace(/\s+/g, "-")}`}
               >
-                <Star className="h-3 w-3 text-muted-foreground" />
+                <Sparkles className="h-3 w-3 text-muted-foreground" />
                 {suggestion}
               </Button>
             ))}
@@ -233,17 +252,22 @@ export default function VibeCodePage() {
 
           <div className="border-t pt-8">
             <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-              <h2 className="text-xl font-semibold" data-testid="text-templates-heading">
-                Start from a template
-              </h2>
+              <div>
+                <h2 className="text-xl font-semibold" data-testid="text-templates-heading">
+                  Pre-Built Automations
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Each template creates a board with real automations ready to fire
+                </p>
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchFilter}
                     onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder="Search templates..."
-                    className="pl-9 w-56"
+                    placeholder="Search..."
+                    className="pl-9 w-48"
                     data-testid="input-search-templates"
                   />
                 </div>
@@ -282,9 +306,10 @@ export default function VibeCodePage() {
                     <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
                       {group.label}
                     </h3>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {group.templates.map((template) => {
                         const IconComp = templateIcons[template.icon] || LayoutGrid;
+                        const isExpanded = expandedTemplate === template.id;
                         return (
                           <Card
                             key={template.id}
@@ -301,12 +326,62 @@ export default function VibeCodePage() {
                                   <IconComp className="h-5 w-5 text-white" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <h4 className="font-medium text-sm truncate">
-                                    {template.name}
-                                  </h4>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="font-medium text-sm" data-testid={`text-template-name-${template.id}`}>
+                                      {template.name}
+                                    </h4>
+                                    <Badge variant="secondary" className="text-[10px] gap-1">
+                                      <Zap className="h-2.5 w-2.5" />
+                                      {template.automationCount}
+                                    </Badge>
+                                  </div>
                                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                     {template.description}
                                   </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 h-6 px-1 text-xs text-muted-foreground gap-1"
+                                    onClick={(e) => toggleExpanded(template.id, e)}
+                                    data-testid={`button-expand-${template.id}`}
+                                  >
+                                    {isExpanded ? (
+                                      <>
+                                        <ChevronUp className="h-3 w-3" />
+                                        Hide automations
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="h-3 w-3" />
+                                        View automations
+                                      </>
+                                    )}
+                                  </Button>
+                                  {isExpanded && (
+                                    <div className="mt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                                      {template.automationSummary.map((summary, i) => (
+                                        <div
+                                          key={i}
+                                          className="flex items-center gap-2 text-xs text-muted-foreground"
+                                          data-testid={`text-automation-${template.id}-${i}`}
+                                        >
+                                          <Zap className="h-3 w-3 text-primary shrink-0" />
+                                          <span>{summary}</span>
+                                        </div>
+                                      ))}
+                                      <div className="pt-1">
+                                        <Button
+                                          size="sm"
+                                          className="gap-1 w-full"
+                                          onClick={() => handleTemplateClick(template.id)}
+                                          data-testid={`button-create-${template.id}`}
+                                        >
+                                          <Zap className="h-3.5 w-3.5" />
+                                          Create with automations
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
@@ -321,7 +396,7 @@ export default function VibeCodePage() {
                   <div className="text-center py-12 text-muted-foreground">
                     <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
                     <p>No templates match your search</p>
-                    <p className="text-sm mt-1">Try a different search term or use the prompt to build a custom app</p>
+                    <p className="text-sm mt-1">Try a different search term or use the prompt to build a custom automation board</p>
                   </div>
                 )}
               </div>
