@@ -239,7 +239,7 @@ export default function DailyBriefingPage() {
           {briefing.matters.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium">
                     <Briefcase className="h-4 w-4 text-indigo-500" />
                     Your Active Matters
@@ -256,7 +256,7 @@ export default function DailyBriefingPage() {
                 {briefing.matters.map((matter) => (
                   <div
                     key={matter.id}
-                    className="flex items-center justify-between p-2 rounded-md hover-elevate"
+                    className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate"
                     data-testid={`matter-row-${matter.id}`}
                   >
                     <div className="flex-1 min-w-0">
@@ -274,7 +274,7 @@ export default function DailyBriefingPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   Recently Completed
@@ -305,7 +305,7 @@ export default function DailyBriefingPage() {
         {briefing.recentAutomations.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium">
                   <Zap className="h-4 w-4 text-yellow-500" />
                   Recent Automations
@@ -323,7 +323,7 @@ export default function DailyBriefingPage() {
                 {briefing.recentAutomations.map((run) => (
                   <div
                     key={run.id}
-                    className="flex items-center justify-between p-2 rounded-md text-sm"
+                    className="flex items-center justify-between gap-2 p-2 rounded-md text-sm"
                     data-testid={`automation-run-${run.id}`}
                   >
                     <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function DailyBriefingPage() {
         )}
 
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-          <CardContent className="flex items-center justify-between py-6">
+          <CardContent className="flex items-center justify-between gap-2 py-6">
             <div className="space-y-1">
               <h3 className="font-semibold">Need help with your tasks?</h3>
               <p className="text-sm text-muted-foreground">
@@ -415,7 +415,7 @@ function TaskRow({
   return (
     <Link href={`/boards/${task.boardId}`}>
       <div
-        className="flex items-center justify-between p-2 rounded-md hover-elevate cursor-pointer"
+        className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer"
         data-testid={`task-row-${task.id}`}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">

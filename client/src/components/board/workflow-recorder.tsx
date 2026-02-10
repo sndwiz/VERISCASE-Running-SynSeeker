@@ -281,7 +281,7 @@ export function WorkflowRecorder({ boardId, onActionRecorded }: WorkflowRecorder
         {isPanelOpen && (
           <Card className="w-80 shadow-lg animate-in slide-in-from-bottom-2">
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   {isRecording && <Circle className="w-3 h-3 fill-red-500 text-red-500 animate-pulse" />}
                   Workflow Recorder
@@ -336,7 +336,7 @@ export function WorkflowRecorder({ boardId, onActionRecorded }: WorkflowRecorder
               
               {recordedActions.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">
                       {recordedActions.length} action{recordedActions.length !== 1 ? "s" : ""} captured
                     </span>

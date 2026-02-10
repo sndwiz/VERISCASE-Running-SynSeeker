@@ -317,7 +317,7 @@ export default function EmailIntelDashboard() {
                     <SelectItem value="alerts">⚠ Alerts</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => emails.refetch()}>
+                <Button variant="ghost" size="icon" onClick={() => emails.refetch()}>
                   <RefreshCw className="w-3 h-3" />
                 </Button>
               </div>
@@ -494,7 +494,7 @@ function EmailDetail({ emailId }: { emailId: string }) {
               <ProfileRow label="Emotion" value={profile.emotionalState} />
               <ProfileRow label="Manipulation" value={profile.manipulationRisk} />
               {(profile.behavioralNotes || []).map((n: string, i: number) => (
-                <div key={i} className="text-xs text-muted-foreground bg-muted/50 rounded p-2">📝 {n}</div>
+                <div key={i} className="text-xs text-muted-foreground bg-muted/50 rounded p-2"><FileText className="h-3 w-3 inline mr-1" />{n}</div>
               ))}
             </CardContent>
           </Card>
@@ -642,7 +642,7 @@ function AlertsPanel() {
       ) : (
         <div className="space-y-3">
           {alerts.map((a: any) => (
-            <Card key={a.id} className={`border-l-4 ${a.priority === "critical" ? "border-l-red-500" : "border-l-orange-500"}`}>
+            <Card key={a.id} className={a.priority === "critical" ? "bg-red-500/5 dark:bg-red-500/10" : "bg-orange-500/5 dark:bg-orange-500/10"}>
               <CardContent className="p-4 flex items-start gap-3">
                 <Badge variant="outline" className={`text-[10px] ${a.priority === "critical" ? "bg-red-500/20 text-red-400" : "bg-orange-500/20 text-orange-400"}`}>
                   {a.priority.toUpperCase()}

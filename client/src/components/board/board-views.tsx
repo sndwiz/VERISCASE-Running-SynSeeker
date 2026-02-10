@@ -225,7 +225,7 @@ export function CalendarView({ tasks, onTaskClick, statusLabels }: CalendarViewP
 
   return (
     <div className="flex-1 overflow-auto p-4" data-testid="calendar-view">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevMonth} data-testid="button-prev-month">
             <ChevronLeft className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function DashboardView({ board, groups, tasks, statusLabels }: DashboardV
           <div className="space-y-3">
             {groupStats.map(({ group, total, done, progress }) => (
               <div key={group.id} className="space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: group.color }} />
                     <span className="text-sm font-medium">{group.title}</span>

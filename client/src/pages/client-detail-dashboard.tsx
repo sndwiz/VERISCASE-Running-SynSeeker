@@ -189,24 +189,24 @@ export default function ClientDetailDashboard() {
           <Badge variant="outline">{cfg.label}</Badge>
         </div>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Date</span>
             <span className="font-medium">{formatDate(event.startDate)}</span>
           </div>
           {event.endDate && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">End Date</span>
               <span className="font-medium">{formatDate(event.endDate)}</span>
             </div>
           )}
           {event.location && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Location</span>
               <span className="font-medium">{event.location}</span>
             </div>
           )}
           {matter && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Matter</span>
               <span className="font-medium">{matter.name}</span>
             </div>
@@ -257,38 +257,38 @@ export default function ClientDetailDashboard() {
           {matter.caseNumber && <Badge variant="secondary">#{matter.caseNumber}</Badge>}
         </div>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Practice Area</span>
             <span className="font-medium">{matter.practiceArea}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Type</span>
             <span className="font-medium">{matter.matterType}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Opened</span>
             <span className="font-medium">{formatDate(matter.openedDate)}</span>
           </div>
           {matter.closedDate && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Closed</span>
               <span className="font-medium">{formatDate(matter.closedDate)}</span>
             </div>
           )}
           {matter.courtName && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Court</span>
               <span className="font-medium">{matter.courtName}</span>
             </div>
           )}
           {matter.judgeAssigned && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Judge</span>
               <span className="font-medium">{matter.judgeAssigned}</span>
             </div>
           )}
           {matter.opposingCounsel && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Opposing Counsel</span>
               <span className="font-medium">{matter.opposingCounsel}</span>
             </div>
@@ -549,7 +549,7 @@ export default function ClientDetailDashboard() {
 
                       {matterEvents.length > 0 && (
                         <div className="mt-3 pt-3 border-t">
-                          <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
                             <span className="text-xs font-semibold text-muted-foreground">Upcoming Events ({matterEvents.length})</span>
                           </div>
                           <div className="flex items-center gap-2 overflow-x-auto pb-1">

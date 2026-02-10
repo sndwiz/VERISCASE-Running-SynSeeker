@@ -110,7 +110,7 @@ export default function TimeTrackingPage() {
 
   return (
     <div className="p-6 space-y-6" data-testid="time-tracking-page">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Time Tracking</h1>
           <p className="text-muted-foreground">Log and manage billable hours</p>
@@ -271,7 +271,7 @@ export default function TimeTrackingPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <CardTitle>Time Entries</CardTitle>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -317,7 +317,7 @@ export default function TimeTrackingPage() {
               {timeEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover-elevate"
+                  className="flex items-start justify-between gap-2 p-4 border rounded-lg hover-elevate"
                   data-testid={`time-entry-${entry.id}`}
                 >
                   <div className="space-y-1 flex-1">

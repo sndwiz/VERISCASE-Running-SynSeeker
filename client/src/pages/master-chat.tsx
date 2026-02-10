@@ -368,7 +368,7 @@ export default function MasterChatPage() {
             {approvedProposals.length > 0 && (
               <div className="border-b p-2 space-y-1 bg-green-50 dark:bg-green-950/20">
                 {approvedProposals.map(proposal => (
-                  <div key={proposal.id} className="flex items-center justify-between text-xs">
+                  <div key={proposal.id} className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground truncate flex-1">{proposal.summaryText}</span>
                     <Button variant="outline" size="sm" className="h-6 text-xs shrink-0 ml-2" onClick={() => executeMutation.mutate(proposal.id)} disabled={executeMutation.isPending} data-testid={`button-execute-${proposal.id}`}>
                       <Play className="h-3 w-3 mr-1" /> Execute

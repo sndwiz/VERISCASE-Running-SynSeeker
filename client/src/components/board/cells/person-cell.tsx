@@ -104,7 +104,7 @@ export function PersonCell({ value, onChange, onClick }: PersonCellProps) {
               {value.map((person) => (
                 <div
                   key={person.id}
-                  className="flex items-center justify-between px-1 py-1 rounded hover-elevate"
+                  className="flex items-center justify-between gap-2 px-1 py-1 rounded hover-elevate"
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">

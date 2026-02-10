@@ -350,7 +350,7 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
   return (
     <>
       <div className="fixed inset-y-0 right-0 w-96 bg-card border-l shadow-xl z-50 flex flex-col" data-testid="panel-automations">
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between gap-2 p-4 border-b">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
             <h2 className="font-semibold" data-testid="text-panel-title">Automations</h2>
@@ -424,7 +424,7 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                 return (
                   <button
                     key={category.id}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                       isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover-elevate'
                     }`}
                     onClick={() => setSelectedCategory(category.id)}

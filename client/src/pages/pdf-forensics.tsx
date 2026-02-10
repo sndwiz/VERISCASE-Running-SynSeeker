@@ -282,7 +282,7 @@ export default function PdfForensicsPage() {
                   return (
                     <div
                       key={i}
-                      className={`border-l-4 ${config.borderClass} rounded-md p-4 ${config.bgClass} cursor-pointer`}
+                      className={`rounded-md p-4 ${config.bgClass} cursor-pointer`}
                       onClick={() => toggleFinding(i)}
                       data-testid={`finding-${i}`}
                     >
@@ -379,7 +379,7 @@ export default function PdfForensicsPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {DEVIL_ADVOCATE.map((item, i) => (
-                  <div key={i} className="border-l-4 border-l-red-500/50 rounded-md p-4 bg-red-500/5">
+                  <div key={i} className="rounded-md p-4 bg-red-500/5">
                     <p className="font-medium text-sm mb-1">{i + 1}. {item.title}</p>
                     <p className="text-xs text-muted-foreground mb-1"><strong>Attack:</strong> {item.attack}</p>
                     <p className="text-xs text-green-500"><strong>Detection:</strong> {item.detection}</p>

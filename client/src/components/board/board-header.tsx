@@ -165,7 +165,7 @@ export function BoardHeader({
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 p-0">
               <div className="p-3 border-b">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <h4 className="font-medium text-sm">Sort</h4>
                   {sorts.length > 0 && (
                     <Button
@@ -271,7 +271,7 @@ export function BoardHeader({
                 {GROUP_BY_OPTIONS.map((option) => (
                   <button
                     key={option.value}
-                    className="flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-md hover-elevate"
+                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded-md hover-elevate"
                     onClick={() => onGroupByChange?.(option.value)}
                     data-testid={`group-by-${option.value}`}
                   >
@@ -302,7 +302,7 @@ export function BoardHeader({
                 {sortedColumns.map((column, index) => (
                   <div
                     key={column.id}
-                    className="flex items-center justify-between py-2 px-2 rounded-md hover-elevate group"
+                    className="flex items-center justify-between gap-2 py-2 px-2 rounded-md hover-elevate group"
                   >
                     <div className="flex items-center gap-1">
                       {onReorderColumn && (

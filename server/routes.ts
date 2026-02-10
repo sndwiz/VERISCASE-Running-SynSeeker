@@ -140,8 +140,13 @@ export async function registerRoutes(
   // Board chat + Master chat - any authenticated role
   app.use("/api/chats", isAuthenticated, requireAnyRole);
 
-  // Security dashboard - admin only
-  app.use("/api/security", isAuthenticated, requireAdmin);
+  // Security routes - admin only, except kill-switch status which any user can read
+  app.use("/api/security", isAuthenticated, (req, res, next) => {
+    if (req.path === "/kill-switch" && req.method === "GET") {
+      return requireAnyRole(req, res, next);
+    }
+    return requireAdmin(req, res, next);
+  });
 
   // Document Wash - member or above
   app.use("/api/wash", isAuthenticated, requireMemberOrAbove);

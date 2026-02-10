@@ -197,7 +197,7 @@ export default function VibeCodePage() {
                   }
                 }}
               />
-              <div className="flex items-center justify-between px-3 pb-3">
+              <div className="flex items-center justify-between gap-2 px-3 pb-3">
                 <p className="text-xs text-muted-foreground">
                   Press Ctrl+Enter to generate
                 </p>

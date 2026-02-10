@@ -182,7 +182,7 @@ export default function DocumentMakerPage() {
 
   return (
     <div className="flex flex-col h-full p-6 space-y-6 overflow-y-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
             <FilePlus2 className="h-5 w-5 text-primary-foreground" />
@@ -336,7 +336,7 @@ export default function DocumentMakerPage() {
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
+                        className="flex items-center justify-between gap-2 p-4 border rounded-lg hover-elevate"
                         data-testid={`row-document-${doc.id}`}
                       >
                         <div className="flex items-center gap-4">
@@ -414,7 +414,7 @@ export default function DocumentMakerPage() {
                     return (
                       <div
                         key={approval.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex items-center justify-between gap-2 p-4 border rounded-lg"
                         data-testid={`row-approval-${approval.id}`}
                       >
                         <div className="flex items-center gap-4">

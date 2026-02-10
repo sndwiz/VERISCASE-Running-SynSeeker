@@ -182,24 +182,24 @@ export default function ClientDashboardPage() {
           <Badge variant="outline">{cfg.label}</Badge>
         </div>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Date</span>
             <span className="font-medium">{formatDate(event.startDate)}</span>
           </div>
           {event.endDate && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">End Date</span>
               <span className="font-medium">{formatDate(event.endDate)}</span>
             </div>
           )}
           {event.location && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Location</span>
               <span className="font-medium">{event.location}</span>
             </div>
           )}
           {matter && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Matter</span>
               <span className="font-medium">{matter.name}</span>
             </div>
@@ -251,32 +251,32 @@ export default function ClientDashboardPage() {
           )}
         </div>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Practice Area</span>
             <span className="font-medium">{matter.practiceArea}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Type</span>
             <span className="font-medium">{matter.matterType}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Opened</span>
             <span className="font-medium">{formatDate(matter.openedDate)}</span>
           </div>
           {matter.courtName && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Court</span>
               <span className="font-medium">{matter.courtName}</span>
             </div>
           )}
           {matter.judgeAssigned && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Judge</span>
               <span className="font-medium">{matter.judgeAssigned}</span>
             </div>
           )}
           {matter.opposingCounsel && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">Opposing Counsel</span>
               <span className="font-medium">{matter.opposingCounsel}</span>
             </div>
@@ -347,19 +347,19 @@ export default function ClientDashboardPage() {
         )}
       </div>
       <div className="pt-2 border-t space-y-2 text-sm">
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2">
           <span className="text-muted-foreground">Total Matters</span>
           <span className="font-medium">{summary.totalMatters}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2">
           <span className="text-muted-foreground">Active</span>
           <span className="font-medium text-green-600 dark:text-green-400">{summary.activeMatters}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2">
           <span className="text-muted-foreground">Pending</span>
           <span className="font-medium text-amber-600 dark:text-amber-400">{summary.pendingMatters}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2">
           <span className="text-muted-foreground">Client Since</span>
           <span className="font-medium">{formatDate(summary.client.createdAt)}</span>
         </div>

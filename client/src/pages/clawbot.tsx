@@ -169,7 +169,7 @@ export default function ClawbotPage() {
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto p-6 max-w-6xl space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center shadow-lg">
               <Terminal className="h-7 w-7 text-white" />
@@ -216,7 +216,7 @@ export default function ClawbotPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted-foreground">Status</span>
                   {status?.connected ? (
                     <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -232,7 +232,7 @@ export default function ClawbotPage() {
                 </div>
                 
                 {status?.gatewayUrl && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">Gateway</span>
                     <span className="text-sm font-mono truncate max-w-[150px]">
                       {status.gatewayUrl}
@@ -241,14 +241,14 @@ export default function ClawbotPage() {
                 )}
 
                 {status?.version && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">Version</span>
                     <span className="text-sm">{status.version}</span>
                   </div>
                 )}
 
                 {status?.activeSessionCount !== undefined && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-muted-foreground">Active Sessions</span>
                     <span className="text-sm">{status.activeSessionCount}</span>
                   </div>
@@ -370,7 +370,7 @@ export default function ClawbotPage() {
           <div className="lg:col-span-2">
             <Card className="h-[600px] flex flex-col">
               <CardHeader className="pb-3 shrink-0">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Bot className="h-5 w-5" />
                     Clawbot Chat

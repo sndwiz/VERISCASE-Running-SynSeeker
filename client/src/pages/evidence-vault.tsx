@@ -564,7 +564,7 @@ export default function EvidenceVaultPage() {
                 
                 <TabsContent value="custody" className="flex-1 overflow-auto">
                   <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between gap-2 mb-4">
                       <h3 className="font-semibold">Chain of Custody</h3>
                       <Dialog open={showCustodyDialog} onOpenChange={setShowCustodyDialog}>
                         <DialogTrigger asChild>

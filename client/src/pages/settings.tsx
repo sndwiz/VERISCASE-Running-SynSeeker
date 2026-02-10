@@ -243,7 +243,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">Email Notifications</p>
                   <p className="text-sm text-muted-foreground">
@@ -259,7 +259,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">Push Notifications</p>
                   <p className="text-sm text-muted-foreground">
@@ -275,7 +275,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">Deadline Reminders</p>
                   <p className="text-sm text-muted-foreground">
@@ -291,7 +291,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="font-medium">Task Updates</p>
                   <p className="text-sm text-muted-foreground">
@@ -375,7 +375,7 @@ export default function SettingsPage() {
                     {users.map((user) => (
                       <div
                         key={user.id}
-                        className="flex items-center justify-between p-3 rounded-md border"
+                        className="flex items-center justify-between gap-2 p-3 rounded-md border"
                         data-testid={`team-member-${user.id}`}
                       >
                         <div className="flex items-center gap-3">
@@ -721,7 +721,7 @@ function SynSeekrSettings() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div>
               <Label className="text-sm font-medium">Enable SynSeekr Integration</Label>
               <p className="text-xs text-muted-foreground mt-0.5">

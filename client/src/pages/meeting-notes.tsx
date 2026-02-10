@@ -137,7 +137,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
             </li>
           </ul>
           <div className="flex items-center gap-3 flex-wrap">
-            <Button className="bg-white text-slate-900 hover:bg-white/90" data-testid="button-record-meeting">
+            <Button className="bg-white text-slate-900" data-testid="button-record-meeting">
               <Mic className="h-4 w-4 mr-2" />
               Record a Meeting
             </Button>

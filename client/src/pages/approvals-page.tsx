@@ -497,7 +497,7 @@ export default function ApprovalsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             variant="default"
-                            className="bg-green-600 hover:bg-green-700"
+                            className="bg-green-600"
                             onClick={() => handleDecision(selectedApproval.id, "approved")}
                             disabled={!commentText.trim() || commentMutation.isPending}
                             data-testid="button-approve"
@@ -512,7 +512,7 @@ export default function ApprovalsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             variant="default"
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-orange-600"
                             onClick={() => handleDecision(selectedApproval.id, "needs-revision")}
                             disabled={!commentText.trim() || commentMutation.isPending}
                             data-testid="button-request-revision"

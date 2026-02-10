@@ -59,7 +59,7 @@ export function ProgressCell({ value, onChange, onClick }: ProgressCellProps) {
             step={5}
             data-testid="progress-slider"
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between gap-2 text-xs text-muted-foreground">
             <span>0%</span>
             <span>100%</span>
           </div>

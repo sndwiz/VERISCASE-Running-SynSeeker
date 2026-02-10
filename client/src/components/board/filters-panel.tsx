@@ -252,7 +252,7 @@ export function FiltersPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
         <SheetHeader className="p-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-2">
               Filters
               {activeFilterCount > 0 && (
@@ -278,7 +278,7 @@ export function FiltersPanel({
         </SheetHeader>
 
         <div className="flex-1 overflow-auto p-4 space-y-4">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
+          <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-purple-500" />
               <span className="text-sm font-medium">Filter with AI</span>
@@ -452,7 +452,7 @@ export function FiltersPanel({
                 {savedViews.map((view) => (
                   <div
                     key={view.id}
-                    className="flex items-center justify-between p-2 rounded-md hover-elevate"
+                    className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate"
                   >
                     <button
                       className="text-sm text-left flex-1"
@@ -578,7 +578,7 @@ export function SortPanel({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="p-3 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h4 className="font-medium text-sm">Sort</h4>
             {sorts.length > 0 && (
               <Button

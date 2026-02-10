@@ -245,7 +245,7 @@ export default function SecurityDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm text-muted-foreground">Security Features</p>
                     <p className="text-2xl font-bold" data-testid="text-features-active">
@@ -262,7 +262,7 @@ export default function SecurityDashboardPage() {
 
             <Card>
               <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm text-muted-foreground">Audit Events</p>
                     <p className="text-2xl font-bold" data-testid="text-audit-count">
@@ -279,7 +279,7 @@ export default function SecurityDashboardPage() {
 
             <Card>
               <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm text-muted-foreground">Security Alerts</p>
                     <p className="text-2xl font-bold" data-testid="text-alerts-count">
@@ -299,7 +299,7 @@ export default function SecurityDashboardPage() {
 
             <Card>
               <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm text-muted-foreground">Your Session</p>
                     <p className="text-sm font-mono font-medium" data-testid="text-session-ip">
@@ -470,7 +470,7 @@ export default function SecurityDashboardPage() {
                       </div>
 
                       {(auditData?.total ?? 0) > 20 && (
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                        <div className="flex items-center justify-between gap-2 mt-4 pt-4 border-t">
                           <p className="text-sm text-muted-foreground">
                             Showing {auditPage * 20 + 1}-{Math.min((auditPage + 1) * 20, auditData?.total ?? 0)} of {auditData?.total ?? 0}
                           </p>

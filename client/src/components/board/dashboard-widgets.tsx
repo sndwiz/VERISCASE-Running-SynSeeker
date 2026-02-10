@@ -45,7 +45,7 @@ function Widget({ title, children, onRefresh, onExpand, onRemove, className = ""
   return (
     <Card className={`relative group ${className}`}>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-move" />
             {title}
@@ -100,7 +100,7 @@ export function NumberWidget({ title, value, change, changeLabel, icon, color = 
 
   return (
     <Widget title={title}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <p className={`text-3xl font-bold ${color}`}>{value}</p>
           {change !== undefined && (
@@ -227,7 +227,7 @@ export function PriorityChartWidget({ tasks }: PriorityChartProps) {
 
           return (
             <div key={priority} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between gap-2 text-xs">
                 <span>{config.label}</span>
                 <span className="font-medium">{count}</span>
               </div>
@@ -258,7 +258,7 @@ export function ProgressWidget({ title, current, total, label }: ProgressWidgetP
   return (
     <Widget title={title}>
       <div className="space-y-3">
-        <div className="flex items-end justify-between">
+        <div className="flex items-end justify-between gap-2">
           <div>
             <span className="text-3xl font-bold">{percentage}%</span>
             <p className="text-xs text-muted-foreground mt-1">
@@ -369,7 +369,7 @@ export function TeamWorkloadWidget({ tasks }: TeamWorkloadProps) {
                 {assignee.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-sm font-medium truncate">{assignee.name}</span>
                   <span className="text-xs text-muted-foreground">{assignee.count} tasks</span>
                 </div>
