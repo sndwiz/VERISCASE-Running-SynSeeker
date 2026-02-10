@@ -75,7 +75,13 @@ function fileHash(filePath: string): string {
   return hash.digest("hex");
 }
 
-function runCommand(cmd: string, args: string[], timeout = 120000): Promise<{ stdout: string; stderr: string }> {
+const ALLOWED_COMMANDS = ["ffprobe", "ffmpeg"] as const;
+type AllowedCommand = (typeof ALLOWED_COMMANDS)[number];
+
+function runCommand(cmd: AllowedCommand, args: string[], timeout = 120000): Promise<{ stdout: string; stderr: string }> {
+  if (!ALLOWED_COMMANDS.includes(cmd)) {
+    throw new Error(`Command not allowed: ${cmd}`);
+  }
   return new Promise((resolve, reject) => {
     const proc = spawn(cmd, args, { timeout });
     let stdout = "";
