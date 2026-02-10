@@ -594,6 +594,12 @@ class AutomationEngine {
       groupId: targetGroupId,
       status: config.status || "not-started",
       priority: config.priority || "medium",
+      progress: 0,
+      assignees: [],
+      notes: "",
+      tags: [],
+      customFields: {},
+      subtasks: [],
     });
     return { message: `Created task "${task.title}" [${task.id}] in board ${targetBoardId}` };
   }
@@ -756,6 +762,8 @@ class AutomationEngine {
       description: `Auto-routed: ${event.metadata?.docType || "unknown type"} - ${event.metadata?.docCategory || "uncategorized"}`,
       position: { x: Math.random() * 800, y: Math.random() * 600 },
       color: "#f59e0b",
+      isInferred: true,
+      confidenceScore: 0.6,
     });
     return { message: `Created detective node "${node.title}" [${node.id}]` };
   }
@@ -773,7 +781,12 @@ class AutomationEngine {
       groupId: groups[0].id,
       status: "not-started",
       priority: config.priority || "high",
-      assignee: reviewerName,
+      progress: 0,
+      assignees: [{ id: reviewerName.toLowerCase().replace(/\s+/g, "-"), name: reviewerName, color: "#6366f1" }],
+      notes: "",
+      tags: ["review"],
+      customFields: {},
+      subtasks: [],
     });
     return { message: `Review task created for ${reviewerName}: "${task.title}" [${task.id}]` };
   }

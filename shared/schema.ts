@@ -570,7 +570,9 @@ export type AutomationActionType =
   | "synseekr_classify_document"
   | "synseekr_run_agent"
   | "synseekr_search_documents"
-  | "synseekr_timeline_events";
+  | "synseekr_timeline_events"
+  | "route_to_detective"
+  | "assign_reviewer";
 
 export interface AutomationCondition {
   field: string;
@@ -774,9 +776,12 @@ export interface DetectiveConnection {
   sourceNodeId: string;
   targetNodeId: string;
   label: string;
-  connectionType: "related" | "contradicts" | "supports" | "leads-to" | "timeline";
-  strength: number; // 1-5
+  connectionType: "related" | "contradicts" | "supports" | "leads-to" | "timeline" | "corroborates" | "communicates" | "references";
+  strength: number;
   notes: string;
+  isInferred?: boolean;
+  confidenceScore?: number;
+  sourceCitation?: string;
   createdAt: string;
 }
 
@@ -1088,7 +1093,16 @@ export const insertAutomationRuleSchema = z.object({
     "ai_fill_column", "ai_summarize", "ai_categorize", "ai_detect_language", "ai_translate",
     "ai_sentiment", "ai_improve", "ai_extract", "ai_write",
     // Integration Actions
-    "send_slack", "send_sms", "send_email", "custom"
+    "send_slack", "send_sms", "send_email", "custom",
+    // Legal/Approval Actions
+    "request_approval", "create_approval_record", "notify_approver", "escalate_review",
+    "generate_confirmation", "log_compliance", "adjust_date", "connect_boards",
+    // SynSeekr Actions
+    "synseekr_analyze_document", "synseekr_extract_entities", "synseekr_rag_query",
+    "synseekr_run_investigation", "synseekr_detect_contradictions", "synseekr_classify_document",
+    "synseekr_run_agent", "synseekr_search_documents", "synseekr_timeline_events",
+    // Detective/Review Actions
+    "route_to_detective", "assign_reviewer"
   ]),
   actionConfig: z.record(z.any()),
 });
@@ -1098,7 +1112,7 @@ export const updateAutomationRuleSchema = insertAutomationRuleSchema.partial().o
 // Detective Board schemas
 export const insertDetectiveNodeSchema = z.object({
   matterId: z.string(),
-  type: z.enum(["evidence", "person", "location", "event", "theory", "note"]),
+  type: z.enum(["evidence", "person", "organization", "location", "event", "theory", "note", "hypothesis", "legal_element", "timeline_marker"]),
   title: z.string(),
   description: z.string().optional().default(""),
   linkedEvidenceId: z.string().optional(),
@@ -1106,6 +1120,11 @@ export const insertDetectiveNodeSchema = z.object({
   position: z.object({ x: z.number(), y: z.number() }),
   color: z.string().optional().default("#6366f1"),
   icon: z.string().optional(),
+  confidenceScore: z.number().min(0).max(1).optional(),
+  isInferred: z.boolean().optional().default(false),
+  reliabilityLevel: z.enum(["strong", "moderate", "weak"]).optional(),
+  hypothesisType: z.enum(["null", "alternative"]).optional(),
+  legalElement: z.string().optional(),
 });
 
 export const updateDetectiveNodeSchema = z.object({
@@ -1114,6 +1133,11 @@ export const updateDetectiveNodeSchema = z.object({
   position: z.object({ x: z.number(), y: z.number() }).optional(),
   color: z.string().optional(),
   icon: z.string().optional(),
+  confidenceScore: z.number().min(0).max(1).optional(),
+  isInferred: z.boolean().optional(),
+  reliabilityLevel: z.enum(["strong", "moderate", "weak"]).optional(),
+  hypothesisType: z.enum(["null", "alternative"]).optional(),
+  legalElement: z.string().optional(),
 });
 
 export const insertDetectiveConnectionSchema = z.object({
@@ -1121,16 +1145,22 @@ export const insertDetectiveConnectionSchema = z.object({
   sourceNodeId: z.string(),
   targetNodeId: z.string(),
   label: z.string().optional().default(""),
-  connectionType: z.enum(["related", "contradicts", "supports", "leads-to", "timeline"]),
+  connectionType: z.enum(["related", "contradicts", "supports", "leads-to", "timeline", "corroborates", "communicates", "references"]),
   strength: z.number().min(1).max(5).optional().default(3),
   notes: z.string().optional().default(""),
+  isInferred: z.boolean().optional().default(false),
+  confidenceScore: z.number().min(0).max(1).optional(),
+  sourceCitation: z.string().optional(),
 });
 
 export const updateDetectiveConnectionSchema = z.object({
   label: z.string().optional(),
-  connectionType: z.enum(["related", "contradicts", "supports", "leads-to", "timeline"]).optional(),
+  connectionType: z.enum(["related", "contradicts", "supports", "leads-to", "timeline", "corroborates", "communicates", "references"]).optional(),
   strength: z.number().min(1).max(5).optional(),
   notes: z.string().optional(),
+  isInferred: z.boolean().optional(),
+  confidenceScore: z.number().min(0).max(1).optional(),
+  sourceCitation: z.string().optional(),
 });
 
 // ============ FILING STRUCTURE ============

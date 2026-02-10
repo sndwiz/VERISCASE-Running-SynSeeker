@@ -36,6 +36,8 @@ import {
   Scale,
   FlaskConical,
   Milestone,
+  RefreshCw,
+  Shield,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -901,6 +903,55 @@ export default function DetectiveBoardPage() {
     }
   });
 
+  const syncMatterDataMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/matters/${selectedMatterId}/detective/sync`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatterId, "detective", "nodes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatterId, "detective", "connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatterId, "detective", "unaccounted-time"] });
+      toast({
+        title: "Matter data synced",
+        description: data.message || `Synced ${data.synced} items with ${data.autoConnections} auto-connections`,
+      });
+    },
+    onError: () => {
+      toast({ title: "Sync failed", description: "Failed to sync matter data to detective board.", variant: "destructive" });
+    }
+  });
+
+  const { data: unaccountedTime } = useQuery<{
+    persons: Array<{
+      person: { id: string; title: string };
+      accountedEvents: number;
+      totalEvents: number;
+      coveragePercent: number;
+      gaps: Array<{
+        from: { event: string; date: string; location: string | null };
+        to: { event: string; date: string; location: string | null };
+        gapHours: number;
+        gapDays: number;
+        severity: "critical" | "high" | "medium" | "low";
+        locationChange: boolean;
+        investigationLead: string;
+      }>;
+      opportunityScore: number;
+      unlinkedEventCount: number;
+    }>;
+    summary: {
+      totalPersons: number;
+      totalEvents: number;
+      personsWithGaps: number;
+      totalGaps: number;
+      highestOpportunity: any;
+    };
+  }>({
+    queryKey: ["/api/matters", selectedMatterId, "detective", "unaccounted-time"],
+    enabled: !!selectedMatterId && nodes.length > 0,
+  });
+
   const handleNodeMouseDown = useCallback((e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     e.preventDefault();
@@ -1193,6 +1244,124 @@ export default function DetectiveBoardPage() {
             ))}
           </div>
         </div>
+
+        {/* Sync Matter Data */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+            Cross-Board Sync
+          </div>
+          <button
+            data-testid="button-sync-matter-data"
+            onClick={() => syncMatterDataMutation.mutate()}
+            disabled={syncMatterDataMutation.isPending}
+            style={{
+              width: "100%",
+              background: "linear-gradient(135deg, rgba(52,152,219,0.3), rgba(46,204,113,0.3))",
+              border: "1px solid rgba(52,152,219,0.4)",
+              borderRadius: 8,
+              padding: "10px 14px",
+              color: panelText,
+              cursor: syncMatterDataMutation.isPending ? "wait" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "all 0.2s",
+              opacity: syncMatterDataMutation.isPending ? 0.6 : 1,
+            }}
+          >
+            {syncMatterDataMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {syncMatterDataMutation.isPending ? "Syncing..." : "Sync Matter Data"}
+          </button>
+          <div style={{ fontSize: 10, color: panelMuted, marginTop: 6 }}>
+            Pull contacts, evidence, and timeline events onto the board
+          </div>
+        </div>
+
+        {/* Unaccounted Time Analysis */}
+        {unaccountedTime && unaccountedTime.persons.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
+              Unaccounted Time
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {unaccountedTime.persons.slice(0, 5).map(person => {
+                const scoreColor = person.opportunityScore > 0.6 ? "#e74c3c" : person.opportunityScore > 0.3 ? "#f39c12" : "#27ae60";
+                return (
+                  <div
+                    key={person.person.id}
+                    data-testid={`unaccounted-person-${person.person.id}`}
+                    onClick={() => {
+                      const node = nodes.find(n => n.id === person.person.id);
+                      if (node) {
+                        setSelectedNode(node);
+                        setSidebarTab("details");
+                      }
+                    }}
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: `1px solid ${scoreColor}33`,
+                      borderRadius: 8,
+                      padding: 10,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600 }}>{person.person.title}</div>
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: scoreColor,
+                        background: `${scoreColor}22`,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                      }}>
+                        {Math.round(person.opportunityScore * 100)}%
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, fontSize: 10, color: panelMuted }}>
+                      <span>{person.coveragePercent}% covered</span>
+                      <span>{person.gaps.length} gaps</span>
+                    </div>
+                    {person.gaps.slice(0, 2).map((gap, gi) => (
+                      <div key={gi} style={{
+                        marginTop: 6,
+                        padding: "4px 8px",
+                        fontSize: 10,
+                        background: gap.severity === "critical" ? "rgba(231,76,60,0.15)" : gap.severity === "high" ? "rgba(243,156,18,0.15)" : "rgba(255,255,255,0.03)",
+                        borderRadius: 4,
+                        color: gap.severity === "critical" ? "#e74c3c" : gap.severity === "high" ? "#f39c12" : panelMuted,
+                      }}>
+                        {gap.gapDays >= 1 ? `${gap.gapDays}d` : `${gap.gapHours}h`} gap
+                        {gap.locationChange ? " + location change" : ""}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+            {unaccountedTime.summary.totalGaps > 0 && (
+              <div style={{
+                marginTop: 10,
+                padding: 10,
+                background: "rgba(231,76,60,0.1)",
+                border: "1px solid rgba(231,76,60,0.2)",
+                borderRadius: 8,
+                fontSize: 10,
+                color: "#e74c3c",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}>
+                <Shield size={12} />
+                {unaccountedTime.summary.totalGaps} time gaps across {unaccountedTime.summary.personsWithGaps} persons
+              </div>
+            )}
+          </div>
+        )}
 
         {/* AI Status */}
         <div style={{
