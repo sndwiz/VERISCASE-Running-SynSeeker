@@ -77,10 +77,11 @@ router.post("/jurisdictions", async (req: Request, res: Response) => {
 router.patch("/jurisdictions/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
     const allowed = ["name", "state", "courtType", "ruleSet", "discoveryResponseDays", "motionOppositionDays", "motionReplyDays", "initialDisclosureDays", "answerDays", "mailServiceExtraDays", "electronicServiceExtraDays", "weekendHolidayAdjust", "holidays", "customRules", "isDefault"] as const;
-    const updates: Record<string, any> = { updatedAt: new Date() };
-    for (const key of allowed) {
-      if (Object.hasOwn(req.body, key)) updates[key] = req.body[key];
-    }
+    const body = req.body as Record<string, unknown>;
+    const filtered = Object.fromEntries(
+      Object.entries(body).filter(([k]) => (allowed as readonly string[]).includes(k))
+    );
+    const updates: Record<string, any> = { ...filtered, updatedAt: new Date() };
     const [updated] = await db.update(jurisdictionProfiles)
       .set(updates)
       .where(eq(jurisdictionProfiles.id, req.params.id))
