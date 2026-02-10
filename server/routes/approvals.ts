@@ -1,7 +1,12 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { insertApprovalRequestSchema, updateApprovalRequestSchema, insertApprovalCommentSchema } from "@shared/schema";
+import type { ApprovalInitial } from "@shared/schema";
 import { z } from "zod";
+
+const initialSchema = z.object({
+  field: z.string().min(1),
+});
 
 export function registerApprovalRoutes(app: Express): void {
   app.get("/api/approvals", async (req, res) => {
@@ -88,6 +93,30 @@ export function registerApprovalRoutes(app: Express): void {
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to add comment" });
+    }
+  });
+
+  app.post("/api/approvals/:id/initials", async (req, res) => {
+    try {
+      const dbUser = req.dbUser;
+      const { field } = initialSchema.parse(req.body);
+      const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "User";
+      const initial: ApprovalInitial = {
+        userId: dbUser?.id || "unknown",
+        userName,
+        field,
+        at: new Date().toISOString(),
+      };
+      const updated = await storage.addApprovalInitial(req.params.id, initial);
+      if (!updated) {
+        return res.status(404).json({ error: "Approval request not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to add initial" });
     }
   });
 }

@@ -678,7 +678,16 @@ export type AIActionConfig =
 
 // ============ APPROVAL & AUDIT TRAIL ============
 
-export type ApprovalStatus = "pending" | "vetting" | "approved" | "confirmed" | "rejected";
+export type ApprovalStatus = "pending" | "vetting" | "approved" | "confirmed" | "rejected" | "needs-revision";
+
+export type ApprovalType = "ocr_scan" | "case_update" | "document_draft" | "email_incoming" | "template_generated" | "general";
+
+export interface ApprovalInitial {
+  userId: string;
+  userName: string;
+  field: string;
+  at: string;
+}
 
 export interface ApprovalRecord {
   id: string;
@@ -1559,9 +1568,13 @@ export interface ApprovalRequest {
   requestedBy: string;
   requestedByName: string;
   assignedTo: string[];
-  status: ApprovalStatus; // Uses ApprovalStatus from above
+  status: ApprovalStatus;
   dueDate?: string;
   priority: Priority;
+  type: ApprovalType;
+  sourceData: Record<string, any>;
+  initials: ApprovalInitial[];
+  revisionNotes: string;
   comments: ApprovalComment[];
   createdAt: string;
   updatedAt: string;
@@ -1572,7 +1585,7 @@ export interface ApprovalComment {
   userId: string;
   userName: string;
   content: string;
-  decision?: "approved" | "rejected" | "vetting";
+  decision?: "approved" | "rejected" | "vetting" | "needs-revision";
   createdAt: string;
 }
 
@@ -1586,13 +1599,16 @@ export const insertApprovalRequestSchema = z.object({
   assignedTo: z.array(z.string()).min(1),
   dueDate: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional().default("medium"),
+  type: z.enum(["ocr_scan", "case_update", "document_draft", "email_incoming", "template_generated", "general"]).optional().default("general"),
+  sourceData: z.record(z.any()).optional().default({}),
 });
 
 export const updateApprovalRequestSchema = z.object({
-  status: z.enum(["pending", "vetting", "approved", "confirmed", "rejected"]).optional(),
+  status: z.enum(["pending", "vetting", "approved", "confirmed", "rejected", "needs-revision"]).optional(),
   assignedTo: z.array(z.string()).optional(),
   dueDate: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  revisionNotes: z.string().optional(),
 });
 
 export const insertApprovalCommentSchema = z.object({
@@ -1600,7 +1616,7 @@ export const insertApprovalCommentSchema = z.object({
   userId: z.string(),
   userName: z.string(),
   content: z.string().min(1),
-  decision: z.enum(["approved", "rejected", "vetting"]).optional(),
+  decision: z.enum(["approved", "rejected", "vetting", "needs-revision"]).optional(),
 });
 
 // ============ BILLING - EXPENSES ============
