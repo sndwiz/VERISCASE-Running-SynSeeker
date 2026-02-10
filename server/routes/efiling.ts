@@ -556,6 +556,7 @@ router.patch("/actions/:id", async (req: Request<{ id: string }>, res: Response)
     const updates: Record<string, any> = {};
     const body = req.body as Record<string, unknown>;
     for (const field of Object.keys(allowedFields)) {
+      if (field === '__proto__' || field === 'constructor' || field === 'prototype') continue;
       if (Object.prototype.hasOwnProperty.call(body, field)) {
         updates[field] = body[field as keyof typeof body];
       }
