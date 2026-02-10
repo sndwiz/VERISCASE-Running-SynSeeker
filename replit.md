@@ -8,10 +8,13 @@ VERICASE is a comprehensive legal practice management system designed to streaml
 VERICASE turns messy case materials into structured, defensible insight without hallucinating facts. Every document is treated as evidence with (1) content, (2) context, (3) reliability, and (4) relationship to other evidence. The system reveals patterns, contradictions, and narrative leverage while preserving chain-of-custody thinking and legal relevance.
 
 **Doctrine Architecture:**
-- `server/config/core-doctrine.ts` — Centralized doctrine module with shared system prompts referenced by all AI touchpoints
+- `server/config/core-doctrine.ts` — Centralized doctrine module with shared system prompts referenced by all AI touchpoints. Exports: DOCTRINE_SYSTEM_PREAMBLE, DOCTRINE_OCR_PROMPT, DOCTRINE_ANALYSIS_PREAMBLE, DOCTRINE_INSIGHT_RULES, DOCTRINE_HYPOTHESIS_PROMPT, DOCTRINE_DELIVERABLES, DOCTRINE_DETECTIVE_BOARD, DOCTRINE_LEGAL_RESEARCH_PLAN, buildLegalResearchStepPrompt(), DOCTRINE_LEGAL_RESEARCH_COMPILE.
 - `server/config/DOCTRINE.md` — Full doctrine reference document
 - All AI prompts (OCR, insights analysis, VeriBot, legal research) import and use doctrine preambles
 - Doctrine principles: Evidence Over Vibes, Competing Hypotheses (H0/H1), Convergence Analysis, Reliability Scoring (Strong/Moderate/Weak), Legal Element Mapping, Observed vs Inferred labeling, Source Independence checking
+- **Type Safety:** `server/types/express.d.ts` augments Express.Request with `dbUser` (from users table) and `Express.User` with Replit Auth claims. Eliminates `(req as any).user` patterns.
+- **Structured Logging:** `server/utils/logger.ts` provides `logger.info/warn/error/debug` used consistently across all server routes instead of `console.*`.
+- **DoctrineBadges Component:** `client/src/pages/detective-board.tsx` exports reusable ConfidenceBadge, ReliabilityBadge, InferredBadge, and DoctrineBadges components for doctrine-aligned visual indicators.
 
 ## User Preferences
 - Dark/light theme toggle in header
