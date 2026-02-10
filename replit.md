@@ -43,6 +43,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Cross-Entity Data Linkage System:** Backend linking all entities (clients, matters, contacts, billing, time entries, boards, evidence).
 - **Workspace Architecture:** Supports multiple workspaces with independent boards and data.
 - **E-Filing Automation Brain:** A comprehensive legal document automation system with an AI-powered document classifier, rules-based deadline engine, and sequencing engine.
+- **Legal Video Pipeline:** Converts iPhone screen recordings of legal documents into structured, searchable text using local SynSeekr AI models exclusively. Features a 7-stage async pipeline (validate, extract frames via ffmpeg, deduplicate via perceptual hashing, OCR via SynSeekr vision model, stitch overlapping text via LLM, entity extraction via regex + LLM, output generation). Includes SSE-based real-time progress streaming, drag-drop upload UI, tabbed results view (document text, entities, stage details), board linking for integration with the board system, and user-scoped access control.
 
 **System Design Choices:**
 - **Authentication:** Multi-user authentication via Replit Auth (Google, GitHub, Apple, email).
