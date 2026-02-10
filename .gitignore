@@ -1,7 +1,48 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+server/public/
+
+# Environment variables - CRITICAL: never commit API keys
+.env
+.env.*
+!.env.example
+
+# OS files
 .DS_Store
-server/public
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Vite
 vite.config.ts.*
-*.tar.gzattached_assets/Board-Flow_for_cursor_(2)_1769512233224.zip
-attached_assets/Board-Flow_for_cursor_(2)_1769512233224.zip
+
+# Archives
+*.tar.gz
+*.zip
+
+# Attached assets (specs, screenshots, planning docs)
+# These should live in a wiki or docs folder, not version control
+attached_assets/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime
+*.pid
+*.seed
+
+# Database
+*.sql.bak
+
+# Replit
+.replit
+replit.md
+.config/

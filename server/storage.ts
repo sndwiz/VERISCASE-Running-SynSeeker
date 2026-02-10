@@ -1,2 +1,1 @@
-import { DbStorage } from "./dbStorage";
-export const storage = new DbStorage();
+export { storage } from "./storage/index";
