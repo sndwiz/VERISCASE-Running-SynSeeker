@@ -1,9 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
+import { BoardTableHeader } from "@/components/board/board-table-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
@@ -42,6 +49,25 @@ export default function BoardPage() {
   const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
   const [columnCenterOpen, setColumnCenterOpen] = useState(false);
   const [activeView, setActiveView] = useState<BoardViewType>("table");
+  const [density, setDensity] = useState<"comfort" | "compact" | "ultra-compact">(() => {
+    const saved = localStorage.getItem("board-density");
+    return (saved as "comfort" | "compact" | "ultra-compact") || "comfort";
+  });
+
+  const handleDensityChange = useCallback((d: "comfort" | "compact" | "ultra-compact") => {
+    setDensity(d);
+    localStorage.setItem("board-density", d);
+  }, []);
+
+  const scrollGrid = useCallback((direction: "left" | "right") => {
+    const el = document.getElementById("boardGridScroll");
+    if (el) el.scrollBy({ left: direction === "right" ? 480 : -480, behavior: "smooth" });
+  }, []);
+
+  const jumpToColumn = useCallback((colId: string) => {
+    const el = document.querySelector(`[data-col-id="${colId}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, []);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards/detail", boardId],
@@ -476,59 +502,119 @@ export default function BoardPage() {
       <ViewTabs activeView={activeView} onViewChange={setActiveView} />
 
       {activeView === "table" && (
-        <div className="flex-1 overflow-auto p-4">
-          {sortedGroups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <div className="text-muted-foreground mb-4">
-                <p className="text-lg font-medium">No groups yet</p>
-                <p className="text-sm">Create a group to start adding tasks</p>
-              </div>
-              <Button
-                variant="ghost"
-                className="text-primary"
-                onClick={() => setCreateGroupOpen(true)}
-                data-testid="button-create-first-group"
-              >
-                Create your first group
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between gap-2 px-4 py-1.5 border-b bg-muted/30">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => scrollGrid("left")} data-testid="button-scroll-left" title="Scroll left">
+                <ChevronLeft className="h-4 w-4" />
               </Button>
+              <Button variant="ghost" size="icon" onClick={() => scrollGrid("right")} data-testid="button-scroll-right" title="Scroll right">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs" data-testid="button-jump-column">
+                    <ChevronsUpDown className="h-3.5 w-3.5" />
+                    Jump to column
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-h-64 overflow-auto">
+                  {board.columns.filter(c => c.visible).sort((a, b) => a.order - b.order).map(col => (
+                    <DropdownMenuItem key={col.id} onClick={() => jumpToColumn(col.id)} data-testid={`jump-col-${col.id}`}>
+                      {col.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          ) : (
-            sortedGroups.map((group) => (
-              <TaskGroup
-                key={group.id}
-                group={group}
-                tasks={sortedTasks.filter((t) => t.groupId === group.id)}
-                columns={board.columns.filter((c) => c.visible)}
-                statusLabels={statusLabels}
-                onToggleCollapse={() =>
-                  updateGroupMutation.mutate({
-                    groupId: group.id,
-                    updates: { collapsed: !group.collapsed },
-                  })
-                }
-                onAddTask={() => handleAddTask(group.id)}
-                onEditGroup={() => {}}
-                onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
-                onTaskClick={handleTaskClick}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
-                onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
-                selectedTaskIds={selectedTaskIds}
-                onSelectTask={handleSelectTask}
-                onColumnSort={handleColumnSort}
-                onColumnFilter={handleColumnFilter}
-                onColumnDuplicate={handleColumnDuplicate}
-                onColumnRename={handleColumnRename}
-                onColumnDelete={handleRemoveColumn}
-                onColumnHide={handleColumnHide}
-                onColumnChangeType={handleColumnChangeType}
-                onColumnUpdateDescription={handleColumnUpdateDescription}
-                currentSort={currentSort}
-                onOpenColumnCenter={() => setColumnCenterOpen(true)}
-                canDeleteTasks={canDeleteTasks}
-              />
-            ))
-          )}
+            <div className="flex items-center gap-1">
+              {(["comfort", "compact", "ultra-compact"] as const).map(d => (
+                <Button
+                  key={d}
+                  variant={density === d ? "secondary" : "ghost"}
+                  size="sm"
+                  className="text-xs capitalize"
+                  onClick={() => handleDensityChange(d)}
+                  data-testid={`button-density-${d}`}
+                >
+                  {d === "ultra-compact" ? "Ultra" : d.charAt(0).toUpperCase() + d.slice(1)}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {sortedGroups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center p-4">
+                <div className="text-muted-foreground mb-4">
+                  <p className="text-lg font-medium">No groups yet</p>
+                  <p className="text-sm">Create a group to start adding tasks</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="text-primary"
+                  onClick={() => setCreateGroupOpen(true)}
+                  data-testid="button-create-first-group"
+                >
+                  Create your first group
+                </Button>
+              </div>
+            ) : (
+              <div id="boardGridScroll" className={`overflow-x-auto ${density === "compact" ? "board-compact" : density === "ultra-compact" ? "board-ultra-compact" : "board-comfort"}`}>
+                <div className="min-w-max">
+                  <BoardTableHeader
+                    columns={board.columns}
+                    onColumnSort={handleColumnSort}
+                    onColumnFilter={handleColumnFilter}
+                    onColumnDuplicate={handleColumnDuplicate}
+                    onColumnRename={handleColumnRename}
+                    onColumnDelete={handleRemoveColumn}
+                    onColumnHide={handleColumnHide}
+                    onColumnChangeType={handleColumnChangeType}
+                    onColumnUpdateDescription={handleColumnUpdateDescription}
+                    currentSort={currentSort}
+                    onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                    allSelected={selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
+                    onSelectAll={(selected) => {
+                      if (selected) {
+                        setSelectedTaskIds(new Set(tasks.map(t => t.id)));
+                      } else {
+                        setSelectedTaskIds(new Set());
+                      }
+                    }}
+                  />
+                  <div className="p-2">
+                    {sortedGroups.map((group) => (
+                      <TaskGroup
+                        key={group.id}
+                        group={group}
+                        tasks={sortedTasks.filter((t) => t.groupId === group.id)}
+                        columns={board.columns.filter((c) => c.visible)}
+                        statusLabels={statusLabels}
+                        onToggleCollapse={() =>
+                          updateGroupMutation.mutate({
+                            groupId: group.id,
+                            updates: { collapsed: !group.collapsed },
+                          })
+                        }
+                        onAddTask={() => handleAddTask(group.id)}
+                        onEditGroup={() => {}}
+                        onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
+                        onTaskClick={handleTaskClick}
+                        onTaskUpdate={handleTaskUpdate}
+                        onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+                        onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
+                        selectedTaskIds={selectedTaskIds}
+                        onSelectTask={handleSelectTask}
+                        currentSort={currentSort}
+                        onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                        canDeleteTasks={canDeleteTasks}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

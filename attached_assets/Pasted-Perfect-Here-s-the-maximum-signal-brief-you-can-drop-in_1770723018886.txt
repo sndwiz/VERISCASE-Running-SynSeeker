@@ -1,0 +1,273 @@
+Perfect. Here’s the “maximum signal” brief you can drop into Replit/your dev channel so the team can implement best-practice Monday-style board UX without guessing. I’m grounding this in your actual code layout (from the ZIP):
+	•	client/src/pages/board.tsx
+	•	client/src/components/board/task-group.tsx
+	•	client/src/components/board/task-row.tsx
+	•	client/src/components/board/column-header.tsx
+	•	client/src/components/board/board-header.tsx
+	•	client/src/components/app-sidebar.tsx
+	•	DB shape supports it: boards already have matterId + clientId (shared/models/tables.ts).
+
+⸻
+
+0) Core principle: one scroll, one header, one frozen lane
+
+Right now each group has its own horizontal scroller (TaskGroup has overflow-x-auto). That’s the #1 reason boards feel “fussy” instead of “pro.”
+
+Best practice:
+	•	One horizontal scroll container for the entire grid (not per group)
+	•	One global column header row (sticky)
+	•	Frozen left lane (checkbox + task title)
+
+This unlocks:
+	•	smooth side scroll
+	•	consistent gridlines
+	•	sticky header that actually works
+	•	jump-to-column that isn’t janky
+
+⸻
+
+1) Table view architecture refactor (minimal, high impact)
+
+✅ Change in client/src/pages/board.tsx
+
+Replace the current table wrapper:
+
+{activeView === "table" && (
+  <div className="flex-1 overflow-auto p-4">
+    ...
+  </div>
+)}
+
+With a 2-layer scroll layout:
+	•	Vertical scroll on the page area
+	•	Horizontal scroll on the grid container
+	•	Grid gets min-w-max so it can exceed viewport width naturally
+
+Conceptually (not exact code you must use, but this structure):
+
+<div className="flex-1 overflow-hidden">
+  <div className="h-full overflow-y-auto p-4">
+    <div id="boardGridScroll" className="overflow-x-auto rounded-md border bg-background">
+      <div className="min-w-max">
+        {/* Global sticky column header row goes here */}
+        {/* Then TaskGroup blocks (without their own overflow-x) */}
+      </div>
+    </div>
+  </div>
+</div>
+
+✅ Change in client/src/components/board/task-group.tsx
+
+Remove the per-group horizontal scrolling:
+
+<div className="overflow-x-auto">
+  <div className="min-w-max">
+
+…and just render the group’s header + rows directly.
+
+Result: one scrollbar, not 12.
+
+⸻
+
+2) Global sticky column header row (table view)
+
+Currently the header row is inside each TaskGroup, meaning:
+	•	it repeats
+	•	it can’t be sticky correctly across groups
+	•	gridlines don’t line up globally
+
+Best practice
+
+Add a single “TableHeaderRow” component rendered once above the groups:
+	•	checkbox spacer column
+	•	“Task” column
+	•	visible columns mapped
+	•	optional “+” column center button
+
+Where to implement:
+	•	Create: client/src/components/board/table-header-row.tsx
+	•	Render it in board.tsx just inside the min-w-max container
+	•	Delete/disable the existing header row inside TaskGroup
+
+Then make it sticky:
+	•	position: sticky
+	•	top: <height of BoardHeader + ViewTabs>
+	•	z-index: 50
+	•	bg-background/90 + backdrop-blur (so it feels modern)
+
+⸻
+
+3) Frozen first columns (checkbox + task title)
+
+This is the “I can actually use this all day” feature.
+
+✅ Change in client/src/components/board/task-row.tsx
+
+Make the first two cells sticky:
+	•	checkbox cell: sticky left-0 z-30 bg-background
+	•	task title cell: sticky left-10 z-30 bg-background
+
+Then add a subtle divider/shadow at the edge of the frozen region so your brain reads it as pinned:
+	•	shadow-[2px_0_0_rgba(0,0,0,0.04)] or similar on the title cell container
+
+You’ll also do the same stickiness for the global header row cells in your new header component.
+
+⸻
+
+4) Vertical gridlines + scan-friendly rails (what you asked for)
+
+You already have the start of this: TaskRow uses border-l border-border/20 on cells.
+
+Best practice tweaks
+	•	Make gridlines slightly stronger: border-border/30 or /40
+	•	Apply the same rule to:
+	•	header row cells
+	•	summary row cells (your GroupSummaryRow)
+
+“Major rails” (pro readability)
+
+Make stronger separators after:
+	•	Task column
+	•	Status column (if present)
+
+That’s how Monday feels “organized” without being visually loud.
+
+⸻
+
+5) Side-scroll navigation tools (premium feel, easy win)
+
+Once you have one grid scroller (#boardGridScroll), you can add:
+
+A) Scroll nudge buttons (instant value)
+
+Add two buttons near columns/search:
+	•	◀ scroll left by 480px
+	•	▶ scroll right by 480px
+
+Implementation: document.getElementById('boardGridScroll')?.scrollBy({ left: 480, behavior: 'smooth' })
+
+B) Jump-to-column dropdown
+
+Use your existing column list (board.columns.filter(c => c.visible)):
+	•	dropdown shows column titles
+	•	on select, scroll that column into view (by querying a data-col-id attribute on the header cell)
+
+C) Sticky horizontal scrollbar (optional)
+
+If you want a “bottom scrollbar always visible,” you can mirror scroll position into a thin fixed bar at bottom of board view.
+
+⸻
+
+6) “Not Started / In Progress / Completed” per section (per group)
+
+You already have showCompleted logic. Expand that to 3 buckets.
+
+Best practice (fast + clean)
+
+Inside TaskGroup, compute:
+	•	Not Started: status === "not-started"
+	•	In Progress: status in ["working-on-it","stuck","pending-review"]
+	•	Completed: status === "done"
+
+Then provide one of two UIs:
+
+Option 1: segmented filter (fastest)
+Use your existing shadcn toggle-group (components/ui/toggle-group.tsx is present):
+	•	All | Not Started | In Progress | Completed
+
+Option 2: swimlanes (best UX)
+Render three mini-sections under the group with headings + counts:
+	•	Not Started (12)
+	•	In Progress (3)
+	•	Completed (9)
+
+This makes sections feel like workflows, not piles.
+
+⸻
+
+7) Collapsible sidebar tree: Case → Client → Boards
+
+Your sidebar currently lists boards flat in client/src/components/app-sidebar.tsx.
+
+But your DB already supports hierarchy:
+	•	boards.matterId
+	•	boards.clientId
+
+Best practice UX features
+	•	collapsible chevrons for Case and Client
+	•	search input filters tree + auto-expands matches
+	•	pinned boards at top
+	•	recents section (last 5 visited)
+	•	persist open/close state in localStorage
+
+Implementation approach (client-only first)
+
+In AppSidebar:
+	•	fetch matters: GET /api/matters
+	•	fetch clients: GET /api/clients
+	•	you already fetch boards with workspace filter
+
+Then build a tree:
+	•	matter → clients → boards
+	•	matter → boards (if no clientId)
+
+Render it with your existing shadcn Collapsible (components/ui/collapsible.tsx exists).
+
+Persist state like:
+	•	sidebarTreeOpen: { matterId: true/false, clientId: true/false }
+
+This is the exact “collapsible boards by case/client” you asked for.
+
+⸻
+
+8) Responsive / adaptive polish (the stuff that quietly screams “expensive”)
+
+These are small but high ROI:
+
+A) Density toggle (Comfort / Compact / Ultra-compact)
+
+Tie it to a CSS class on the grid container:
+	•	changes row height, font size, padding
+	•	store in localStorage or user profile
+
+B) Sticky shadows
+
+When header is sticky: subtle bottom shadow
+When left columns frozen: subtle right shadow
+
+C) Hover + focus states
+	•	row hover highlight
+	•	cell focus ring when editing (reduces “where am I?”)
+
+D) Virtualization (later, but inevitable)
+
+Once boards go big (500+ rows), add @tanstack/react-virtual for rows.
+Not required for this sprint, but plan it.
+
+⸻
+
+9) “Best practices” checklist Replit can evaluate
+
+Hand this list to the agent/devs:
+	1.	✅ Only one horizontal scroller for table view (not per group)
+	2.	✅ Global sticky column header row
+	3.	✅ Frozen checkbox + task name columns
+	4.	✅ Consistent gridlines for header/rows/summary
+	5.	✅ Column jump + scroll nudges
+	6.	✅ Group workflow (All/Not started/In progress/Completed)
+	7.	✅ Sidebar tree: Case → Client → Boards with collapse/search/pins/recents
+	8.	✅ Density toggle
+	9.	✅ No layout shift when opening modals/menus
+	10.	✅ Works on laptop widths (1366px) without pain
+
+⸻
+
+If you want the team to move fast, tell them to implement in this order:
+	1.	One horizontal scroller + remove group scrollers
+	2.	Global header row + sticky
+	3.	Frozen left columns
+	4.	Gridlines + shadows
+	5.	Group workflow lanes
+	6.	Sidebar tree
+
+That sequence gives you “Monday-grade” feel early and prevents rework.

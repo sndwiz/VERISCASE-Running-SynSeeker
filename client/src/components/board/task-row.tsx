@@ -277,13 +277,13 @@ export function TaskRow({
           ? "bg-primary/10"
           : isHovered
           ? "bg-muted/40"
-          : ""
+          : "bg-background"
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       data-testid={`task-row-${task.id}`}
     >
-      <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5">
+      <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5 sticky left-0 z-30 bg-inherit">
         <Checkbox
           checked={isSelected}
           onCheckedChange={(checked) => onSelect?.(task.id, !!checked)}
@@ -294,7 +294,8 @@ export function TaskRow({
       </div>
 
       <div
-        className="flex-1 min-w-[200px] px-2 flex items-center gap-1"
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-2 flex items-center gap-1 sticky left-10 z-30 bg-inherit"
+        style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
         onClick={onClick}
         data-testid={`task-title-${task.id}`}
       >
@@ -328,7 +329,7 @@ export function TaskRow({
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1 border-l border-border/20"
+          className="px-1 border-l border-border/30"
           style={{ width: col.width, minWidth: col.width }}
         >
           {renderCell(col)}

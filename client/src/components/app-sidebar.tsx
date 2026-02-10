@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -42,6 +42,7 @@ import {
   Network,
   Zap,
   ChevronDown,
+  ChevronRight,
   Home,
   Building2,
   ChevronsUpDown,
@@ -67,11 +68,61 @@ import {
   FileVideo,
   FileSearch,
   Mail,
+  Pin,
+  History,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Board, Workspace } from "@shared/schema";
 import { FEATURE_METADATA } from "@/lib/feature-metadata";
+
+interface ClientRecord {
+  id: string;
+  name: string;
+  email?: string | null;
+  company?: string | null;
+}
+
+interface MatterRecord {
+  id: string;
+  clientId: string;
+  name: string;
+  caseNumber?: string | null;
+  status?: string | null;
+  matterType: string;
+}
+
+function usePinnedBoards() {
+  const [pinned, setPinned] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("vericase-pinned-boards") || "[]");
+    } catch { return []; }
+  });
+  const toggle = useCallback((boardId: string) => {
+    setPinned(prev => {
+      const next = prev.includes(boardId) ? prev.filter(id => id !== boardId) : [...prev, boardId];
+      localStorage.setItem("vericase-pinned-boards", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  return { pinned, toggle };
+}
+
+function useRecentBoards() {
+  const [recents, setRecents] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("vericase-recent-boards") || "[]");
+    } catch { return []; }
+  });
+  const track = useCallback((boardId: string) => {
+    setRecents(prev => {
+      const next = [boardId, ...prev.filter(id => id !== boardId)].slice(0, 5);
+      localStorage.setItem("vericase-recent-boards", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  return { recents, track };
+}
 
 interface AppSidebarProps {
   onCreateBoard: () => void;
@@ -175,9 +226,285 @@ function NavSection({ label, items, isOpen, toggle, location, testId }: {
   );
 }
 
+function BoardTreeSection({ boards, location, onCreateBoard, pinned, togglePin, recents, trackRecent }: {
+  boards: Board[];
+  location: string;
+  onCreateBoard: () => void;
+  pinned: string[];
+  togglePin: (id: string) => void;
+  recents: string[];
+  trackRecent: (id: string) => void;
+}) {
+  const [casesOpen, setCasesOpen] = useState(true);
+  const [boardSearch, setBoardSearch] = useState("");
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedMatters, setExpandedMatters] = useState<Set<string>>(new Set());
+  const [showRecents, setShowRecents] = useState(false);
+
+  const { data: clients = [] } = useQuery<ClientRecord[]>({ queryKey: ["/api/clients"] });
+  const { data: matters = [] } = useQuery<MatterRecord[]>({ queryKey: ["/api/matters"] });
+
+  const toggleClient = useCallback((id: string) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleMatter = useCallback((id: string) => {
+    setExpandedMatters(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const tree = useMemo(() => {
+    const clientMap = new Map<string, ClientRecord>();
+    clients.forEach(c => clientMap.set(c.id, c));
+
+    const matterMap = new Map<string, MatterRecord>();
+    matters.forEach(m => matterMap.set(m.id, m));
+
+    const mattersByClient = new Map<string, MatterRecord[]>();
+    matters.forEach(m => {
+      if (!mattersByClient.has(m.clientId)) mattersByClient.set(m.clientId, []);
+      mattersByClient.get(m.clientId)!.push(m);
+    });
+
+    const boardsByMatter = new Map<string, Board[]>();
+    const boardsByClientOnly = new Map<string, Board[]>();
+    const unlinked: Board[] = [];
+
+    boards.forEach(b => {
+      if (b.matterId && matterMap.has(b.matterId)) {
+        if (!boardsByMatter.has(b.matterId)) boardsByMatter.set(b.matterId, []);
+        boardsByMatter.get(b.matterId)!.push(b);
+      } else if (b.clientId && clientMap.has(b.clientId)) {
+        if (!boardsByClientOnly.has(b.clientId)) boardsByClientOnly.set(b.clientId, []);
+        boardsByClientOnly.get(b.clientId)!.push(b);
+      } else {
+        unlinked.push(b);
+      }
+    });
+
+    const activeClientIds = new Set<string>();
+    boardsByMatter.forEach((_, matterId) => {
+      const m = matterMap.get(matterId);
+      if (m) activeClientIds.add(m.clientId);
+    });
+    boardsByClientOnly.forEach((_, clientId) => activeClientIds.add(clientId));
+
+    return { clientMap, matterMap, mattersByClient, boardsByMatter, boardsByClientOnly, unlinked, activeClientIds };
+  }, [boards, clients, matters]);
+
+  const searchLower = boardSearch.toLowerCase().trim();
+  const filteredBoards = searchLower
+    ? boards.filter(b => b.name.toLowerCase().includes(searchLower))
+    : null;
+
+  const pinnedBoards = boards.filter(b => pinned.includes(b.id));
+  const recentBoards = recents.map(id => boards.find(b => b.id === id)).filter(Boolean) as Board[];
+
+  const renderBoardItem = (board: Board, indent: number = 0) => (
+    <SidebarMenuItem key={board.id}>
+      <div className="flex items-center group" style={{ paddingLeft: `${indent * 12}px` }}>
+        <SidebarMenuButton
+          asChild
+          isActive={location === `/boards/${board.id}`}
+          tooltip={board.description || board.name}
+          className="flex-1"
+        >
+          <Link
+            href={`/boards/${board.id}`}
+            data-testid={`link-board-${board.id}`}
+            onClick={() => trackRecent(board.id)}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" style={{ color: board.color }} />
+            <span className="truncate text-xs">{board.name}</span>
+          </Link>
+        </SidebarMenuButton>
+        <button
+          type="button"
+          className={`h-5 w-5 flex items-center justify-center shrink-0 ${pinned.includes(board.id) ? "text-primary" : "invisible group-hover:visible text-muted-foreground hover:text-foreground"}`}
+          onClick={(e) => { e.stopPropagation(); togglePin(board.id); }}
+          data-testid={`button-pin-board-${board.id}`}
+        >
+          <Pin className="h-3 w-3" />
+        </button>
+      </div>
+    </SidebarMenuItem>
+  );
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel className="flex items-center justify-between gap-1 pr-1">
+        <button
+          type="button"
+          className="flex items-center gap-1 hover:opacity-80"
+          onClick={() => setCasesOpen(!casesOpen)}
+          data-testid="toggle-cases-section"
+        >
+          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${casesOpen ? "" : "-rotate-90"}`} />
+          <span>Case Boards</span>
+        </button>
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={(e) => { e.stopPropagation(); setShowRecents(!showRecents); }}
+                data-testid="button-toggle-recents"
+              >
+                <History className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Recent boards</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
+                data-testid="button-create-board"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Create a new case board</TooltipContent>
+          </Tooltip>
+        </div>
+      </SidebarGroupLabel>
+      {casesOpen && (
+        <SidebarGroupContent>
+          <div className="px-2 pb-1.5">
+            <Input
+              value={boardSearch}
+              onChange={(e) => setBoardSearch(e.target.value)}
+              placeholder="Search boards..."
+              className="h-7 text-xs"
+              data-testid="input-board-search"
+            />
+          </div>
+
+          <SidebarMenu>
+            {filteredBoards ? (
+              filteredBoards.length > 0 ? (
+                filteredBoards.map(b => renderBoardItem(b, 0))
+              ) : (
+                <div className="px-3 py-2 text-xs text-muted-foreground">No boards match "{boardSearch}"</div>
+              )
+            ) : (
+              <>
+                {pinnedBoards.length > 0 && (
+                  <>
+                    <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <Pin className="h-2.5 w-2.5" />
+                      Pinned
+                    </div>
+                    {pinnedBoards.map(b => renderBoardItem(b, 0))}
+                  </>
+                )}
+
+                {showRecents && recentBoards.length > 0 && (
+                  <>
+                    <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <History className="h-2.5 w-2.5" />
+                      Recent
+                    </div>
+                    {recentBoards.map(b => renderBoardItem(b, 0))}
+                  </>
+                )}
+
+                {Array.from(tree.activeClientIds).map(clientId => {
+                  const client = tree.clientMap.get(clientId);
+                  if (!client) return null;
+                  const clientMatters = tree.mattersByClient.get(clientId)?.filter(m =>
+                    tree.boardsByMatter.has(m.id)
+                  ) || [];
+                  const directBoards = tree.boardsByClientOnly.get(clientId) || [];
+                  if (clientMatters.length === 0 && directBoards.length === 0) return null;
+
+                  const isClientOpen = expandedClients.has(clientId);
+                  return (
+                    <div key={clientId}>
+                      <SidebarMenuItem>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 w-full px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                          onClick={() => toggleClient(clientId)}
+                          data-testid={`toggle-client-${clientId}`}
+                        >
+                          {isClientOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          <Users className="h-3 w-3" />
+                          <span className="truncate">{client.name}</span>
+                          <span className="ml-auto text-[10px] text-muted-foreground/60">
+                            {(clientMatters.reduce((sum, m) => sum + (tree.boardsByMatter.get(m.id)?.length || 0), 0)) + directBoards.length}
+                          </span>
+                        </button>
+                      </SidebarMenuItem>
+                      {isClientOpen && (
+                        <>
+                          {clientMatters.map(matter => {
+                            const isMatterOpen = expandedMatters.has(matter.id);
+                            const matterBoards = tree.boardsByMatter.get(matter.id) || [];
+                            return (
+                              <div key={matter.id}>
+                                <SidebarMenuItem>
+                                  <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 w-full py-1 text-xs text-muted-foreground hover:text-foreground"
+                                    style={{ paddingLeft: "20px" }}
+                                    onClick={() => toggleMatter(matter.id)}
+                                    data-testid={`toggle-matter-${matter.id}`}
+                                  >
+                                    {isMatterOpen ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
+                                    <Briefcase className="h-3 w-3" />
+                                    <span className="truncate">{matter.name}</span>
+                                    <span className="ml-auto text-[10px] text-muted-foreground/60">{matterBoards.length}</span>
+                                  </button>
+                                </SidebarMenuItem>
+                                {isMatterOpen && matterBoards.map(b => renderBoardItem(b, 3))}
+                              </div>
+                            );
+                          })}
+                          {directBoards.map(b => renderBoardItem(b, 1))}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {tree.unlinked.length > 0 && (
+                  <>
+                    <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      General Boards
+                    </div>
+                    {tree.unlinked.map(b => renderBoardItem(b, 0))}
+                  </>
+                )}
+
+                {boards.length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">
+                    No boards yet. Create one to get started.
+                  </div>
+                )}
+              </>
+            )}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      )}
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [location] = useLocation();
-  const [casesOpen, setCasesOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(true);
   const [caseManageOpen, setCaseManageOpen] = useState(true);
   const [docsOpen, setDocsOpen] = useState(false);
@@ -186,6 +513,8 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
   const [adminOpen, setAdminOpen] = useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const { pinned, toggle: togglePin } = usePinnedBoards();
+  const { recents, track: trackRecent } = useRecentBoards();
 
   const { workspaces: workspaceList, activeWorkspace: currentWorkspace, activeWorkspaceId, setActiveWorkspaceId: selectWorkspace } = useWorkspace();
 
@@ -318,62 +647,15 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
           </SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between pr-1">
-            <button
-              type="button"
-              className="flex items-center gap-1 hover:opacity-80"
-              onClick={() => setCasesOpen(!casesOpen)}
-              data-testid="toggle-cases-section"
-            >
-              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${casesOpen ? "" : "-rotate-90"}`} />
-              <span>Case Boards</span>
-            </button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={(e) => { e.stopPropagation(); onCreateBoard(); }}
-                  data-testid="button-create-board"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Create a new case board</TooltipContent>
-            </Tooltip>
-          </SidebarGroupLabel>
-          {casesOpen && (
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {boards.map((board) => (
-                  <SidebarMenuItem key={board.id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === `/boards/${board.id}`}
-                      tooltip={board.description || `Open ${board.name} board`}
-                    >
-                      <Link href={`/boards/${board.id}`} data-testid={`link-board-${board.id}`}>
-                        <LayoutGrid
-                          className="h-4 w-4"
-                          style={{ color: board.color }}
-                        />
-                        <span>{board.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-
-                {boards.length === 0 && (
-                  <div className="px-2 py-3 text-xs text-muted-foreground">
-                    No boards yet. Create one to get started.
-                  </div>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
+        <BoardTreeSection
+          boards={boards}
+          location={location}
+          onCreateBoard={onCreateBoard}
+          pinned={pinned}
+          togglePin={togglePin}
+          recents={recents}
+          trackRecent={trackRecent}
+        />
 
         <NavSection label="AI & Investigation" items={aiInvestigationItems} isOpen={aiOpen} toggle={() => setAiOpen(!aiOpen)} location={location} testId="ai" />
 

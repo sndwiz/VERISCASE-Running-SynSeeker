@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TaskRow } from "./task-row";
-import { ColumnHeader } from "./column-header";
 import type { Group, Task, ColumnDef, ColumnType, CustomStatusLabel, StatusType } from "@shared/schema";
 import { statusConfig } from "@shared/schema";
 
@@ -132,11 +131,14 @@ function GroupSummaryRow({
 
   return (
     <div 
-      className="flex items-center gap-0 py-1.5 border-t border-border/30"
+      className="flex items-center gap-0 py-1.5 border-t border-border/30 bg-muted/20"
       data-testid="group-summary-row"
     >
-      <div className="w-10 flex-shrink-0" style={{ borderLeft: `3px solid ${groupColor}` }} />
-      <div className="flex-1 min-w-[200px] px-2">
+      <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit" style={{ borderLeft: `3px solid ${groupColor}` }} />
+      <div
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-2 sticky left-10 z-30 bg-inherit"
+        style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+      >
         <span className="text-xs font-medium text-muted-foreground">
           {tasks.length}
           <span className="ml-1 opacity-70">items</span>
@@ -145,7 +147,7 @@ function GroupSummaryRow({
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1 flex items-center"
+          className="px-1 flex items-center border-l border-border/30"
           style={{ width: col.width, minWidth: col.width }}
         >
           {renderSummaryCell(col)}
@@ -171,14 +173,6 @@ interface TaskGroupProps {
   onEditStatusLabels?: () => void;
   selectedTaskIds?: Set<string>;
   onSelectTask?: (taskId: string, selected: boolean) => void;
-  onColumnSort?: (columnId: string, direction: "asc" | "desc") => void;
-  onColumnFilter?: (columnId: string) => void;
-  onColumnDuplicate?: (columnId: string) => void;
-  onColumnRename?: (columnId: string, newTitle: string) => void;
-  onColumnDelete?: (columnId: string) => void;
-  onColumnHide?: (columnId: string) => void;
-  onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
-  onColumnUpdateDescription?: (columnId: string, description: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
   canDeleteTasks?: boolean;
@@ -199,29 +193,26 @@ export function TaskGroup({
   onEditStatusLabels,
   selectedTaskIds = new Set(),
   onSelectTask,
-  onColumnSort,
-  onColumnFilter,
-  onColumnDuplicate,
-  onColumnRename,
-  onColumnDelete,
-  onColumnHide,
-  onColumnChangeType,
-  onColumnUpdateDescription,
   currentSort,
   onOpenColumnCenter,
   canDeleteTasks = true,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [workflowFilter, setWorkflowFilter] = useState<"all" | "not-started" | "in-progress" | "completed">("all");
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
 
-  const COMPLETED_COLLAPSE_THRESHOLD = 10;
+  const notStartedTasks = tasks.filter(t => t.status === "not-started");
+  const inProgressTasks = tasks.filter(t => ["working-on-it", "stuck", "pending-review"].includes(t.status));
   const completedTasks = tasks.filter(t => t.status === "done");
-  const activeTasks = tasks.filter(t => t.status !== "done");
-  const shouldCollapseCompleted = completedTasks.length >= COMPLETED_COLLAPSE_THRESHOLD;
-  const displayTasks = shouldCollapseCompleted
-    ? (showCompleted ? [...activeTasks, ...completedTasks] : activeTasks)
-    : tasks;
+
+  const displayTasks = useMemo(() => {
+    switch (workflowFilter) {
+      case "not-started": return notStartedTasks;
+      case "in-progress": return inProgressTasks;
+      case "completed": return completedTasks;
+      default: return tasks;
+    }
+  }, [workflowFilter, tasks, notStartedTasks, inProgressTasks, completedTasks]);
 
   return (
     <div
@@ -248,6 +239,28 @@ export function TaskGroup({
         <span className="text-xs text-muted-foreground ml-1">
           {tasks.length} {tasks.length === 1 ? "item" : "items"}
         </span>
+
+        <div className="flex items-center gap-0.5 ml-3" onClick={(e) => e.stopPropagation()}>
+          {([
+            { key: "all" as const, label: "All", count: tasks.length },
+            { key: "not-started" as const, label: "Not Started", count: notStartedTasks.length },
+            { key: "in-progress" as const, label: "In Progress", count: inProgressTasks.length },
+            { key: "completed" as const, label: "Done", count: completedTasks.length },
+          ]).map(f => (
+            <button
+              key={f.key}
+              className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                workflowFilter === f.key
+                  ? "bg-primary/15 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setWorkflowFilter(f.key)}
+              data-testid={`filter-workflow-${group.id}-${f.key}`}
+            >
+              {f.label} ({f.count})
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1" />
 
@@ -291,47 +304,7 @@ export function TaskGroup({
       </div>
 
       {!group.collapsed && (
-        <div className="overflow-x-auto" style={{ borderLeft: `3px solid ${group.color}` }}>
-          <div className="min-w-max">
-            <div className="flex items-center gap-0 text-xs font-medium text-muted-foreground py-1.5 bg-muted/40 border-b border-border/40">
-              <div className="w-10 flex-shrink-0" />
-              <div className="flex-1 min-w-[200px] px-2">Task</div>
-              {visibleColumns.map((col) => (
-                <div
-                  key={col.id}
-                  className="flex-shrink-0"
-                  style={{ width: col.width, minWidth: col.width }}
-                >
-                  <ColumnHeader
-                    column={col}
-                    onSort={onColumnSort}
-                    onFilter={onColumnFilter}
-                    onDuplicate={onColumnDuplicate}
-                    onRename={onColumnRename}
-                    onDelete={onColumnDelete}
-                    onHide={onColumnHide}
-                    onChangeType={onColumnChangeType}
-                    onUpdateDescription={onColumnUpdateDescription}
-                    currentSort={currentSort}
-                  />
-                </div>
-              ))}
-              {onOpenColumnCenter && (
-                <div className="flex-shrink-0 w-10 flex items-center justify-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onOpenColumnCenter}
-                    data-testid="button-add-column-inline"
-                    title="Add column"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {!onOpenColumnCenter && <div className="w-8 flex-shrink-0" />}
-            </div>
-
+        <div style={{ borderLeft: `3px solid ${group.color}` }}>
             {displayTasks.map((task) => (
               <TaskRow
                 key={task.id}
@@ -348,24 +321,6 @@ export function TaskGroup({
                 canDelete={canDeleteTasks}
               />
             ))}
-
-            {shouldCollapseCompleted && (
-              <div
-                className="flex items-center gap-2 py-2 px-3 text-sm text-muted-foreground cursor-pointer border-b border-border/30 hover-elevate"
-                onClick={() => setShowCompleted(!showCompleted)}
-                data-testid={`toggle-completed-${group.id}`}
-              >
-                <div className="w-7 flex-shrink-0" />
-                {showCompleted ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-                <span>
-                  {showCompleted ? "Hide" : "Show"} {completedTasks.length} completed item{completedTasks.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-            )}
 
             {tasks.length === 0 && (
               <div className="py-6 text-center text-sm text-muted-foreground border-b border-border/30">
@@ -398,7 +353,6 @@ export function TaskGroup({
                 groupColor={group.color}
               />
             )}
-          </div>
         </div>
       )}
     </div>
