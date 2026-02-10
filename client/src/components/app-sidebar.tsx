@@ -412,7 +412,7 @@ export function AppSidebar({ onCreateBoard }: AppSidebarProps) {
 function SynSeekrStatusIndicator() {
   const { data: statusData } = useQuery<{ configured: boolean; enabled: boolean; status: string; lastChecked: string; latencyMs: number }>({
     queryKey: ["/api/synseekr/status"],
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
   if (!statusData?.configured) return null;
