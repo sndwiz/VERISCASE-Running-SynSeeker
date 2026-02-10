@@ -13,6 +13,7 @@ import { broadcastMessage, broadcastProposal, broadcastProposalUpdate } from "..
 import { parseMessageEntities } from "../services/chat-parser";
 import { detectActionProposals } from "../services/chat-actions";
 import { getUserId, getUserInfo } from "../utils/auth";
+import { logger } from "../utils/logger";
 
 const router = Router();
 
@@ -191,7 +192,7 @@ router.post("/:chatId/messages", async (req: Request, res: Response) => {
           }
         }
       } catch (err) {
-        console.error("Action detection error:", err);
+        logger.error("Action detection error:", { error: String(err) });
       }
     }
 

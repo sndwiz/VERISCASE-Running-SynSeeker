@@ -6,6 +6,7 @@ import { insightsStorage } from "./insights-storage";
 import type { MatterAsset } from "./insights-storage";
 import { logger } from "../utils/logger";
 import { INSIGHTS_CONFIG } from "../config/insights";
+import { DOCTRINE_OCR_PROMPT } from "../config/core-doctrine";
 import { db } from "../db";
 import { ocrSessions, boards, groups, tasks } from "@shared/models/tables";
 import { eq, and } from "drizzle-orm";
@@ -152,7 +153,6 @@ function parseDocumentProfile(fullText: string): { extractedText: string; profil
 
 async function ocrImage(filePath: string): Promise<{ text: string; confidence: number; profile: DocumentProfile | null }> {
   try {
-    const { DOCTRINE_OCR_PROMPT } = await import("../config/core-doctrine");
     const { GoogleGenAI } = await import("@google/genai");
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
     if (!apiKey) {
@@ -321,10 +321,11 @@ export async function processAsset(assetId: string): Promise<void> {
     });
 
     if (docProfile) {
+      const existing = (asset as Record<string, any>).metadata || {};
       await insightsStorage.updateMatterAsset(assetId, {
         docType: docProfile.documentType,
         metadata: {
-          ...(asset.metadata as Record<string, any> || {}),
+          ...existing,
           documentProfile: docProfile,
         },
       } as any);

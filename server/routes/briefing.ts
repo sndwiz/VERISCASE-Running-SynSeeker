@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth/replitAuth";
+import { logger } from "../utils/logger";
 
 export function registerBriefingRoutes(app: Express): void {
   app.get("/api/briefing", isAuthenticated, async (req: any, res) => {
@@ -125,7 +126,7 @@ export function registerBriefingRoutes(app: Express): void {
         recentAutomations: [],
       });
     } catch (error) {
-      console.error("Error fetching briefing:", error);
+      logger.error("Error fetching briefing:", { error: String(error) });
       res.status(500).json({ error: "Failed to fetch briefing data" });
     }
   });

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fullCalendarSync } from "../services/calendar-sync";
 import { getUserId } from "../utils/auth";
 import { maybePageinate } from "../utils/pagination";
+import { logger } from "../utils/logger";
 
 export function registerCalendarRoutes(app: Express): void {
   app.get("/api/calendar-events", async (req, res) => {
@@ -39,7 +40,7 @@ export function registerCalendarRoutes(app: Express): void {
         ...result,
       });
     } catch (error: any) {
-      console.error("[calendar-sync] Error:", error);
+      logger.error("[calendar-sync] Error:", { error: String(error) });
       res.status(500).json({ error: error.message || "Sync failed" });
     }
   });

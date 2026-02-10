@@ -4,6 +4,7 @@ import { insertExpenseSchema, updateExpenseSchema, insertInvoiceSchema, updateIn
 import { z } from "zod";
 import { maybePageinate } from "../utils/pagination";
 import { syncInvoiceToCalendar, removeSyncedEvent } from "../services/calendar-sync";
+import { logger } from "../utils/logger";
 
 export function registerBillingRoutes(app: Express): void {
   // ============ EXPENSES ============
@@ -102,7 +103,7 @@ export function registerBillingRoutes(app: Express): void {
       const data = insertInvoiceSchema.parse(body);
       const invoice = await storage.createInvoice(data);
       if (invoice.dueDate) {
-        syncInvoiceToCalendar(invoice.id).catch(e => console.error("[billing] Calendar sync error:", e));
+        syncInvoiceToCalendar(invoice.id).catch(e => logger.error("[billing] Calendar sync error:", { error: String(e) }));
       }
       res.status(201).json(invoice);
     } catch (error) {
@@ -117,7 +118,7 @@ export function registerBillingRoutes(app: Express): void {
       const invoice = await storage.updateInvoice(req.params.id, data);
       if (!invoice) return res.status(404).json({ error: "Invoice not found" });
       if (invoice.dueDate || data.dueDate !== undefined) {
-        syncInvoiceToCalendar(invoice.id).catch(e => console.error("[billing] Calendar sync error:", e));
+        syncInvoiceToCalendar(invoice.id).catch(e => logger.error("[billing] Calendar sync error:", { error: String(e) }));
       }
       res.json(invoice);
     } catch (error) {
@@ -128,7 +129,7 @@ export function registerBillingRoutes(app: Express): void {
 
   app.delete("/api/invoices/:id", async (req, res) => {
     try {
-      removeSyncedEvent("invoice", req.params.id).catch(e => console.error("[billing] Calendar unsync error:", e));
+      removeSyncedEvent("invoice", req.params.id).catch(e => logger.error("[billing] Calendar unsync error:", { error: String(e) }));
       const deleted = await storage.deleteInvoice(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Invoice not found" });
       res.status(204).send();

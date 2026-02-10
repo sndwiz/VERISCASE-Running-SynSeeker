@@ -14,6 +14,7 @@ import {
 import { generateCompletion } from "../ai/providers";
 import { formSubmissionLimiter, verifyTurnstileToken } from "../security/middleware";
 import { getClientIp, logSecurityEvent } from "../security/audit";
+import { logger } from "../utils/logger";
 
 const router = Router();
 
@@ -25,7 +26,7 @@ router.get("/templates", isAuthenticated, async (req: Request, res: Response) =>
     const templates = await storage.getDocumentTemplates(category);
     res.json(templates);
   } catch (error) {
-    console.error("Error fetching templates:", error);
+    logger.error("Error fetching templates:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch templates" });
   }
 });
@@ -38,7 +39,7 @@ router.get("/templates/:id", isAuthenticated, async (req: Request, res: Response
     }
     res.json(template);
   } catch (error) {
-    console.error("Error fetching template:", error);
+    logger.error("Error fetching template:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch template" });
   }
 });
@@ -52,7 +53,7 @@ router.post("/templates", isAuthenticated, async (req: Request, res: Response) =
     const template = await storage.createDocumentTemplate(parsed.data);
     res.status(201).json(template);
   } catch (error) {
-    console.error("Error creating template:", error);
+    logger.error("Error creating template:", { error: String(error) });
     res.status(500).json({ error: "Failed to create template" });
   }
 });
@@ -65,7 +66,7 @@ router.patch("/templates/:id", isAuthenticated, async (req: Request, res: Respon
     }
     res.json(template);
   } catch (error) {
-    console.error("Error updating template:", error);
+    logger.error("Error updating template:", { error: String(error) });
     res.status(500).json({ error: "Failed to update template" });
   }
 });
@@ -78,7 +79,7 @@ router.delete("/templates/:id", isAuthenticated, async (req: Request, res: Respo
     }
     res.json({ success: true });
   } catch (error) {
-    console.error("Error deleting template:", error);
+    logger.error("Error deleting template:", { error: String(error) });
     res.status(500).json({ error: "Failed to delete template" });
   }
 });
@@ -91,7 +92,7 @@ router.get("/documents", isAuthenticated, async (req: Request, res: Response) =>
     const documents = await storage.getGeneratedDocuments(matterId);
     res.json(documents);
   } catch (error) {
-    console.error("Error fetching documents:", error);
+    logger.error("Error fetching documents:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch documents" });
   }
 });
@@ -104,7 +105,7 @@ router.get("/documents/:id", isAuthenticated, async (req: Request, res: Response
     }
     res.json(document);
   } catch (error) {
-    console.error("Error fetching document:", error);
+    logger.error("Error fetching document:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch document" });
   }
 });
@@ -118,7 +119,7 @@ router.post("/documents", isAuthenticated, async (req: Request, res: Response) =
     const document = await storage.createGeneratedDocument(parsed.data);
     res.status(201).json(document);
   } catch (error) {
-    console.error("Error creating document:", error);
+    logger.error("Error creating document:", { error: String(error) });
     res.status(500).json({ error: "Failed to create document" });
   }
 });
@@ -131,7 +132,7 @@ router.patch("/documents/:id", isAuthenticated, async (req: Request, res: Respon
     }
     res.json(document);
   } catch (error) {
-    console.error("Error updating document:", error);
+    logger.error("Error updating document:", { error: String(error) });
     res.status(500).json({ error: "Failed to update document" });
   }
 });
@@ -144,7 +145,7 @@ router.delete("/documents/:id", isAuthenticated, async (req: Request, res: Respo
     }
     res.json({ success: true });
   } catch (error) {
-    console.error("Error deleting document:", error);
+    logger.error("Error deleting document:", { error: String(error) });
     res.status(500).json({ error: "Failed to delete document" });
   }
 });
@@ -263,7 +264,7 @@ Output only the completed document content, ready for review.`;
       formatCompliance,
     });
   } catch (error) {
-    console.error("Error generating document:", error);
+    logger.error("Error generating document:", { error: String(error) });
     res.status(500).json({ error: "Failed to generate document" });
   }
 });
@@ -276,7 +277,7 @@ router.get("/approvals", isAuthenticated, async (req: Request, res: Response) =>
     const approvals = await storage.getDocumentApprovals(documentId);
     res.json(approvals);
   } catch (error) {
-    console.error("Error fetching approvals:", error);
+    logger.error("Error fetching approvals:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch approvals" });
   }
 });
@@ -289,7 +290,7 @@ router.get("/approvals/:id", isAuthenticated, async (req: Request, res: Response
     }
     res.json(approval);
   } catch (error) {
-    console.error("Error fetching approval:", error);
+    logger.error("Error fetching approval:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch approval" });
   }
 });
@@ -317,7 +318,7 @@ router.post("/approvals", isAuthenticated, async (req: Request, res: Response) =
 
     res.status(201).json(approval);
   } catch (error) {
-    console.error("Error creating approval:", error);
+    logger.error("Error creating approval:", { error: String(error) });
     res.status(500).json({ error: "Failed to create approval" });
   }
 });
@@ -377,7 +378,7 @@ router.patch("/approvals/:id", isAuthenticated, async (req: Request, res: Respon
 
     res.json(approval);
   } catch (error) {
-    console.error("Error updating approval:", error);
+    logger.error("Error updating approval:", { error: String(error) });
     res.status(500).json({ error: "Failed to update approval" });
   }
 });
@@ -391,7 +392,7 @@ router.get("/approvals/:id/audit", isAuthenticated, async (req: Request, res: Re
     const audit = await storage.getDocumentApprovalAudit(approval.documentId);
     res.json(audit);
   } catch (error) {
-    console.error("Error fetching audit trail:", error);
+    logger.error("Error fetching audit trail:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch audit trail" });
   }
 });
@@ -403,7 +404,7 @@ router.get("/forms", isAuthenticated, async (req: Request, res: Response) => {
     const forms = await storage.getClientForms();
     res.json(forms);
   } catch (error) {
-    console.error("Error fetching forms:", error);
+    logger.error("Error fetching forms:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch forms" });
   }
 });
@@ -419,7 +420,7 @@ router.get("/forms/:id", async (req: Request, res: Response) => {
     }
     res.json(form);
   } catch (error) {
-    console.error("Error fetching form:", error);
+    logger.error("Error fetching form:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch form" });
   }
 });
@@ -433,7 +434,7 @@ router.post("/forms", isAuthenticated, async (req: Request, res: Response) => {
     const form = await storage.createClientForm(parsed.data);
     res.status(201).json(form);
   } catch (error) {
-    console.error("Error creating form:", error);
+    logger.error("Error creating form:", { error: String(error) });
     res.status(500).json({ error: "Failed to create form" });
   }
 });
@@ -446,7 +447,7 @@ router.patch("/forms/:id", isAuthenticated, async (req: Request, res: Response) 
     }
     res.json(form);
   } catch (error) {
-    console.error("Error updating form:", error);
+    logger.error("Error updating form:", { error: String(error) });
     res.status(500).json({ error: "Failed to update form" });
   }
 });
@@ -459,7 +460,7 @@ router.delete("/forms/:id", isAuthenticated, async (req: Request, res: Response)
     }
     res.json({ success: true });
   } catch (error) {
-    console.error("Error deleting form:", error);
+    logger.error("Error deleting form:", { error: String(error) });
     res.status(500).json({ error: "Failed to delete form" });
   }
 });
@@ -469,7 +470,7 @@ router.get("/forms/:id/submissions", isAuthenticated, async (req: Request, res: 
     const submissions = await storage.getClientFormSubmissions(req.params.id as string);
     res.json(submissions);
   } catch (error) {
-    console.error("Error fetching submissions:", error);
+    logger.error("Error fetching submissions:", { error: String(error) });
     res.status(500).json({ error: "Failed to fetch submissions" });
   }
 });
@@ -508,7 +509,7 @@ router.post("/forms/:id/submit", formSubmissionLimiter, async (req: Request, res
     const submission = await storage.createClientFormSubmission(parsed.data);
     res.status(201).json({ success: true, message: form.thankYouMessage });
   } catch (error) {
-    console.error("Error submitting form:", error);
+    logger.error("Error submitting form:", { error: String(error) });
     res.status(500).json({ error: "Failed to submit form" });
   }
 });

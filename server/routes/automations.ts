@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { insertAutomationRuleSchema, updateAutomationRuleSchema } from "@shared/schema";
 import { z } from "zod";
 import { triggerAutomation, getAutomationLog, type AutomationEvent } from "../automation-engine";
+import { logger } from "../utils/logger";
 
 export function registerAutomationRoutes(app: Express): void {
   app.get("/api/boards/:boardId/automations", async (req, res) => {
@@ -89,7 +90,7 @@ export function registerAutomationRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
-      console.error("[Automation] Trigger error:", error);
+      logger.error("[Automation] Trigger error:", { error: String(error) });
       res.status(500).json({ error: "Failed to trigger automation" });
     }
   });

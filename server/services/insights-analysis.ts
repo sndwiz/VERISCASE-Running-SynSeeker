@@ -2,6 +2,7 @@ import { z } from "zod";
 import { insightsStorage } from "./insights-storage";
 import { logger } from "../utils/logger";
 import { INSIGHTS_CONFIG } from "../config/insights";
+import { DOCTRINE_ANALYSIS_PREAMBLE, DOCTRINE_INSIGHT_RULES } from "../config/core-doctrine";
 import type { InsightAnalysisResult, InsightCitation, PriorityRules } from "@shared/insights-types";
 import { INSIGHT_INTENT_TYPES, type InsightIntentType } from "@shared/insights-types";
 
@@ -288,8 +289,6 @@ function buildAnalysisPrompt(
   } else if (outputFormat === "task_list") {
     formatInstruction = "Emphasize actionable items that can be assigned as tasks.";
   }
-
-  const { DOCTRINE_ANALYSIS_PREAMBLE, DOCTRINE_INSIGHT_RULES } = require("../config/core-doctrine");
 
   return `${DOCTRINE_ANALYSIS_PREAMBLE}
 
