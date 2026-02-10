@@ -827,10 +827,10 @@ export function getVisionModels(): AIModel[] {
   return AVAILABLE_MODELS.filter((m) => m.supportsVision);
 }
 
-export function getActiveAIProvider(): string {
+export async function getActiveAIProvider(): Promise<string> {
   try {
-    const { synseekrClient } = require("../services/synseekr-client");
-    return synseekrClient.isEnabled() ? "synseekr" : "anthropic";
+    const mod = await import("../services/synseekr-client");
+    return mod.synseekrClient.isEnabled() ? "synseekr" : "anthropic";
   } catch {
     return "anthropic";
   }
