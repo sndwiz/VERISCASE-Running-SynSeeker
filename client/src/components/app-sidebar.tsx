@@ -63,6 +63,7 @@ import {
   UserCheck,
   BookOpen,
   Search,
+  Brain,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ const adminItems = [
   { title: "Team Members", url: "/team-members", icon: UserCheck },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
+  { title: "Model Advisor", url: "/model-advisor", icon: Brain },
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
 ];
 

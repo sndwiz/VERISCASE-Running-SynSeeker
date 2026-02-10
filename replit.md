@@ -1,92 +1,67 @@
 # VERICASE - Legal Practice OS
 
 ## Overview
-VERICASE is a comprehensive legal practice management system designed to streamline legal workflows with a Monday.com-style board interface. It offers AI-powered document analysis, secure evidence management, investigative tools, multi-user authentication, and extensive legal practice management features. The system aims to provide a robust, AI-enhanced platform for legal professionals, improving efficiency and case management capabilities.
-
-## Core Doctrine
-**"Totality of the circumstances, measured — then argued."**
-VERICASE turns messy case materials into structured, defensible insight without hallucinating facts. Every document is treated as evidence with (1) content, (2) context, (3) reliability, and (4) relationship to other evidence. The system reveals patterns, contradictions, and narrative leverage while preserving chain-of-custody thinking and legal relevance.
-
-**Doctrine Architecture:**
-- `server/config/core-doctrine.ts` — Centralized doctrine module with shared system prompts referenced by all AI touchpoints. Exports: DOCTRINE_SYSTEM_PREAMBLE, DOCTRINE_OCR_PROMPT, DOCTRINE_ANALYSIS_PREAMBLE, DOCTRINE_INSIGHT_RULES, DOCTRINE_HYPOTHESIS_PROMPT, DOCTRINE_DELIVERABLES, DOCTRINE_DETECTIVE_BOARD, DOCTRINE_LEGAL_RESEARCH_PLAN, buildLegalResearchStepPrompt(), DOCTRINE_LEGAL_RESEARCH_COMPILE.
-- `server/config/DOCTRINE.md` — Full doctrine reference document
-- All AI prompts (OCR, insights analysis, VeriBot, legal research) import and use doctrine preambles
-- Doctrine principles: Evidence Over Vibes, Competing Hypotheses (H0/H1), Convergence Analysis, Reliability Scoring (Strong/Moderate/Weak), Legal Element Mapping, Observed vs Inferred labeling, Source Independence checking
-- **Type Safety:** `server/types/express.d.ts` augments Express.Request with `dbUser` (from users table) and `Express.User` with Replit Auth claims. Eliminates `(req as any).user` patterns.
-- **Structured Logging:** `server/utils/logger.ts` provides `logger.info/warn/error/debug` used consistently across all server routes instead of `console.*`.
-- **DoctrineBadges Component:** `client/src/pages/detective-board.tsx` exports reusable ConfidenceBadge, ReliabilityBadge, InferredBadge, and DoctrineBadges components for doctrine-aligned visual indicators.
+VERICASE is a comprehensive legal practice management system designed to streamline legal workflows for professionals. It offers a Monday.com-style board interface, AI-powered document analysis, secure evidence management, investigative tools, multi-user authentication, and extensive legal practice management features. The system's core purpose is to provide a robust, AI-enhanced platform that improves efficiency and case management, turning complex legal materials into structured, defensible insights without factual hallucination. It aims to reveal patterns, contradictions, and narrative leverage while preserving chain-of-custody and legal relevance.
 
 ## User Preferences
 - Dark/light theme toggle in header
 - Professional legal-focused design
 - Clean, modern interface
 
-## Runtime Doctrine: Model Choice + Batmode + Data Isolation
-- **Model Registry:** `server/config/model-registry.ts` — Config-driven registry of 17 models across 6 providers. Extended capabilities: chat, embeddings, vision, rerank, transcription, code, ner, rel_extraction, pii_detection, document_analysis, rag.
-  - **External APIs:** Claude (4 models), GPT (3 models), Gemini (3 models), DeepSeek (1 model)
-  - **SynSeekr Local (5 models):** Qwen2.5-7B (chat/rag/doc_analysis), BGE-M3 (embeddings/rerank), Whisper (transcription), GLiNER (NER/relation extraction), Presidio (PII detection) — all local_only, free, no internet
-  - **Synergy Private (1 model):** Private LLM via PRIVATE_AI_SERVER_URL — local_only, free
-- **SynSeekr Integration:** `server/services/synseekr-client.ts` — Full client for self-hosted SynSeekr server (20 Docker containers, GPU-accelerated). Capabilities: RAG queries (hybrid BM25+semantic, RRF), auto-analysis pipeline (classifier, summarizer, fact_extractor, hot_scorer, privilege_detector), conversational memory (sessions, semantic search), document integrity (SHA-256 verification, chain of custody, court export), PII detection/anonymization (Presidio), smart search (CourtListener + PII safety), entity extraction (GLiNER/GLiREL → Neo4j), timeline events, AI agents.
-- **SynSeekr Routes:** `server/routes/synseekr.ts` — 25+ endpoints: /analysis/queue, /analysis/:documentId, /hot-documents/:caseId, /privilege-review/:caseId, /documents/:id/verify, /documents/:id/custody-chain, /documents/:id/export-court, /memory/sessions, /memory/semantic-search, /smart-search, /pii/detect, /pii/anonymize, /analyze-all, /gpu-status, plus existing case/entity/timeline/investigation/agent endpoints.
-- **Policy Engine:** `server/ai/policy-engine.ts` — Central decision layer enforcing ONLINE/BATMODE modes. evaluatePolicy() checks mode, model, casePolicy, payloadClassification, redactionStatus. Batmode blocks all external API calls and falls back to SynSeekr Qwen2.5-7B as preferred local model. Privileged/sealed case policies hard-block external models (fallback to SynSeekr or block entirely). In-memory audit ring buffer (500 entries). `getPreferredLocalFallback()` prioritizes SynSeekr over generic private models.
-- **Provider Integration:** `server/ai/providers.ts` — 6 providers: anthropic, openai, gemini, deepseek, private, synseekr. enforcePolicyGate() wraps generateCompletion(), streamResponse(), and analyzeImageWithVision(). SynSeekr provider routes through dedicated proxy client. Policy decisions are recorded automatically.
-- **API Routes:** `server/routes/ai-policy.ts` — GET /api/ai/models, GET/POST /api/ai/policy/state, POST /api/ai/policy/mode, POST /api/ai/policy/select-model, POST /api/ai/policy/evaluate, GET /api/ai/policy/audit.
-- **UI:** `client/src/components/model-picker.tsx` — ModelPicker dropdown + BatmodeBadge toggle always visible in header. Model dropdown shows local/cloud icons and batmode compatibility.
-- **Rule:** Data policy drives model choice. Batmode = no outbound API calls, SynSeekr Qwen2.5-7B is the preferred fallback. Privileged/sealed cases hard-block external models.
-
 ## System Architecture
 VERICASE is built with a modern web stack, featuring React 18 with TypeScript for the frontend, and Node.js with Express for the backend. PostgreSQL with Drizzle ORM handles data persistence.
 
 **UI/UX Decisions:**
-The system adopts a Monday.com-style board architecture, offering highly customizable boards with over 15 column types, dynamic column management, and group summary rows. An "Approval Column" supports legal verification workflows. The interface includes a collapsible sidebar, theme support (dark/light mode with teal accents), and is designed to be responsive. Shadcn/ui and Radix UI components, styled with Tailwind CSS, ensure a consistent and modern aesthetic.
+The system adopts a Monday.com-style board architecture, offering highly customizable boards with over 15 column types and dynamic column management. It includes an "Approval Column" for legal verification workflows, a collapsible sidebar, and theme support (dark/light mode with teal accents). The interface is responsive and utilizes Shadcn/ui and Radix UI components, styled with Tailwind CSS, for a consistent and modern aesthetic.
 
 **Technical Implementations:**
-- **Board System:** Customizable boards with task groups and various column types. Boards support optional `clientId` and `matterId` for linking to specific clients and cases. New matters automatically get a linked board with 8 preset groups (Waiting, Tasks, Motions, Filings, Files, In Progress, Stuck, Finished) and automatic status-based group movement automations. Completed items (10+) auto-collapse in group views. Admin-only task deletion protection via RBAC.
-- **Vibe Code (AI App Builder):** An AI-powered board builder at `/vibe-code` where users can use natural language prompts to generate boards, or select from 18 pre-built legal-focused templates.
-- **AI Integration (VeriBot):** A multi-model AI assistant for legal document analysis, content generation, and summarization, with matter-specific context.
-- **Clawbot Gateway Integration:** Connects to OpenClaw/Clawbot for autonomous computer control via natural language.
-- **Document & Form Maker:** AI-powered Utah legal document generation system with 5+ templates, URCP compliance checking, and a lawyer approval workflow.
-- **Daily Briefing:** A personalized dashboard with task summaries, deadlines, and matter updates.
-- **Filing Cabinet:** A two-layer document classification system with controlled vocabulary and Bates numbering.
+- **Board System:** Customizable boards with task groups, various column types, and automations for status-based group movement. Supports optional `clientId` and `matterId`.
+- **Vibe Code (AI App Builder):** An AI-powered board builder allowing natural language prompts or selection from 18 pre-built legal templates.
+- **AI Integration (VeriBot):** A multi-model AI assistant for legal document analysis, content generation, and summarization with matter-specific context.
+- **Clawbot Gateway Integration:** Connects to OpenClaw/Clawbot for autonomous computer control.
+- **Document & Form Maker:** AI-powered document generation system with URCP compliance checking and lawyer approval workflows.
+- **Filing Cabinet:** A two-layer document classification system with Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
-- **Detective Board:** A visual investigation board implementing the doctrine's Entity + Event Graph. Supports 10 node types (evidence, person, organization, location, event, theory, hypothesis, legal_element, timeline_marker, note) with confidence scores, reliability ratings (Strong/Moderate/Weak), and observed/inferred labeling. 8 connection types (related, contradicts, supports, corroborates, leads-to, timeline, communicates, references) with evidence citations and independence tracking.
-- **Automations:** Event-driven automation engine with 85+ pre-built templates, AI-powered actions, and a Workflow Recorder to suggest automations.
-- **SynSeekr Integration:** Hybrid AI architecture connecting to a self-hosted SynSeekr server for advanced AI capabilities (document analysis, entity extraction, RAG queries, investigations, contradiction detection, timeline extraction, AI agents). Includes 12 SynSeekr automation templates.
-- **Communications Hub:** Clio-style communications center at `/communications` for client portals, SMS messaging, internal team communication, and activity logs.
-- **Legal AI Workspace (VeriBot):** Clio Work/Vincent-style AI-powered legal workspace at `/legal-ai` with conversational AI, a template library, and generated document drafting. Features 14 legal workflow cards.
-- **Client Intake Forms:** Clio Grow-style intake form system at `/intake-forms` with 6 pre-built templates.
-- **Matter Insights:** OCR-first evidence intelligence system in matter detail views. Supports file upload, text extraction, SHA-256 hashing, and AI-powered analysis (themes, timeline, entities, contradictions, action items, risks) with document citations. Includes OCR session tracking with detailed processing reports (timestamps, method, provider, confidence, processing time, page counts, text statistics) and an OCR Processing tab in matter detail views. Documents auto-create tasks in the board's Files group upon processing completion.
+- **Detective Board:** A visual investigation board for entity and event graphing, incorporating confidence scores, reliability ratings, and observed/inferred labeling for 10 node types and 8 connection types.
+- **Automations:** Event-driven automation engine with 85+ pre-built templates, AI-powered actions, and a Workflow Recorder.
+- **SynSeekr Integration:** Hybrid AI architecture connecting to a self-hosted SynSeekr server for advanced AI capabilities like document analysis, entity extraction, RAG queries, and investigations. Includes 12 SynSeekr automation templates.
+- **Communications Hub:** A centralized communication system for client portals, SMS, and internal team interaction.
+- **Legal AI Workspace (VeriBot):** An AI-powered legal workspace with conversational AI, template libraries, and document drafting, featuring 14 legal workflow cards.
+- **Client Intake Forms:** A system for client intake with 6 pre-built templates.
+- **Matter Insights:** An OCR-first evidence intelligence system providing AI-powered analysis (themes, timeline, entities, contradictions) with document citations and OCR session tracking.
 - **Matter Management:** Comprehensive lifecycle management for matters and clients.
-- **Billing System:** Complete firm billing infrastructure with expenses, invoices, payments, and trust transactions, accessible via master, client, and matter-specific dashboards.
-- **Billing Verifier:** Client-side time entry verification and invoice preparation system at `/billing-verifier`. Features CSV/JSON import, settings for firm info/rates/rules, results summary, daily aggregations, adjustments, review, and various export options. Includes UTBMS code detection and quality checking.
-- **Template Library:** Email intelligence template system at `/templates` with 5 types and 20 pre-built legal email templates across 12 categories.
-- **Process Recorder:** Workflow capture system that records app events and converts them to automations, macros, or SOPs.
-- **Help System & Tooltips:** Centralized feature metadata library providing tooltips, descriptions, and searchable feature guides with "Ask VeriBot" integration.
-- **AI Operations Monitor:** In-memory AI usage tracking system for cost, latency, and performance monitoring of AI operations, with an admin-only dashboard.
-- **PDF Pro:** Advanced legal document processing module at `/pdf-pro` with matter-scoped PDF management. Features: PDF upload with SHA-256 integrity hashing, async job queue (OCR, Bates numbering, confidentiality stamps, PII wash/detection), document version tracking with chain-of-custody, Bates set management with auto-incrementing numbering and range tracking, PII detection via regex (SSN, phone, email, DOB, credit cards), and wash reports.
-- **Legal Research:** Deep AI-powered legal research feature at `/legal-research`. Multi-step research pipeline using Claude: query planning (5 research steps), sequential step execution with live SSE progress streaming, and final compilation into structured legal memo.
-- **Unified Calendar Sync:** Calendar events auto-sync from 7 entity types (e-filing deadlines, case actions, filings, board tasks, meetings, invoices, approvals) via sourceType/sourceId tracking.
-- **Cross-Entity Data Linkage System:** Backend where all entities (clients, matters, contacts, billing, time entries, boards, evidence) are interconnected, with new endpoints for client/matter-specific data and a master spreadsheet view.
+- **Billing System:** Complete firm billing infrastructure with expenses, invoices, payments, and trust transactions.
+- **Billing Verifier:** Client-side time entry verification and invoice preparation system with CSV/JSON import, UTBMS code detection, and export options.
+- **Template Library:** Email intelligence template system with 5 types and 20 pre-built legal email templates.
+- **Process Recorder:** Workflow capture system that converts app events into automations, macros, or SOPs.
+- **Model Intelligence Advisor:** An open-source model tracking and recommendation system that monitors models, provides quality scores, task-specific recommendations, and alerts.
+- **Help System & Tooltips:** Centralized feature metadata library providing tooltips, descriptions, and searchable guides with "Ask VeriBot" integration.
+- **AI Operations Monitor:** In-memory AI usage tracking system for cost, latency, and performance, with an admin-only dashboard.
+- **PDF Pro:** Advanced legal document processing module for matter-scoped PDFs, featuring SHA-256 integrity hashing, async job queue (OCR, Bates numbering, PII wash/detection), document version tracking, and Bates set management.
+- **Legal Research:** Deep AI-powered legal research feature with a multi-step pipeline for query planning, sequential execution, and final compilation into structured legal memos.
+- **Unified Calendar Sync:** Calendar events auto-sync from 7 entity types.
+- **Cross-Entity Data Linkage System:** Backend linking all entities (clients, matters, contacts, billing, time entries, boards, evidence).
 - **Workspace Architecture:** Supports multiple workspaces with independent boards and data.
-- **E-Filing Automation Brain:** Comprehensive legal document automation system at `/efiling`. Includes AI-powered document classifier, rules-based deadline engine, and sequencing engine for next-best-actions.
+- **E-Filing Automation Brain:** A comprehensive legal document automation system with an AI-powered document classifier, rules-based deadline engine, and sequencing engine.
 
 **System Design Choices:**
 - **Authentication:** Multi-user authentication via Replit Auth (Google, GitHub, Apple, email).
 - **Role-Based Access Control (RBAC):** Three-tier role system (admin, member, viewer) for route-level permissions.
 - **Data Storage:** PostgreSQL with Drizzle ORM for relational data; in-memory store for temporary data.
 - **API Design:** RESTful JSON API with a modular Express route architecture.
-- **Cloudflare Security Hardening:** Comprehensive security layer including scanner tripwire traps, Cloudflare Turnstile verification, dedicated form rate limiters, trust proxy, custom domain CORS support, and CSP directives.
+- **Cloudflare Security Hardening:** Comprehensive security layer including scanner tripwire traps, Turnstile verification, form rate limiters, trust proxy, custom domain CORS, and CSP directives.
+- **Runtime Doctrine:** Central decision layer for model choice and data isolation, enforcing ONLINE/BATMODE. Batmode blocks external API calls and falls back to local SynSeekr models.
 
 ## External Dependencies
 - **Replit Auth:** For multi-user authentication.
 - **PostgreSQL:** Primary database.
 - **Drizzle ORM:** ORM for PostgreSQL.
-- **Anthropic Claude, OpenAI GPT, Google Gemini:** AI models for VeriBot.
+- **Anthropic Claude, OpenAI GPT, Google Gemini:** External AI models.
 - **Wouter:** Frontend routing.
 - **TanStack React Query:** Frontend server state management.
 - **shadcn/ui + Radix UI:** UI component libraries.
 - **Tailwind CSS:** Frontend styling.
 - **React Hook Form with Zod:** Form management and validation.
 - **connect-pg-simple:** PostgreSQL-based session storage.
-- **pdf-lib:** For PDF manipulation in the PDF Pro module.
-- **multer:** For file uploads in the PDF Pro module.
+- **pdf-lib:** For PDF manipulation.
+- **multer:** For file uploads.

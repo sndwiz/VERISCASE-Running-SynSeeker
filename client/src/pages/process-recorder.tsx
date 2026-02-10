@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   PlayCircle,
   Zap,
@@ -21,6 +22,8 @@ import {
   CircleDot,
   ArrowRight,
   ClipboardList,
+  Download,
+  CheckCircle2,
 } from "lucide-react";
 
 interface Recording {
@@ -74,7 +77,14 @@ export default function ProcessRecorderPage() {
   const [selectedRecording, setSelectedRecording] = useState<RecordingDetail | null>(null);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [convertRecordingId, setConvertRecordingId] = useState<string | null>(null);
+  const [showInstallDialog, setShowInstallDialog] = useState(false);
+  const [installRecordingId, setInstallRecordingId] = useState<string | null>(null);
+  const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const { toast } = useToast();
+
+  const { data: boards = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ["/api/boards"],
+  });
 
   const { data: recordings = [], isLoading } = useQuery<Recording[]>({
     queryKey: ["/api/recordings"],
@@ -98,6 +108,23 @@ export default function ProcessRecorderPage() {
       toast({ title: "Recording converted", description: "Your recording has been converted successfully." });
     },
     onError: () => toast({ title: "Conversion failed", variant: "destructive" }),
+  });
+
+  const installMutation = useMutation({
+    mutationFn: ({ id, boardId }: { id: string; boardId: string }) =>
+      apiRequest("POST", `/api/recordings/${id}/install`, { boardId }),
+    onSuccess: async (res) => {
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/recordings"] });
+      setShowInstallDialog(false);
+      setSelectedBoardId("");
+      toast({
+        title: "Automation installed",
+        description: `${data.count} automation rule${data.count !== 1 ? "s" : ""} created and ready to run.`,
+      });
+      if (installRecordingId) fetchDetail(installRecordingId);
+    },
+    onError: () => toast({ title: "Installation failed", variant: "destructive" }),
   });
 
   const fetchDetail = async (id: string) => {
@@ -237,7 +264,28 @@ export default function ProcessRecorderPage() {
                 <>
                   <Separator />
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Conversions</h3>
+                    <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                      <h3 className="text-sm font-medium">Conversions</h3>
+                      {selectedRecording.status !== "installed" && selectedRecording.conversions.some(c => c.outputType === "automation_rule" || c.outputType === "macro") && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setInstallRecordingId(selectedRecording.id);
+                            setShowInstallDialog(true);
+                          }}
+                          data-testid="button-install-automation"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Install as Live Automation
+                        </Button>
+                      )}
+                      {selectedRecording.status === "installed" && (
+                        <Badge variant="default" className="gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Installed
+                        </Badge>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       {selectedRecording.conversions.map(conv => {
                         const Icon = outputTypeIcons[conv.outputType] || FileText;
@@ -247,7 +295,7 @@ export default function ProcessRecorderPage() {
                               <CardTitle className="text-sm flex items-center gap-2">
                                 <Icon className="h-4 w-4" />
                                 {outputTypeLabels[conv.outputType] || conv.outputType}
-                                <Badge variant="outline" className="capitalize ml-auto">{conv.status}</Badge>
+                                <Badge variant="outline" className={`capitalize ml-auto ${conv.status === "installed" ? "border-green-500 text-green-600 dark:text-green-400" : ""}`}>{conv.status}</Badge>
                               </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -272,6 +320,53 @@ export default function ProcessRecorderPage() {
           )}
         </div>
       </div>
+
+      {showInstallDialog && installRecordingId && (
+        <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+          <DialogContent data-testid="dialog-install-automation">
+            <DialogHeader>
+              <DialogTitle>Install as Live Automation</DialogTitle>
+              <DialogDescription>Choose which board to install the automation rules on. They will run automatically on that board.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Target Board</Label>
+                <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                  <SelectTrigger data-testid="select-install-board">
+                    <SelectValue placeholder="Select a board..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {boards.map(board => (
+                      <SelectItem key={board.id} value={board.id} data-testid={`board-option-${board.id}`}>
+                        {board.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowInstallDialog(false)} data-testid="button-cancel-install">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!selectedBoardId) {
+                    toast({ title: "Please select a board", variant: "destructive" });
+                    return;
+                  }
+                  installMutation.mutate({ id: installRecordingId, boardId: selectedBoardId });
+                }}
+                disabled={!selectedBoardId || installMutation.isPending}
+                data-testid="button-confirm-install"
+              >
+                {installMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                Install
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {showConvertDialog && convertRecordingId && (
         <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>

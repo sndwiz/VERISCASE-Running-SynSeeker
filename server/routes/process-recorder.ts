@@ -1,9 +1,11 @@
 import type { Express } from "express";
 import { db } from "../db";
-import { processRecordings, processEvents, processConversions } from "@shared/models/tables";
+import { processRecordings, processEvents, processConversions, automationRules } from "@shared/models/tables";
 import { insertProcessRecordingSchema, insertProcessEventSchema, insertProcessConversionSchema } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getUserId } from "../utils/auth";
+import { logger } from "../utils/logger";
+import { randomUUID } from "crypto";
 
 async function verifyOwnership(recordingId: string, userId: string) {
   const [recording] = await db.select().from(processRecordings)
@@ -170,6 +172,109 @@ export function registerProcessRecorderRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/recordings/:id/install", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+      const recording = await verifyOwnership(req.params.id, userId);
+      if (!recording) return res.status(404).json({ error: "Recording not found" });
+
+      const conversions = await db.select().from(processConversions)
+        .where(eq(processConversions.recordingId, req.params.id));
+
+      if (conversions.length === 0) {
+        return res.status(400).json({ error: "No conversions found. Convert the recording first." });
+      }
+
+      const { boardId } = req.body;
+      if (!boardId) {
+        return res.status(400).json({ error: "boardId is required to install automation rules" });
+      }
+
+      const installed: any[] = [];
+      for (const conv of conversions) {
+        const json = conv.generatedJson as any;
+        if (!json) continue;
+
+        if (conv.outputType === "automation_rule" && json.type === "automation_rule") {
+          const trigger = json.trigger || {};
+          const actions = json.actions || [];
+          const triggerType = mapEventToTriggerType(trigger.event);
+          const triggerScope = trigger.scope || {};
+
+          for (const action of actions) {
+            const actionType = mapEventToActionType(action.action);
+            const ruleId = randomUUID();
+            const now = new Date();
+
+            const [rule] = await db.insert(automationRules).values({
+              id: ruleId,
+              boardId,
+              name: `Recorded: ${recording.title || "Untitled"} - ${actionType}`,
+              description: `Auto-installed from Process Recorder recording "${recording.title}"`,
+              isActive: true,
+              triggerType,
+              triggerField: triggerScope.field || null,
+              triggerValue: triggerScope.newValue || triggerScope.value || null,
+              conditions: json.conditions || [],
+              actionType,
+              actionConfig: action.params || {},
+              runCount: 0,
+              createdAt: now,
+              updatedAt: now,
+            }).returning();
+
+            installed.push(rule);
+          }
+
+          await db.update(processConversions).set({ status: "installed" })
+            .where(eq(processConversions.id, conv.id));
+        } else if (conv.outputType === "macro" && json.type === "macro") {
+          const ruleId = randomUUID();
+          const now = new Date();
+          const steps = json.steps || [];
+
+          const [rule] = await db.insert(automationRules).values({
+            id: ruleId,
+            boardId,
+            name: `Macro: ${recording.title || "Untitled"}`,
+            description: `Macro from Process Recorder - ${steps.length} steps`,
+            isActive: true,
+            triggerType: "manual_trigger",
+            triggerField: null,
+            triggerValue: null,
+            conditions: [],
+            actionType: steps[0]?.action ? mapEventToActionType(steps[0].action) : "send_notification",
+            actionConfig: { macroSteps: steps, runMode: json.runMode || "sequential" },
+            runCount: 0,
+            createdAt: now,
+            updatedAt: now,
+          }).returning();
+
+          installed.push(rule);
+
+          await db.update(processConversions).set({ status: "installed" })
+            .where(eq(processConversions.id, conv.id));
+        }
+      }
+
+      await db.update(processRecordings).set({ status: "installed" })
+        .where(eq(processRecordings.id, req.params.id));
+
+      logger.info("[ProcessRecorder] Installed automation rules from recording", {
+        recordingId: req.params.id,
+        boardId,
+        installedCount: installed.length,
+      });
+
+      res.json({ installed, count: installed.length });
+    } catch (error: any) {
+      logger.error("[ProcessRecorder] Install failed", { error: error.message });
+      res.status(500).json({ error: "Failed to install automation from recording" });
+    }
+  });
+
   app.delete("/api/recordings/:id", async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -222,6 +327,40 @@ function generateConversion(outputType: string, events: any[]) {
     default:
       return { steps };
   }
+}
+
+function mapEventToTriggerType(event: string): string {
+  const mapping: Record<string, string> = {
+    "status.change": "status_change",
+    "item.create": "item_created",
+    "item.update": "field_change",
+    "item.move": "item_moved",
+    "file.upload": "file_uploaded",
+    "task.create": "item_created",
+    "column.create": "column_created",
+    "group.create": "group_created",
+    "comment.post": "comment_added",
+    "calendar.create": "date_arrived",
+    "email.link": "email_linked",
+    "navigation.open": "manual_trigger",
+  };
+  return mapping[event] || "manual_trigger";
+}
+
+function mapEventToActionType(action: string): string {
+  const mapping: Record<string, string> = {
+    "status.change": "change_status",
+    "item.create": "create_item",
+    "item.update": "update_column",
+    "item.move": "move_item",
+    "file.upload": "send_notification",
+    "task.create": "create_item",
+    "comment.post": "send_notification",
+    "calendar.create": "create_item",
+    "email.link": "send_notification",
+    "navigation.open": "send_notification",
+  };
+  return mapping[action] || "send_notification";
 }
 
 function describeEvent(eventType: string, payload: any): string {

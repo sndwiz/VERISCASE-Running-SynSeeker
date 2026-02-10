@@ -66,6 +66,7 @@ const ProductGuidePage = lazy(() => import("@/pages/product-guide"));
 const PdfProPage = lazy(() => import("@/pages/pdf-pro"));
 const EFilingDashboard = lazy(() => import("@/pages/efiling-dashboard"));
 const LegalResearchPage = lazy(() => import("@/pages/legal-research"));
+const ModelAdvisorPage = lazy(() => import("@/pages/model-advisor"));
 
 function PageLoader() {
   return (
@@ -117,6 +118,7 @@ function Router() {
       <Route path="/product-guide" component={ProductGuidePage} />
       <Route path="/pdf-pro" component={PdfProPage} />
       <Route path="/efiling" component={EFilingDashboard} />
+      <Route path="/model-advisor" component={ModelAdvisorPage} />
       <Route path="/legal-research" component={LegalResearchPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />

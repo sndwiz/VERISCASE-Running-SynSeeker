@@ -1556,3 +1556,70 @@ export const draftDocuments = pgTable("draft_documents", {
 
 export type DraftDocument = typeof draftDocuments.$inferSelect;
 export type InsertDraftDocument = typeof draftDocuments.$inferInsert;
+
+export const modelIntelligenceEntries = pgTable("model_intelligence_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelId: varchar("model_id", { length: 255 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  provider: varchar("provider", { length: 100 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  capabilities: jsonb("capabilities").default([]),
+  license: varchar("license", { length: 100 }),
+  parameterSize: varchar("parameter_size", { length: 50 }),
+  quantization: varchar("quantization", { length: 50 }),
+  contextWindow: integer("context_window").default(0),
+  qualityScores: jsonb("quality_scores").default({}),
+  tasksRecommended: jsonb("tasks_recommended").default([]),
+  replacesModelId: varchar("replaces_model_id"),
+  replacedByModelId: varchar("replaced_by_model_id"),
+  releasedAt: timestamp("released_at"),
+  sourceUrl: varchar("source_url", { length: 500 }),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_model_intel_model_id").on(table.modelId),
+  index("IDX_model_intel_category").on(table.category),
+]);
+
+export const modelRecommendations = pgTable("model_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskType: varchar("task_type", { length: 100 }).notNull(),
+  modelId: varchar("model_id", { length: 255 }).notNull(),
+  rank: integer("rank").default(1),
+  reason: text("reason"),
+  performanceNotes: text("performance_notes"),
+  sizeEfficiency: varchar("size_efficiency", { length: 50 }),
+  isCurrentBest: boolean("is_current_best").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_model_rec_task").on(table.taskType),
+  index("IDX_model_rec_model").on(table.modelId),
+]);
+
+export const modelAlerts = pgTable("model_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertType: varchar("alert_type", { length: 50 }).notNull(),
+  currentModelId: varchar("current_model_id", { length: 255 }),
+  suggestedModelId: varchar("suggested_model_id", { length: 255 }).notNull(),
+  taskType: varchar("task_type", { length: 100 }),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  priority: varchar("priority", { length: 20 }).default("info"),
+  isDismissed: boolean("is_dismissed").default(false),
+  dismissedBy: varchar("dismissed_by"),
+  dismissedAt: timestamp("dismissed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_model_alerts_type").on(table.alertType),
+  index("IDX_model_alerts_dismissed").on(table.isDismissed),
+]);
+
+export type ModelIntelligenceEntry = typeof modelIntelligenceEntries.$inferSelect;
+export type InsertModelIntelligenceEntry = typeof modelIntelligenceEntries.$inferInsert;
+export type ModelRecommendation = typeof modelRecommendations.$inferSelect;
+export type InsertModelRecommendation = typeof modelRecommendations.$inferInsert;
+export type ModelAlert = typeof modelAlerts.$inferSelect;
+export type InsertModelAlert = typeof modelAlerts.$inferInsert;
