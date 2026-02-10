@@ -543,10 +543,21 @@ router.patch("/actions/:id", async (req: Request<{ id: string }>, res: Response)
       const userId = getUserId(req) || "system";
       await updateActionStatus(req.params.id, parsed.status, userId);
     }
-    const allowed = ["title", "description", "actionType", "requiredDocType", "priority", "dueDate", "assignedTo", "generatedDocPath"] as const;
+    const allowedFields: Record<string, boolean> = {
+      title: true,
+      description: true,
+      actionType: true,
+      requiredDocType: true,
+      priority: true,
+      dueDate: true,
+      assignedTo: true,
+      generatedDocPath: true,
+    };
     const updates: Record<string, any> = {};
-    for (const key of allowed) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    for (const field of Object.keys(allowedFields)) {
+      if (Object.hasOwn(req.body, field)) {
+        updates[field] = req.body[field];
+      }
     }
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = new Date();
