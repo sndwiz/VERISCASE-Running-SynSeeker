@@ -1,6 +1,8 @@
 import { storage } from "./storage";
 import type { AutomationRule, Task } from "@shared/schema";
 import { synseekrClient } from "./services/synseekr-client";
+import { db } from "./db";
+import { automationRuns } from "@shared/models/tables";
 
 export type AutomationEvent = {
   type: string;
@@ -77,6 +79,26 @@ class AutomationEngine {
     try {
       const actionResult = await this.executeAction(rule, event);
       
+      await storage.updateAutomationRule(rule.id, {
+        runCount: (rule.runCount || 0) + 1,
+        lastRun: new Date() as any,
+      });
+
+      try {
+        await db.insert(automationRuns).values({
+          ruleId: rule.id,
+          taskId: event.taskId || null,
+          triggerData: event as any,
+          actionResult: { message: actionResult.message } as any,
+          status: "completed",
+          completedAt: new Date(),
+        });
+      } catch (logErr) {
+        console.error("[AutomationEngine] Failed to log run:", logErr);
+      }
+
+      console.log(`[AutomationEngine] EXECUTED: "${rule.name}" (${rule.actionType}) → ${actionResult.message}`);
+      
       return {
         ruleId: rule.id,
         ruleName: rule.name,
@@ -86,6 +108,17 @@ class AutomationEngine {
         timestamp,
       };
     } catch (error) {
+      try {
+        await db.insert(automationRuns).values({
+          ruleId: rule.id,
+          taskId: event.taskId || null,
+          triggerData: event as any,
+          actionResult: {} as any,
+          status: "failed",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      } catch (_) {}
+
       return {
         ruleId: rule.id,
         ruleName: rule.name,
@@ -253,7 +286,31 @@ class AutomationEngine {
   }
 
   private async actionAICategorize(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    return { message: "AI categorization completed (stub - integrate with AI provider)" };
+    if (!event.taskId) {
+      return { message: "AI categorization skipped — no task to categorize" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI categorization skipped — task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const result = await generateCompletion(
+        { provider: "anthropic", model: "claude-sonnet-4-5", maxTokens: 200 },
+        [
+          { role: "system", content: "You are a legal task categorizer. Given a task title and description, return a JSON object with: { category: string, tags: string[], urgency: 'low'|'medium'|'high' }. Categories: 'Filing', 'Discovery', 'Motion', 'Hearing', 'Client Communication', 'Research', 'Administrative', 'Evidence', 'Deadline'. Return ONLY the JSON." },
+          { role: "user", content: `Task: "${task.title}"\nDescription: "${task.description || 'No description'}"` },
+        ]
+      );
+      const parsed = JSON.parse(result);
+      const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
+      await storage.updateTask(event.taskId, {
+        tags: [...(task.tags || []), ...tags],
+      });
+      return { message: `AI categorized as "${parsed.category}" with tags [${tags.join(", ")}], urgency: ${parsed.urgency}` };
+    } catch (e: any) {
+      return { message: `AI categorization attempted but failed: ${e.message?.substring(0, 100)}` };
+    }
   }
 
   private async actionAISummarize(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
@@ -346,8 +403,22 @@ class AutomationEngine {
   }
 
   private async actionCreateItem(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
-    console.log(`[Automation] Create item in board ${config.boardId || event.boardId}`);
-    return { message: "New item created (stub - needs full task creation implementation)" };
+    const targetBoardId = config.boardId || event.boardId;
+    const groups = await storage.getGroups(targetBoardId);
+    if (groups.length === 0) {
+      return { message: "Create item skipped — no groups in target board" };
+    }
+    const targetGroupId = config.groupId || groups[0].id;
+    const title = config.title || config.taskTitle || `Auto-created from "${event.type}" automation`;
+    const task = await storage.createTask({
+      title,
+      description: config.description || `Created by automation in response to ${event.type} event`,
+      boardId: targetBoardId,
+      groupId: targetGroupId,
+      status: config.status || "not-started",
+      priority: config.priority || "medium",
+    });
+    return { message: `Created task "${task.title}" [${task.id}] in board ${targetBoardId}` };
   }
 
   private async actionUpdateColumn(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {

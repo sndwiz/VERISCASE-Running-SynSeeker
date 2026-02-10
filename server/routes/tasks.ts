@@ -7,6 +7,7 @@ import { tasks as tasksTable } from "@shared/models/tables";
 import { boards } from "@shared/models/tables";
 import { eq, and, sql, or } from "drizzle-orm";
 import { syncTaskToCalendar, removeSyncedEvent } from "../services/calendar-sync";
+import { triggerAutomation } from "../automation-engine";
 
 function getUserId(req: any): string | null {
   return (req as any).user?.id || (req.session as any)?.passport?.user?.id || null;
@@ -125,6 +126,13 @@ export function registerTaskRoutes(app: Express): void {
       if (task.dueDate || task.startDate) {
         syncTaskToCalendar(task.id).catch(e => console.error("[tasks] Calendar sync error:", e));
       }
+      triggerAutomation({
+        type: "item_created",
+        boardId: req.params.boardId,
+        taskId: task.id,
+        newValue: task.title,
+        metadata: { status: task.status, priority: task.priority },
+      }).catch(e => console.error("[tasks] Automation trigger error:", e));
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -137,6 +145,7 @@ export function registerTaskRoutes(app: Express): void {
   app.patch("/api/tasks/:id", async (req, res) => {
     try {
       const data = updateTaskSchema.parse(req.body);
+      const oldTask = await storage.getTask(req.params.id);
       const task = await storage.updateTask(req.params.id, data);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
@@ -144,6 +153,30 @@ export function registerTaskRoutes(app: Express): void {
       if (task.dueDate || task.startDate || data.dueDate !== undefined || data.startDate !== undefined) {
         syncTaskToCalendar(task.id).catch(e => console.error("[tasks] Calendar sync error:", e));
       }
+
+      if (oldTask && task.boardId) {
+        if (data.status && oldTask.status !== data.status) {
+          triggerAutomation({
+            type: "status_changed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "status",
+            previousValue: oldTask.status,
+            newValue: data.status,
+          }).catch(e => console.error("[tasks] Automation trigger error:", e));
+        }
+        if (data.priority && oldTask.priority !== data.priority) {
+          triggerAutomation({
+            type: "priority_changed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "priority",
+            previousValue: oldTask.priority,
+            newValue: data.priority,
+          }).catch(e => console.error("[tasks] Automation trigger error:", e));
+        }
+      }
+
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
