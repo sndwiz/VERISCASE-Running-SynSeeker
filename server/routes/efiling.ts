@@ -117,11 +117,18 @@ router.post("/rules", async (req: Request, res: Response) => {
 
 router.patch("/rules/:id", async (req: Request<{ id: string }>, res: Response) => {
   try {
-    const allowed = ["name", "triggerDocType", "anchorDateField", "offsetDays", "resultAction", "resultDocType", "criticality", "ruleSource", "isActive", "jurisdictionId"] as const;
     const updates: Record<string, any> = {};
-    for (const key of allowed) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
-    }
+    const body = req.body ?? {};
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.triggerDocType !== undefined) updates.triggerDocType = body.triggerDocType;
+    if (body.anchorDateField !== undefined) updates.anchorDateField = body.anchorDateField;
+    if (body.offsetDays !== undefined) updates.offsetDays = body.offsetDays;
+    if (body.resultAction !== undefined) updates.resultAction = body.resultAction;
+    if (body.resultDocType !== undefined) updates.resultDocType = body.resultDocType;
+    if (body.criticality !== undefined) updates.criticality = body.criticality;
+    if (body.ruleSource !== undefined) updates.ruleSource = body.ruleSource;
+    if (body.isActive !== undefined) updates.isActive = body.isActive;
+    if (body.jurisdictionId !== undefined) updates.jurisdictionId = body.jurisdictionId;
     if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No valid fields to update" });
     const [updated] = await db.update(deadlineRules)
       .set(updates)
