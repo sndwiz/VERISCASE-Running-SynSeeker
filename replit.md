@@ -3,6 +3,16 @@
 ## Overview
 VERICASE is a comprehensive legal practice management system designed to streamline legal workflows with a Monday.com-style board interface. It offers AI-powered document analysis, secure evidence management, investigative tools, multi-user authentication, and extensive legal practice management features. The system aims to provide a robust, AI-enhanced platform for legal professionals, improving efficiency and case management capabilities.
 
+## Core Doctrine
+**"Totality of the circumstances, measured — then argued."**
+VERICASE turns messy case materials into structured, defensible insight without hallucinating facts. Every document is treated as evidence with (1) content, (2) context, (3) reliability, and (4) relationship to other evidence. The system reveals patterns, contradictions, and narrative leverage while preserving chain-of-custody thinking and legal relevance.
+
+**Doctrine Architecture:**
+- `server/config/core-doctrine.ts` — Centralized doctrine module with shared system prompts referenced by all AI touchpoints
+- `server/config/DOCTRINE.md` — Full doctrine reference document
+- All AI prompts (OCR, insights analysis, VeriBot, legal research) import and use doctrine preambles
+- Doctrine principles: Evidence Over Vibes, Competing Hypotheses (H0/H1), Convergence Analysis, Reliability Scoring (Strong/Moderate/Weak), Legal Element Mapping, Observed vs Inferred labeling, Source Independence checking
+
 ## User Preferences
 - Dark/light theme toggle in header
 - Professional legal-focused design
@@ -23,7 +33,7 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Daily Briefing:** A personalized dashboard with task summaries, deadlines, and matter updates.
 - **Filing Cabinet:** A two-layer document classification system with controlled vocabulary and Bates numbering.
 - **Evidence Vault:** Immutable file storage with SHA-256 chain-of-custody tracking.
-- **Detective Board:** A visual investigation board with draggable nodes and connections.
+- **Detective Board:** A visual investigation board implementing the doctrine's Entity + Event Graph. Supports 10 node types (evidence, person, organization, location, event, theory, hypothesis, legal_element, timeline_marker, note) with confidence scores, reliability ratings (Strong/Moderate/Weak), and observed/inferred labeling. 8 connection types (related, contradicts, supports, corroborates, leads-to, timeline, communicates, references) with evidence citations and independence tracking.
 - **Automations:** Event-driven automation engine with 85+ pre-built templates, AI-powered actions, and a Workflow Recorder to suggest automations.
 - **SynSeekr Integration:** Hybrid AI architecture connecting to a self-hosted SynSeekr server for advanced AI capabilities (document analysis, entity extraction, RAG queries, investigations, contradiction detection, timeline extraction, AI agents). Includes 12 SynSeekr automation templates.
 - **Communications Hub:** Clio-style communications center at `/communications` for client portals, SMS messaging, internal team communication, and activity logs.

@@ -91,12 +91,72 @@ function extractTextFromPlain(filePath: string): string {
   return fs.readFileSync(filePath, "utf-8").trim();
 }
 
-async function ocrImage(filePath: string): Promise<{ text: string; confidence: number }> {
+export interface DocumentProfile {
+  documentType: string;
+  language: string;
+  textQuality: string;
+  containsHandwriting: boolean;
+  containsSignatures: boolean;
+  containsStamps: boolean;
+  containsRedactions: boolean;
+  visibleDates: string[];
+  keyEntities: string[];
+  structuralSections: string[];
+}
+
+function parseDocumentProfile(fullText: string): { extractedText: string; profile: DocumentProfile | null } {
+  const profileMarker = "[DOCUMENT PROFILE]";
+  const textMarker = "[EXTRACTED TEXT]";
+  let extractedText = fullText;
+  let profile: DocumentProfile | null = null;
+
+  const profileIdx = fullText.indexOf(profileMarker);
+  if (profileIdx !== -1) {
+    const textIdx = fullText.indexOf(textMarker);
+    extractedText = textIdx !== -1
+      ? fullText.substring(textIdx + textMarker.length, profileIdx).trim()
+      : fullText.substring(0, profileIdx).trim();
+
+    const profileSection = fullText.substring(profileIdx + profileMarker.length).trim();
+    const getField = (label: string): string => {
+      const regex = new RegExp(`-\\s*${label}:\\s*(.+)`, "i");
+      const match = profileSection.match(regex);
+      return match ? match[1].trim() : "";
+    };
+    const getBool = (label: string): boolean => {
+      const val = getField(label).toLowerCase();
+      return val === "yes" || val === "true";
+    };
+    const getList = (label: string): string[] => {
+      const val = getField(label);
+      if (!val || val.toLowerCase() === "none" || val.toLowerCase() === "n/a") return [];
+      return val.split(/[,;]/).map(s => s.trim()).filter(Boolean);
+    };
+
+    profile = {
+      documentType: getField("Document Type") || "other",
+      language: getField("Language") || "English",
+      textQuality: getField("Text Quality") || "clear",
+      containsHandwriting: getBool("Contains Handwriting"),
+      containsSignatures: getBool("Contains Signatures"),
+      containsStamps: getBool("Contains Stamps/Seals"),
+      containsRedactions: getBool("Contains Redactions"),
+      visibleDates: getList("Visible Dates"),
+      keyEntities: getList("Key Entities Spotted"),
+      structuralSections: getList("Structural Sections"),
+    };
+  }
+
+  return { extractedText, profile };
+}
+
+async function ocrImage(filePath: string): Promise<{ text: string; confidence: number; profile: DocumentProfile | null }> {
   try {
+    const { DOCTRINE_OCR_PROMPT } = await import("../config/core-doctrine");
     const { GoogleGenAI } = await import("@google/genai");
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
     if (!apiKey) {
-      return { text: "[OCR unavailable: no Gemini API key configured]", confidence: 0.0 };
+      return { text: "[OCR unavailable: no Gemini API key configured]", confidence: 0.0, profile: null };
     }
     const genAI = new GoogleGenAI({ apiKey });
 
@@ -117,20 +177,23 @@ async function ocrImage(filePath: string): Promise<{ text: string; confidence: n
           role: "user",
           parts: [
             { inlineData: { data: base64, mimeType } },
-            { text: "Extract ALL text from this image/document. Return the text exactly as it appears. If there are multiple columns, read left to right, top to bottom. Include all headers, footers, and page numbers. If no text is found, respond with '[NO TEXT FOUND]'." },
+            { text: DOCTRINE_OCR_PROMPT },
           ],
         },
       ],
     });
 
-    const text = result.text?.trim() || "";
-    if (text === "[NO TEXT FOUND]" || text.length < 5) {
-      return { text: "", confidence: 0.1 };
+    const rawText = result.text?.trim() || "";
+    if (rawText === "[NO TEXT FOUND]" || rawText.length < 5) {
+      return { text: "", confidence: 0.1, profile: null };
     }
-    return { text, confidence: 0.85 };
+
+    const { extractedText, profile } = parseDocumentProfile(rawText);
+    const qualityConfidence = profile?.textQuality === "clear" ? 0.9 : profile?.textQuality === "partially legible" ? 0.7 : 0.5;
+    return { text: extractedText || rawText, confidence: qualityConfidence, profile };
   } catch (err: any) {
     logger.error("OCR failed", { error: err.message });
-    return { text: "", confidence: 0.0 };
+    return { text: "", confidence: 0.0, profile: null };
   }
 }
 
@@ -180,6 +243,7 @@ export async function processAsset(assetId: string): Promise<void> {
     let confidence: number | null = null;
     let pageCount: number | null = null;
     let provider = "local";
+    let docProfile: DocumentProfile | null = null;
 
     const [sessionRow] = await db.insert(ocrSessions).values({
       matterId: asset.matterId,
@@ -206,6 +270,7 @@ export async function processAsset(assetId: string): Promise<void> {
           method = "ocr";
           confidence = ocr.confidence;
           provider = "gemini-vision";
+          docProfile = ocr.profile;
         } else {
           extractedText = pdf.text;
           method = "extracted_text";
@@ -221,6 +286,7 @@ export async function processAsset(assetId: string): Promise<void> {
         confidence = ocr.confidence;
         pageCount = 1;
         provider = "gemini-vision";
+        docProfile = ocr.profile;
         break;
       }
       case "doc": {
@@ -251,8 +317,18 @@ export async function processAsset(assetId: string): Promise<void> {
       method,
       fullText: extractedText,
       confidenceOverall: confidence,
-      language: "en",
+      language: docProfile?.language || "en",
     });
+
+    if (docProfile) {
+      await insightsStorage.updateMatterAsset(assetId, {
+        docType: docProfile.documentType,
+        metadata: {
+          ...(asset.metadata as Record<string, any> || {}),
+          documentProfile: docProfile,
+        },
+      } as any);
+    }
 
     const lines = extractedText.split("\n");
     const anchors: any[] = [];
@@ -318,6 +394,7 @@ export async function processAsset(assetId: string): Promise<void> {
             textRecordId: assetTextRecord.id,
             lineCount: lines.length,
             avgChunkSize: chunks.length > 0 ? Math.round(extractedText.length / chunks.length) : 0,
+            ...(docProfile ? { documentProfile: docProfile } : {}),
           },
         })
         .where(eq(ocrSessions.id, ocrSessionId));

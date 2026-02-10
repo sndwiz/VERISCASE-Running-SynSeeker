@@ -128,61 +128,74 @@ const analysisResultSchema = z.object({
 }).passthrough();
 
 const INTENT_PROMPT_TEMPLATES: Record<InsightIntentType, string> = {
-  themes: `## THEMES
-Identify 3-8 major themes. For each:
+  themes: `## THEMES (Convergence Analysis)
+Identify 3-8 major themes by looking for CONVERGING LINES OF EVIDENCE — independent signals that together create a coherent explanation mapping to legal elements. For each:
 - "title": theme name
-- "explanation": 2-3 sentences
-- "citations": array of {"assetId", "filename", "snippet"} (at least 2 per theme when possible)`,
-  timeline: `## TIMELINE
-Extract key events chronologically. For each:
+- "explanation": 2-3 sentences explaining the theme AND how multiple independent sources support it. Note if evidence is from a single source or corroborated across documents.
+- "citations": array of {"assetId", "filename", "snippet"} (at least 2 per theme when possible — from INDEPENDENT sources)
+Flag any theme that relies on a single source. Do not count duplicate documents as independent corroboration.`,
+  timeline: `## TIMELINE (Chronological Backbone)
+Construct a timeline as the backbone of the case. Events must include plausibility checks. For each:
 - "eventDate": ISO date or "approximate: YYYY" or date range
-- "description": what happened
+- "description": what happened (OBSERVED facts only — label any inference separately)
 - "involvedParties": people/orgs involved
-- "citations": array of {"assetId", "filename", "snippet"}`,
-  entities: `## ENTITIES
-Identify people, organizations, places. For each:
+- "citations": array of {"assetId", "filename", "snippet"}
+When narratives conflict, preserve BOTH versions as forks — do not overwrite one with the other. Note sequence feasibility (travel time, office hours). Flag temporal clustering and escalation patterns.`,
+  entities: `## ENTITIES (Knowledge Graph Nodes)
+Build the case knowledge graph. Identify people, organizations, places, and their relationships. For each:
 - "name": entity name
 - "type": "person" | "organization" | "place"
-- "role": their role (witness, attorney, defendant, etc.)
-- "isInferred": true if role is guessed, false if stated
-- "citations": array of {"assetId", "filename", "snippet"}`,
-  contradictions: `## CONTRADICTIONS
-Find conflicting statements across documents. For each:
-- "statementA": first claim
-- "statementB": conflicting claim
-- "conflict": why they conflict
-- "citations": array of {"assetId", "filename", "snippet"} (one for each statement minimum)`,
-  action_items: `## ACTION ITEMS
-Suggest actionable tasks from the documents. For each:
+- "role": their role (witness, attorney, defendant, custodian, etc.)
+- "isInferred": TRUE if the role is guessed from context, FALSE if explicitly stated in the document
+- "citations": array of {"assetId", "filename", "snippet"}
+Track entity appearances across documents. Note where the same entity appears in multiple independent sources (convergence) vs. documents that are copies/derivatives of each other (single source).`,
+  contradictions: `## CONTRADICTIONS (Gap & Conflict Finder)
+Apply rigorous contradiction detection per the VERICASE Doctrine. Find conflicting statements, timeline impossibilities, inconsistent narratives, and missing expected evidence. For each:
+- "statementA": first claim (with EXACT quote)
+- "statementB": conflicting claim (with EXACT quote)
+- "conflict": why they conflict — include: Is this a factual conflict, a timeline impossibility, an omission, or a tonal inconsistency?
+- "citations": array of {"assetId", "filename", "snippet"} (one for each statement minimum)
+Also identify "missing evidence" — documents or information that SHOULD exist but are absent (missing pages, gaps in correspondence, expected records not found).`,
+  action_items: `## ACTION ITEMS (Discovery Targets + Evidence Strengthening)
+Suggest actionable tasks that would strengthen the case. Prioritize: authentication needs, missing evidence to obtain, weak legal elements to bolster, witnesses to depose. For each:
 - "title": clear task title
 - "suggestedOwner": who should handle (if apparent)
 - "suggestedDueDate": ISO date if deadline is mentioned or inferable
 - "confidence": 0-1 how confident this is needed
-- "citations": array of {"assetId", "filename", "snippet"}`,
-  risks: `## RISKS
-Identify risks, red flags, and concerns. For each:
+- "citations": array of {"assetId", "filename", "snippet"}
+Flag any documents that need authentication (screenshots, informal messages, unsigned documents, documents without visible metadata).`,
+  risks: `## RISKS (Reliability & Admissibility Assessment)
+Score evidence reliability and identify risks using the VERICASE doctrine. For each risk:
 - "title": risk title
 - "severity": "low" | "medium" | "high"
-- "description": what the risk is and why it matters
-- "citations": array of {"assetId", "filename", "snippet"}`,
-  tone_analysis: `## TONE ANALYSIS
+- "description": what the risk is, including:
+  * Source reliability (official record > sworn statement > professional record > informal communication > screenshot > hearsay)
+  * Corroboration level (single-source vs multi-source, independence check)
+  * Manipulation risk (editable formats, missing metadata, inconsistent copies)
+  * Materiality (how much it affects a legal element or damages)
+  * Authentication status (needs authentication flag)
+- "citations": array of {"assetId", "filename", "snippet"}
+Label evidentiary strength: Strong (direct + corroborated) / Moderate (direct OR multi-source inferential) / Weak (single-source inferential).`,
+  tone_analysis: `## TONE ANALYSIS (Behavioral & Emotional Intelligence — per VERICASE Doctrine)
+REMEMBER: Emotion analysis is SUPPORTING CONTEXT, not proof of conduct. Always pair with exact quoted text and offer alternative interpretations.
+
 Analyze the tone, emotional register, and linguistic patterns of EACH document individually. For each document produce an object:
 - "document": the filename
 - "assetId": the document's asset ID
 - "overallTone": dominant tone (e.g., "adversarial", "cooperative", "defensive", "neutral", "sympathetic", "aggressive", "evasive")
 - "emotionalRegister": emotional quality (e.g., "detached", "passionate", "measured", "anxious", "confident")
 - "formalityLevel": "very_formal" | "formal" | "neutral" | "informal" | "very_informal"
-- "persuasionTactics": array of tactics used (e.g., "appeal to authority", "emotional appeal", "logical reasoning", "minimization", "deflection")
-- "linguisticMarkers": array of notable language patterns (e.g., "passive voice dominance", "hedging language", "absolute statements", "qualifying phrases")
-- "toneShifts": array of {"location": where in doc, "fromTone": initial tone, "toTone": shifted tone, "significance": why it matters}
+- "persuasionTactics": array of tactics used — detect: appeal to authority, emotional appeal, logical reasoning, minimization, deflection, gaslighting language, DARVO patterns (Deny-Attack-Reverse Victim and Offender), coercion markers, conditional demands, escalating pressure
+- "linguisticMarkers": array of notable language patterns (e.g., "passive voice dominance", "hedging language", "absolute statements", "qualifying phrases", "self-contradiction within document")
+- "toneShifts": array of {"location": where in doc, "fromTone": initial tone, "toTone": shifted tone, "significance": why it matters — flag escalation patterns and behavioral clusters}
 - "credibilityIndicators": {
     "hedgingLanguage": array of hedging phrases found (e.g., "I believe", "to the best of my knowledge", "approximately"),
     "absoluteStatements": array of absolute claims (e.g., "never", "always", "without question"),
     "qualifiers": array of qualifying language used,
     "evasivePatterns": array of evasive language patterns (e.g., "I don't recall", "not to my knowledge")
   }
-- "summary": 2-3 sentence tone assessment for this document
-- "citations": array of {"assetId", "filename", "snippet"} with specific text examples`,
+- "summary": 2-3 sentence tone assessment. MUST include: (1) what the tone OBSERVABLY is, (2) what it MIGHT indicate, and (3) at least one ALTERNATIVE interpretation. Separate observation from inference.
+- "citations": array of {"assetId", "filename", "snippet"} with specific EXACT TEXT examples — every behavioral claim must cite the exact words`,
   consistency_check: `## CONSISTENCY CHECK (Null vs Alternative Hypothesis)
 Cross-reference ALL documents against each other pairwise. For each pair of documents, apply formal hypothesis testing:
 
@@ -276,13 +289,11 @@ function buildAnalysisPrompt(
     formatInstruction = "Emphasize actionable items that can be assigned as tasks.";
   }
 
-  return `You are a legal document analysis AI. Analyze the following documents and produce structured insights.
+  const { DOCTRINE_ANALYSIS_PREAMBLE, DOCTRINE_INSIGHT_RULES } = require("../config/core-doctrine");
 
-IMPORTANT RULES:
-- Every claim MUST include citations with the exact assetId and a snippet from the source
-- If confidence is low, note it explicitly
-- Mark inferred information as such
-- Be thorough but precise
+  return `${DOCTRINE_ANALYSIS_PREAMBLE}
+
+${DOCTRINE_INSIGHT_RULES}
 ${priorityInstructions}
 ${formatInstruction}
 

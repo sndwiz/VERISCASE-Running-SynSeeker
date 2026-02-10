@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   FileText,
   User,
+  Building2,
   MapPin,
   Calendar,
   Lightbulb,
@@ -32,6 +33,9 @@ import {
   Eye,
   GitCompare,
   RotateCcw,
+  Scale,
+  FlaskConical,
+  Milestone,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 interface DetectiveNode {
   id: string;
   matterId: string;
-  type: "evidence" | "person" | "location" | "event" | "theory" | "note";
+  type: "evidence" | "person" | "organization" | "location" | "event" | "theory" | "note" | "hypothesis" | "legal_element" | "timeline_marker";
   title: string;
   description: string;
   linkedEvidenceId?: string;
@@ -47,6 +51,11 @@ interface DetectiveNode {
   position: { x: number; y: number };
   color: string;
   icon?: string;
+  confidenceScore?: number;
+  isInferred?: boolean;
+  reliabilityLevel?: "strong" | "moderate" | "weak";
+  hypothesisType?: "null" | "alternative";
+  legalElement?: string;
   createdAt: string;
 }
 
@@ -56,9 +65,12 @@ interface DetectiveConnection {
   sourceNodeId: string;
   targetNodeId: string;
   label: string;
-  connectionType: "related" | "contradicts" | "supports" | "leads-to" | "timeline";
+  connectionType: "related" | "contradicts" | "supports" | "leads-to" | "timeline" | "corroborates" | "communicates" | "references";
   strength: number;
   notes: string;
+  isInferred?: boolean;
+  confidenceScore?: number;
+  sourceCitation?: string;
   createdAt: string;
 }
 
@@ -71,9 +83,13 @@ interface Matter {
 const NODE_TYPES = {
   evidence: { icon: FileText, label: "Evidence", defaultColor: "#3b82f6" },
   person: { icon: User, label: "Person", defaultColor: "#8b5cf6" },
+  organization: { icon: Building2, label: "Organization", defaultColor: "#6366f1" },
   location: { icon: MapPin, label: "Location", defaultColor: "#10b981" },
   event: { icon: Calendar, label: "Event", defaultColor: "#f59e0b" },
   theory: { icon: Lightbulb, label: "Theory", defaultColor: "#ef4444" },
+  hypothesis: { icon: FlaskConical, label: "Hypothesis", defaultColor: "#e11d48" },
+  legal_element: { icon: Scale, label: "Legal Element", defaultColor: "#0891b2" },
+  timeline_marker: { icon: Milestone, label: "Timeline Marker", defaultColor: "#7c3aed" },
   note: { icon: StickyNoteIcon, label: "Note", defaultColor: "#6b7280" },
 };
 
@@ -81,16 +97,23 @@ const CONNECTION_TYPES = {
   related: { label: "Related to", color: "#78716c", style: "solid" },
   contradicts: { label: "Contradicts", color: "#dc2626", style: "dashed" },
   supports: { label: "Supports", color: "#16a34a", style: "solid" },
+  corroborates: { label: "Corroborates (Independent)", color: "#059669", style: "solid" },
   "leads-to": { label: "Leads to", color: "#d97706", style: "solid" },
   timeline: { label: "Timeline", color: "#2563eb", style: "dotted" },
+  communicates: { label: "Communicates with", color: "#7c3aed", style: "solid" },
+  references: { label: "References", color: "#0284c7", style: "dotted" },
 };
 
 const PIN_COLORS: Record<string, string> = {
   evidence: "#2980b9",
   person: "#2980b9",
+  organization: "#6366f1",
   location: "#00b894",
   event: "#fdcb6e",
   theory: "#c0392b",
+  hypothesis: "#e11d48",
+  legal_element: "#0891b2",
+  timeline_marker: "#7c3aed",
   note: "#fdcb6e",
 };
 
@@ -352,8 +375,21 @@ function EvidenceCardEl({ node, isSelected, onMouseDown }: { node: DetectiveNode
             {node.description.length > 120 ? node.description.slice(0, 120) + "..." : node.description}
           </div>
         )}
-        <div style={{ fontSize: 10, color: "#999", marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee", display: "flex", gap: 12 }}>
+        <div style={{ fontSize: 10, color: "#999", marginTop: 10, paddingTop: 10, borderTop: "1px solid #eee", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span>Added {new Date(node.createdAt).toLocaleDateString()}</span>
+          {node.confidenceScore !== undefined && (
+            <span style={{ background: node.confidenceScore >= 0.7 ? "#dcfce7" : node.confidenceScore >= 0.4 ? "#fef9c3" : "#fee2e2", color: node.confidenceScore >= 0.7 ? "#166534" : node.confidenceScore >= 0.4 ? "#854d0e" : "#991b1b", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600 }}>
+              {Math.round(node.confidenceScore * 100)}%
+            </span>
+          )}
+          {node.reliabilityLevel && (
+            <span style={{ background: node.reliabilityLevel === "strong" ? "#dcfce7" : node.reliabilityLevel === "moderate" ? "#dbeafe" : "#fee2e2", color: node.reliabilityLevel === "strong" ? "#166534" : node.reliabilityLevel === "moderate" ? "#1e40af" : "#991b1b", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600, textTransform: "uppercase" }}>
+              {node.reliabilityLevel}
+            </span>
+          )}
+          {node.isInferred && (
+            <span style={{ background: "#fef3c7", color: "#92400e", padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 600 }}>INFERRED</span>
+          )}
         </div>
       </div>
     </div>
@@ -700,6 +736,11 @@ export default function DetectiveBoardPage() {
     title: "",
     description: "",
     color: "#3b82f6",
+    confidenceScore: 0.5,
+    isInferred: false,
+    reliabilityLevel: "moderate" as "strong" | "moderate" | "weak",
+    hypothesisType: "null" as "null" | "alternative",
+    legalElement: "",
   });
 
   const [connectionForm, setConnectionForm] = useState({
@@ -708,6 +749,9 @@ export default function DetectiveBoardPage() {
     label: "",
     strength: 3,
     notes: "",
+    isInferred: false,
+    confidenceScore: 0.5,
+    sourceCitation: "",
   });
 
   const { data: matters = [] } = useQuery<Matter[]>({
@@ -768,7 +812,7 @@ export default function DetectiveBoardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/matters", selectedMatterId, "detective", "nodes"] });
       setShowAddNodeDialog(false);
-      setNodeForm({ type: "evidence", title: "", description: "", color: "#3b82f6" });
+      setNodeForm({ type: "evidence", title: "", description: "", color: "#3b82f6", confidenceScore: 0.5, isInferred: false, reliabilityLevel: "moderate", hypothesisType: "null", legalElement: "" });
       toast({ title: "Node pinned", description: "Evidence pinned to the board." });
     },
     onError: () => {
@@ -819,7 +863,7 @@ export default function DetectiveBoardPage() {
       setShowAddConnectionDialog(false);
       setConnectionSource(null);
       setIsConnecting(false);
-      setConnectionForm({ targetNodeId: "", connectionType: "related", label: "", strength: 3, notes: "" });
+      setConnectionForm({ targetNodeId: "", connectionType: "related", label: "", strength: 3, notes: "", isInferred: false, confidenceScore: 0.5, sourceCitation: "" });
       toast({ title: "String connected", description: "Evidence linked on the board." });
     },
     onError: () => {
@@ -1767,6 +1811,75 @@ export default function DetectiveBoardPage() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Confidence ({Math.round(nodeForm.confidenceScore * 100)}%)</Label>
+              <Slider
+                min={0} max={100} step={5}
+                value={[Math.round(nodeForm.confidenceScore * 100)]}
+                onValueChange={([v]) => setNodeForm(p => ({ ...p, confidenceScore: v / 100 }))}
+                data-testid="slider-node-confidence"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Reliability</Label>
+              <Select value={nodeForm.reliabilityLevel} onValueChange={v => setNodeForm(p => ({ ...p, reliabilityLevel: v as any }))}>
+                <SelectTrigger data-testid="select-node-reliability">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="strong">Strong (Direct + Corroborated)</SelectItem>
+                  <SelectItem value="moderate">Moderate (Direct OR Multi-source)</SelectItem>
+                  <SelectItem value="weak">Weak (Single-source Inferential)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={nodeForm.isInferred}
+                onChange={e => setNodeForm(p => ({ ...p, isInferred: e.target.checked }))}
+                data-testid="checkbox-node-inferred"
+                className="rounded"
+              />
+              <Label className="text-sm">This is an inference (not directly observed)</Label>
+            </div>
+            {nodeForm.type === "hypothesis" && (
+              <div className="space-y-2">
+                <Label>Hypothesis Type</Label>
+                <Select value={nodeForm.hypothesisType} onValueChange={v => setNodeForm(p => ({ ...p, hypothesisType: v as any }))}>
+                  <SelectTrigger data-testid="select-hypothesis-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">H0 (Null Hypothesis)</SelectItem>
+                    <SelectItem value="alternative">H1+ (Alternative Hypothesis)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {nodeForm.type === "legal_element" && (
+              <div className="space-y-2">
+                <Label>Legal Element</Label>
+                <Select value={nodeForm.legalElement} onValueChange={v => setNodeForm(p => ({ ...p, legalElement: v }))}>
+                  <SelectTrigger data-testid="select-legal-element">
+                    <SelectValue placeholder="Select element..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="intent">Intent</SelectItem>
+                    <SelectItem value="knowledge">Knowledge</SelectItem>
+                    <SelectItem value="causation">Causation</SelectItem>
+                    <SelectItem value="damages">Damages</SelectItem>
+                    <SelectItem value="duty">Duty</SelectItem>
+                    <SelectItem value="breach">Breach</SelectItem>
+                    <SelectItem value="pattern">Pattern</SelectItem>
+                    <SelectItem value="notice">Notice</SelectItem>
+                    <SelectItem value="standing">Standing</SelectItem>
+                    <SelectItem value="jurisdiction">Jurisdiction</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
