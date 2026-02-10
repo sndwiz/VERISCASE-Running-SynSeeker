@@ -64,7 +64,7 @@ export function registerModelIntelligenceRoutes(app: Express): void {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
-      await dismissAlert(req.params.id, String(userId));
+      await dismissAlert(req.params.id as string, String(userId));
       res.json({ success: true });
     } catch (error: any) {
       logger.error("[ModelIntel] Failed to dismiss alert", { error: error.message });
@@ -145,7 +145,7 @@ Task types: ${tasks.join(", ")}
 ${JSON.stringify(recs.map(r => ({ taskType: r.taskType, modelId: r.modelId, rank: r.rank, reason: r.reason, isCurrentBest: r.isCurrentBest })), null, 2)}
 
 **ACTIVE ALERTS (${alerts.length}):**
-${alerts.length > 0 ? JSON.stringify(alerts.map(a => ({ title: a.title, severity: a.severity, description: a.description, suggestedAction: a.suggestedAction })), null, 2) : "None"}
+${alerts.length > 0 ? JSON.stringify(alerts.map(a => ({ title: a.title, priority: a.priority, description: a.description })), null, 2) : "None"}
 
 **YOUR EXPERTISE:**
 1. Compare models across quality scores, parameter sizes, efficiency, and licensing

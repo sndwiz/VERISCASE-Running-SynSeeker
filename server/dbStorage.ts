@@ -471,7 +471,7 @@ export class DbStorage {
       chainOfCustody: (r.chainOfCustody as any[]) || [],
       storageKey: r.storageKey || undefined,
       isArchived: r.isArchived || false,
-      archivedAt: r.archivedAt ? toISOString(r.archivedAt) : undefined,
+      archivedAt: r.archivedAt ? toISOString(r.archivedAt) ?? undefined : undefined,
       archivedBy: r.archivedBy || undefined,
       ocrJobId: r.ocrJobId || undefined,
       extractedText: r.extractedText || undefined,

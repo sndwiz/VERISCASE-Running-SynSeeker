@@ -40,7 +40,11 @@ const meetings = new MeetingsStorage();
 const security = new SecurityStorage();
 const admin = new AdminStorage();
 
-function bindAll<T extends object>(instance: T): T {
+type MethodsOf<T> = {
+  [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K];
+};
+
+function bindAll<T extends object>(instance: T): MethodsOf<T> {
   const proto = Object.getPrototypeOf(instance);
   const methodNames = Object.getOwnPropertyNames(proto).filter(
     (name) => name !== "constructor" && typeof (instance as any)[name] === "function"
@@ -49,7 +53,7 @@ function bindAll<T extends object>(instance: T): T {
   for (const name of methodNames) {
     bound[name] = (instance as any)[name].bind(instance);
   }
-  return bound as T;
+  return bound as MethodsOf<T>;
 }
 
 export const storage = {

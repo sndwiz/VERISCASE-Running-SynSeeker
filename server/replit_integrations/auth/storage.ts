@@ -18,7 +18,7 @@ class AuthStorage implements IAuthStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const existingUser = await this.getUser(userData.id);
+    const existingUser = await this.getUser(userData.id!!);
     
     if (existingUser) {
       const [user] = await db
@@ -30,13 +30,13 @@ class AuthStorage implements IAuthStorage {
           profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         })
-        .where(eq(users.id, userData.id))
+        .where(eq(users.id, userData.id!))
         .returning();
       return user;
     }
 
     if (userData.email) {
-      const [existingByEmail] = await db.select().from(users).where(eq(users.email, userData.email));
+      const [existingByEmail] = await db.select().from(users).where(eq(users.email, userData.email!));
       if (existingByEmail) {
         const [user] = await db
           .update(users)

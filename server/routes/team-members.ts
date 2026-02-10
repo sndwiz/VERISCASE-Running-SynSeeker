@@ -18,7 +18,8 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.get("/api/team-members/:id", async (req, res) => {
     try {
-      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      const id = req.params.id as string;
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
       if (!member) return res.status(404).json({ error: "Team member not found" });
       res.json(member);
     } catch (error) {
@@ -41,10 +42,11 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.patch("/api/team-members/:id", async (req, res) => {
     try {
+      const id = req.params.id as string;
       const data = updateTeamMemberSchema.parse(req.body);
       const [member] = await db.update(teamMembers)
         .set({ ...data, updatedAt: new Date() })
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
       if (!member) return res.status(404).json({ error: "Team member not found" });
       res.json(member);
@@ -58,8 +60,9 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.delete("/api/team-members/:id", async (req, res) => {
     try {
+      const id = req.params.id as string;
       const [deleted] = await db.delete(teamMembers)
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
       if (!deleted) return res.status(404).json({ error: "Team member not found" });
       res.status(204).send();
@@ -70,8 +73,9 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.patch("/api/admin/users/:id/suspend", requireAdmin(), async (req, res) => {
     try {
+      const id = req.params.id as string;
       const userId = (req as any).user?.claims?.sub || "admin";
-      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
       if (!member) return res.status(404).json({ error: "Team member not found" });
 
       const [updated] = await db.update(teamMembers)
@@ -81,7 +85,7 @@ export function registerTeamMemberRoutes(app: Express): void {
           suspendedBy: userId,
           updatedAt: new Date(),
         })
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
 
       res.json(updated);
@@ -92,7 +96,8 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.patch("/api/admin/users/:id/reactivate", requireAdmin(), async (req, res) => {
     try {
-      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      const id = req.params.id as string;
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
       if (!member) return res.status(404).json({ error: "Team member not found" });
 
       const [updated] = await db.update(teamMembers)
@@ -102,7 +107,7 @@ export function registerTeamMemberRoutes(app: Express): void {
           suspendedBy: null,
           updatedAt: new Date(),
         })
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
 
       res.json(updated);
@@ -113,7 +118,8 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.patch("/api/admin/users/:id/offboard", requireAdmin(), async (req, res) => {
     try {
-      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      const id = req.params.id as string;
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
       if (!member) return res.status(404).json({ error: "Team member not found" });
 
       const [updated] = await db.update(teamMembers)
@@ -122,7 +128,7 @@ export function registerTeamMemberRoutes(app: Express): void {
           offboardedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
 
       res.json(updated);
@@ -133,7 +139,8 @@ export function registerTeamMemberRoutes(app: Express): void {
 
   app.post("/api/admin/users/:id/reset-mfa", requireAdmin(), async (req, res) => {
     try {
-      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, req.params.id));
+      const id = req.params.id as string;
+      const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
       if (!member) return res.status(404).json({ error: "Team member not found" });
 
       const [updated] = await db.update(teamMembers)
@@ -142,7 +149,7 @@ export function registerTeamMemberRoutes(app: Express): void {
           mfaMethod: null,
           updatedAt: new Date(),
         })
-        .where(eq(teamMembers.id, req.params.id))
+        .where(eq(teamMembers.id, id))
         .returning();
 
       res.json(updated);

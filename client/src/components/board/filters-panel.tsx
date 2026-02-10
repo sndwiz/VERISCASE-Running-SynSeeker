@@ -132,6 +132,7 @@ const OPERATORS_BY_TYPE: Record<ColumnType, FilterOperator[]> = {
   "ai-translate": ["is_empty", "is_not_empty"],
   "ai-sentiment": ["is", "is_not"],
   "ai-categorize": ["is", "is_not"],
+  approval: ["is", "is_not", "is_empty", "is_not_empty"],
 };
 
 function generateId() {

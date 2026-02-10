@@ -34,7 +34,7 @@ export function registerCustomFieldRoutes(app: Express): void {
   app.patch("/api/custom-fields/:id", requireAdmin(), async (req, res) => {
     try {
       const data = insertCustomFieldDefinitionSchema.partial().parse(req.body);
-      const definition = await storage.updateCustomFieldDefinition(req.params.id, data);
+      const definition = await storage.updateCustomFieldDefinition(req.params.id as string, data);
       if (!definition) return res.status(404).json({ error: "Custom field definition not found" });
       res.json(definition);
     } catch (error) {
@@ -47,7 +47,7 @@ export function registerCustomFieldRoutes(app: Express): void {
 
   app.delete("/api/custom-fields/:id", requireAdmin(), async (req, res) => {
     try {
-      await storage.deleteCustomFieldDefinition(req.params.id);
+      await storage.deleteCustomFieldDefinition(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete custom field definition" });

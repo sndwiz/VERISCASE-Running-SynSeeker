@@ -49,7 +49,7 @@ export async function registerRoutes(
       res.json({
         activeMatters: activeMatters.rows[0]?.count ?? 0,
         hoursLogged: Math.round(Number(hoursLogged.rows[0]?.total ?? 0)),
-        documents: (evidenceCount.rows[0]?.count ?? 0) + (filingsCount.rows[0]?.count ?? 0),
+        documents: Number(evidenceCount.rows[0]?.count ?? 0) + Number(filingsCount.rows[0]?.count ?? 0),
         activeClients: activeClients.rows[0]?.count ?? 0,
       });
     } catch (error) {

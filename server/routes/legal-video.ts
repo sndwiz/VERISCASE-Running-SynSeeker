@@ -35,7 +35,7 @@ const activeStreams = new Map<string, Set<(stage: PipelineStage, progress: numbe
 function notifyProgress(jobId: string, stage: PipelineStage, progress: number, message: string) {
   const listeners = activeStreams.get(jobId);
   if (listeners) {
-    for (const cb of listeners) {
+    for (const cb of Array.from(listeners)) {
       try { cb(stage, progress, message); } catch {}
     }
   }

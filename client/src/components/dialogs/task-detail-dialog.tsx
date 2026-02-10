@@ -98,7 +98,7 @@ export function TaskDetailDialog({
               <div className="w-32">
                 <StatusCell
                   value={task.status}
-                  onChange={(value: StatusType) => onUpdate(task.id, { status: value })}
+                  onChange={(value: string) => onUpdate(task.id, { status: value as StatusType })}
                 />
               </div>
             </div>

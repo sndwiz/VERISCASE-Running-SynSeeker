@@ -61,7 +61,7 @@ router.get('/api/investigations/templates', (_req: Request, res: Response) => {
 
 router.get('/api/investigations/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
     const [investigation] = await db
@@ -141,7 +141,7 @@ router.post('/api/investigations', async (req: Request, res: Response) => {
 });
 
 router.get('/api/investigations/:id/stream', async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -211,7 +211,7 @@ router.get('/api/investigations/:id/stream', async (req: Request, res: Response)
 
 router.delete('/api/investigations/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
     const [updated] = await db
@@ -230,7 +230,7 @@ router.delete('/api/investigations/:id', async (req: Request, res: Response) => 
 
 router.patch('/api/investigation-findings/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const parsed = updateFindingSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -267,7 +267,7 @@ router.patch('/api/investigation-findings/:id', async (req: Request, res: Respon
 
 router.get('/api/investigations/:id/findings', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
     const severity = req.query.severity as string;
@@ -296,7 +296,7 @@ router.get('/api/investigations/:id/findings', async (req: Request, res: Respons
 
 router.get('/api/investigations/:id/entities', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
     const result = await db
@@ -312,7 +312,7 @@ router.get('/api/investigations/:id/entities', async (req: Request, res: Respons
 
 router.get('/api/investigations/:id/connections', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });
 
     const result = await db
@@ -328,7 +328,7 @@ router.get('/api/investigations/:id/connections', async (req: Request, res: Resp
 
 router.post('/api/investigations/:id/link-matter', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { matterId } = req.body;
 
     if (!isValidId(id)) return res.status(400).json({ error: 'Invalid investigation ID' });

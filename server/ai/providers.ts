@@ -508,7 +508,7 @@ export async function* streamResponse(
         innerGen = streamPrivateServerResponse(messages, config);
         break;
       case "synseekr": {
-        async function* streamSynSeekrResponse(msgs: ChatMessage[], cfg: AIConfig): AsyncGenerator<StreamChunk> {
+        const streamSynSeekrResponse = async function*(msgs: ChatMessage[], cfg: AIConfig): AsyncGenerator<StreamChunk> {
           try {
             const { synseekrClient } = await import("../services/synseekr-client");
             if (!synseekrClient.isEnabled()) {
@@ -520,7 +520,7 @@ export async function* streamResponse(
               messages: msgs.map(m => ({ role: m.role, content: typeof m.content === "string" ? m.content : "[multimodal]" })),
               model: cfg.model || "default",
               max_tokens: cfg.maxTokens || 2048,
-              system: cfg.systemPrompt,
+              system: (cfg as any).systemPrompt,
               stream: false,
             });
             if (result.success && result.data?.content) {

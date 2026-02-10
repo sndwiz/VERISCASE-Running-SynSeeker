@@ -100,7 +100,7 @@ export function registerApprovalRoutes(app: Express): void {
     try {
       const dbUser = req.dbUser;
       const { field } = initialSchema.parse(req.body);
-      const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email : "User";
+      const userName = dbUser ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email || "" : "User";
       const initial: ApprovalInitial = {
         userId: dbUser?.id || "unknown",
         userName,

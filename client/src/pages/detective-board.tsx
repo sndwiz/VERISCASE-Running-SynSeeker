@@ -1742,7 +1742,7 @@ export default function DetectiveBoardPage() {
                   totalConnections: connections.length,
                   contradictions: connections.filter(c => c.connectionType === "contradicts").length,
                   nodeTypes: Object.fromEntries(
-                    Object.keys(NODE_TYPES).map(t => [t, nodes.filter(n => n.type === t).length]).filter(([, v]) => v > 0)
+                    Object.keys(NODE_TYPES).map(t => [t, nodes.filter(n => n.type === t).length]).filter(([, v]) => Number(v) > 0)
                   ),
                 },
               };

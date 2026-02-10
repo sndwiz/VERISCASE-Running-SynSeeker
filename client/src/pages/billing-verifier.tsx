@@ -780,7 +780,7 @@ export default function BillingVerifierPage() {
               setAliasInput={setAliasInput}
               partyInput={partyInput}
               setPartyInput={setPartyInput}
-              profiles={profiles}
+              profiles={profiles as any[]}
               saveProfileMutation={saveProfileMutation}
             />
           </TabsContent>

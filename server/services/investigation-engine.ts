@@ -190,10 +190,10 @@ export class InvestigationEngine {
 
     const bodyText = $('body').text().replace(/\s+/g, ' ');
 
-    const phones = [...new Set(bodyText.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || [])];
-    const emails = [...new Set(bodyText.match(/[\w.+-]+@[\w.-]+\.\w{2,}/g) || [])];
+    const phones = Array.from(new Set(bodyText.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g) || []));
+    const emails = Array.from(new Set(bodyText.match(/[\w.+-]+@[\w.-]+\.\w{2,}/g) || []));
     const addressPattern = /\d+\s+[\w\s]+(?:St|Ave|Blvd|Dr|Ln|Rd|Pl|Ct|Way|Cir|Suite|Ste)[\w\s,#]+\d{5}/gi;
-    const addresses = [...new Set(bodyText.match(addressPattern) || [])];
+    const addresses = Array.from(new Set(bodyText.match(addressPattern) || []));
 
     for (const addr of addresses.slice(0, 3)) {
       await this.addEntity('address', addr.trim(), 'Discovered on website');
@@ -206,7 +206,7 @@ export class InvestigationEngine {
     }
 
     const keyPagePatterns = /about|team|staff|provider|service|mission|contact|leadership|our-/i;
-    const keyPages = [...links].filter((l) => keyPagePatterns.test(l)).slice(0, 6);
+    const keyPages = Array.from(links).filter((l) => keyPagePatterns.test(l)).slice(0, 6);
 
     let teamMembersFound = 0;
     for (const pageUrl of keyPages) {
@@ -779,7 +779,7 @@ Respond in this exact JSON format (no markdown, no backticks):
       }
     }
 
-    for (const [_, group] of addressMap) {
+    for (const [_, group] of Array.from(addressMap)) {
       if (group.length < 2) continue;
       for (let i = 0; i < group.length - 1; i++) {
         for (let j = i + 1; j < group.length; j++) {
@@ -800,7 +800,7 @@ Respond in this exact JSON format (no markdown, no backticks):
       }
     }
 
-    for (const [state, group] of stateMap) {
+    for (const [state, group] of Array.from(stateMap)) {
       if (group.length < 2) continue;
       for (let i = 0; i < Math.min(group.length - 1, 5); i++) {
         for (let j = i + 1; j < Math.min(group.length, 6); j++) {

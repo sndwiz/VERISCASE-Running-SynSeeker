@@ -231,7 +231,7 @@ export function analyzeEmail(subject: string, body: string, senderDomain?: strin
     const matches = original.match(new RegExp(pat.source, pat.flags));
     if (matches) caseNumbers.push(...matches);
   }
-  const uniqueCaseNumbers = [...new Set(caseNumbers)];
+  const uniqueCaseNumbers = Array.from(new Set(caseNumbers));
 
   // 2. Money amounts
   const moneyAmounts: string[] = [];
@@ -328,10 +328,10 @@ export function analyzeEmail(subject: string, body: string, senderDomain?: strin
     urgency, urgencyScore: uScore,
     sentiment, sentimentScores,
     deceptionFlags, deceptionScore,
-    datesMentioned: [...new Set(datesMentioned)],
+    datesMentioned: Array.from(new Set(datesMentioned)),
     deadlines,
     caseNumbers: uniqueCaseNumbers,
-    moneyAmounts: [...new Set(moneyAmounts)],
+    moneyAmounts: Array.from(new Set(moneyAmounts)),
     isLawyerComm, actionItems, keyPhrases,
     psychologicalProfile, riskLevel, adminAlerts,
   };
@@ -442,7 +442,7 @@ export function extractCaseNumbers(text: string): string[] {
     const matches = text.match(new RegExp(pat.source, pat.flags));
     if (matches) results.push(...matches);
   }
-  return [...new Set(results)];
+  return Array.from(new Set(results));
 }
 
 // ── UTILITY: Extract sender info ──

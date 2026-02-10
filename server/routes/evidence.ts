@@ -25,7 +25,7 @@ function sanitizeMatterId(matterId: string): string {
 const evidenceUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
-      const matterId = sanitizeMatterId(_req.params.matterId);
+      const matterId = sanitizeMatterId(_req.params.matterId as string);
       const dir = path.join(EVIDENCE_DIR, matterId);
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
@@ -58,7 +58,7 @@ export function registerEvidenceRoutes(app: Express): void {
   app.get("/api/matters/:matterId/evidence", async (req: Request, res: Response) => {
     try {
       const includeArchived = req.query.includeArchived === "true";
-      const files = await storage.getEvidenceVaultFiles(req.params.matterId);
+      const files = await storage.getEvidenceVaultFiles(req.params.matterId as string);
       const filtered = includeArchived ? files : files.filter(f => !f.isArchived);
       res.json(maybePageinate(filtered, req.query));
     } catch (error) {
@@ -68,7 +68,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.get("/api/evidence/:id", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -100,7 +100,7 @@ export function registerEvidenceRoutes(app: Express): void {
           const autoType = getEvidenceTypeFromMime(uploadedFile.mimetype);
 
           const data = insertEvidenceVaultFileSchema.parse({
-            matterId: req.params.matterId,
+            matterId: req.params.matterId as string,
             originalName: uploadedFile.originalname,
             originalHash: sha256,
             originalSize: uploadedFile.size,
@@ -117,7 +117,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
           try {
             await storage.createDetectiveNode({
-              matterId: req.params.matterId,
+              matterId: req.params.matterId as string,
               type: "evidence",
               title: file.originalName || "Evidence File",
               description: `Auto-linked evidence: ${file.evidenceType || "document"} — ${file.originalMimeType || "unknown type"}`,
@@ -135,14 +135,14 @@ export function registerEvidenceRoutes(app: Express): void {
 
         try {
           const { triggerAutomation } = await import("../automation-engine");
-          const boards = await storage.getBoardsByMatter(req.params.matterId);
+          const boards = await storage.getBoardsByMatter(req.params.matterId as string);
           if (boards.length > 0) {
             for (const file of results) {
               await triggerAutomation({
                 type: "document_uploaded",
                 boardId: boards[0].id,
                 metadata: {
-                  matterId: req.params.matterId,
+                  matterId: req.params.matterId as string,
                   evidenceId: file.id,
                   fileName: file.originalName,
                   fileType: file.evidenceType,
@@ -169,13 +169,13 @@ export function registerEvidenceRoutes(app: Express): void {
     try {
       const data = insertEvidenceVaultFileSchema.parse({
         ...req.body,
-        matterId: req.params.matterId,
+        matterId: req.params.matterId as string,
       });
       const file = await storage.createEvidenceVaultFile(data);
 
       try {
         await storage.createDetectiveNode({
-          matterId: req.params.matterId,
+          matterId: req.params.matterId as string,
           type: "evidence",
           title: file.originalName || "Evidence File",
           description: `Auto-linked evidence: ${file.evidenceType || "document"} — ${file.originalMimeType || "unknown type"}`,
@@ -190,13 +190,13 @@ export function registerEvidenceRoutes(app: Express): void {
 
       try {
         const { triggerAutomation } = await import("../automation-engine");
-        const boards = await storage.getBoardsByMatter(req.params.matterId);
+        const boards = await storage.getBoardsByMatter(req.params.matterId as string);
         if (boards.length > 0) {
           await triggerAutomation({
             type: "document_uploaded",
             boardId: boards[0].id,
             metadata: {
-              matterId: req.params.matterId,
+              matterId: req.params.matterId as string,
               evidenceId: file.id,
               fileName: file.originalName,
               fileType: file.evidenceType,
@@ -218,7 +218,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.get("/api/evidence/:id/download", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -227,7 +227,7 @@ export function registerEvidenceRoutes(app: Express): void {
       }
 
       const userName = (req as any).user?.username || (req as any).user?.name || "System";
-      await storage.addChainOfCustodyEntry(req.params.id, "downloaded", userName, "File downloaded");
+      await storage.addChainOfCustodyEntry(req.params.id as string, "downloaded", userName, "File downloaded");
 
       res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(file.originalName)}"`);
       res.setHeader("Content-Type", file.originalMimeType);
@@ -240,7 +240,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.get("/api/evidence/:id/preview", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -249,7 +249,7 @@ export function registerEvidenceRoutes(app: Express): void {
       }
 
       const userName = (req as any).user?.username || (req as any).user?.name || "System";
-      await storage.addChainOfCustodyEntry(req.params.id, "viewed", userName, "File previewed");
+      await storage.addChainOfCustodyEntry(req.params.id as string, "viewed", userName, "File previewed");
 
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.originalName)}"`);
       res.setHeader("Content-Type", file.originalMimeType);
@@ -262,7 +262,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.post("/api/evidence/:id/verify", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -279,7 +279,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
       const userName = (req as any).user?.username || (req as any).user?.name || "System";
       await storage.addChainOfCustodyEntry(
-        req.params.id,
+        req.params.id as string,
         "integrity_verified",
         userName,
         verified ? "SHA-256 match confirmed" : `INTEGRITY FAILURE: expected ${file.originalHash}, got ${currentHash}`
@@ -299,7 +299,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.post("/api/evidence/:id/archive", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -307,13 +307,13 @@ export function registerEvidenceRoutes(app: Express): void {
       const userName = (req as any).user?.username || (req as any).user?.name || "System";
       const now = new Date().toISOString();
 
-      const updated = await storage.updateEvidenceVaultFile(req.params.id, {
+      const updated = await storage.updateEvidenceVaultFile(req.params.id as string, {
         isArchived: true,
         archivedAt: now,
         archivedBy: userName,
       });
 
-      await storage.addChainOfCustodyEntry(req.params.id, "archived", userName, "Evidence archived (soft-deleted)");
+      await storage.addChainOfCustodyEntry(req.params.id as string, "archived", userName, "Evidence archived (soft-deleted)");
 
       res.json(updated);
     } catch (error) {
@@ -323,18 +323,18 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.post("/api/evidence/:id/restore", async (req: Request, res: Response) => {
     try {
-      const file = await storage.getEvidenceVaultFile(req.params.id);
+      const file = await storage.getEvidenceVaultFile(req.params.id as string);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
 
       const userName = (req as any).user?.username || (req as any).user?.name || "System";
 
-      const updated = await storage.updateEvidenceVaultFile(req.params.id, {
+      const updated = await storage.updateEvidenceVaultFile(req.params.id as string, {
         isArchived: false,
       });
 
-      await storage.addChainOfCustodyEntry(req.params.id, "restored", userName, "Evidence restored from archive");
+      await storage.addChainOfCustodyEntry(req.params.id as string, "restored", userName, "Evidence restored from archive");
 
       res.json(updated);
     } catch (error) {
@@ -345,7 +345,7 @@ export function registerEvidenceRoutes(app: Express): void {
   app.patch("/api/evidence/:id", async (req: Request, res: Response) => {
     try {
       const data = updateEvidenceVaultFileSchema.parse(req.body);
-      const file = await storage.updateEvidenceVaultFile(req.params.id, data);
+      const file = await storage.updateEvidenceVaultFile(req.params.id as string, data);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -364,7 +364,7 @@ export function registerEvidenceRoutes(app: Express): void {
       if (!action || !by) {
         return res.status(400).json({ error: "action and by are required" });
       }
-      const file = await storage.addChainOfCustodyEntry(req.params.id, action, by, notes);
+      const file = await storage.addChainOfCustodyEntry(req.params.id as string, action, by, notes);
       if (!file) {
         return res.status(404).json({ error: "Evidence file not found" });
       }
@@ -386,7 +386,7 @@ export function registerEvidenceRoutes(app: Express): void {
 
   app.get("/api/ocr-jobs/:id", async (req: Request, res: Response) => {
     try {
-      const job = await storage.getOCRJob(req.params.id);
+      const job = await storage.getOCRJob(req.params.id as string);
       if (!job) {
         return res.status(404).json({ error: "OCR job not found" });
       }
@@ -412,7 +412,7 @@ export function registerEvidenceRoutes(app: Express): void {
   app.get("/api/matters/:matterId/ocr-sessions", async (req: Request, res: Response) => {
     try {
       const sessions = await db.select().from(ocrSessions)
-        .where(eq(ocrSessions.matterId, req.params.matterId))
+        .where(eq(ocrSessions.matterId, req.params.matterId as string))
         .orderBy(desc(ocrSessions.startedAt));
       res.json(sessions);
     } catch (error) {
@@ -423,7 +423,7 @@ export function registerEvidenceRoutes(app: Express): void {
   app.get("/api/ocr-sessions/:id", async (req: Request, res: Response) => {
     try {
       const [session] = await db.select().from(ocrSessions)
-        .where(eq(ocrSessions.id, req.params.id));
+        .where(eq(ocrSessions.id, req.params.id as string));
       if (!session) {
         return res.status(404).json({ error: "OCR session not found" });
       }

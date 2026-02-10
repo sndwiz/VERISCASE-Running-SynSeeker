@@ -336,7 +336,7 @@ router.post("/api/cases/:caseId/query", async (req, res) => {
       mode,
       effectiveModel: decision.effectiveModelId,
       confidence: scored.length > 0 ? scored[0].relevance : 0,
-      relatedEntities: [...new Set(scored.map(s => s.type))],
+      relatedEntities: Array.from(new Set(scored.map(s => s.type))),
     };
 
     completeAIOp(op.id, op.startTime, answer);

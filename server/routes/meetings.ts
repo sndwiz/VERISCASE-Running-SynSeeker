@@ -20,7 +20,7 @@ export function registerMeetingRoutes(app: Express): void {
   });
 
   app.get("/api/meetings/:id", async (req: Request, res: Response) => {
-    const meeting = await storage.getMeeting(req.params.id);
+    const meeting = await storage.getMeeting(req.params.id as string);
     if (!meeting) return res.status(404).json({ error: "Meeting not found" });
     res.json(meeting);
   });
@@ -36,7 +36,7 @@ export function registerMeetingRoutes(app: Express): void {
   });
 
   app.patch("/api/meetings/:id", async (req: Request, res: Response) => {
-    const meeting = await storage.updateMeeting(req.params.id, req.body);
+    const meeting = await storage.updateMeeting(req.params.id as string, req.body);
     if (!meeting) return res.status(404).json({ error: "Meeting not found" });
     if (meeting.date) {
       syncMeetingToCalendar(meeting.id).catch(e => console.error("[meetings] Calendar sync error:", e));
@@ -45,14 +45,14 @@ export function registerMeetingRoutes(app: Express): void {
   });
 
   app.delete("/api/meetings/:id", async (req: Request, res: Response) => {
-    removeSyncedEvent("meeting", req.params.id).catch(e => console.error("[meetings] Calendar unsync error:", e));
-    const success = await storage.deleteMeeting(req.params.id);
+    removeSyncedEvent("meeting", req.params.id as string).catch(e => console.error("[meetings] Calendar unsync error:", e));
+    const success = await storage.deleteMeeting(req.params.id as string);
     if (!success) return res.status(404).json({ error: "Meeting not found" });
     res.json({ success: true });
   });
 
   app.post("/api/meetings/:id/ai-query", async (req: Request, res: Response) => {
-    const meeting = await storage.getMeeting(req.params.id);
+    const meeting = await storage.getMeeting(req.params.id as string);
     if (!meeting) return res.status(404).json({ error: "Meeting not found" });
 
     const parsed = aiQuerySchema.safeParse(req.body);

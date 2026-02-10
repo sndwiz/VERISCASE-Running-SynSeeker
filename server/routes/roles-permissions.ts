@@ -44,7 +44,7 @@ export function registerRolesPermissionsRoutes(app: Express): void {
   app.patch("/api/roles/:id", requireAdmin(), async (req, res) => {
     try {
       const data = insertRoleSchema.partial().parse(req.body);
-      const role = await storage.updateRole(req.params.id, data);
+      const role = await storage.updateRole(req.params.id as string, data);
       if (!role) return res.status(404).json({ error: "Role not found" });
       res.json(role);
     } catch (error) {
@@ -57,12 +57,12 @@ export function registerRolesPermissionsRoutes(app: Express): void {
 
   app.delete("/api/roles/:id", requireAdmin(), async (req, res) => {
     try {
-      const role = await storage.getRole(req.params.id);
+      const role = await storage.getRole(req.params.id as string);
       if (!role) return res.status(404).json({ error: "Role not found" });
       if ((role as any).isSystem) {
         return res.status(400).json({ error: "Cannot delete system role" });
       }
-      await storage.deleteRole(req.params.id);
+      await storage.deleteRole(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete role" });
@@ -93,7 +93,7 @@ export function registerRolesPermissionsRoutes(app: Express): void {
 
   app.delete("/api/matter-permissions/:id", requireAdmin(), async (req, res) => {
     try {
-      await storage.revokeMatterPermission(req.params.id);
+      await storage.revokeMatterPermission(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to revoke matter permission" });
@@ -124,7 +124,7 @@ export function registerRolesPermissionsRoutes(app: Express): void {
 
   app.delete("/api/document-permissions/:id", requireAdmin(), async (req, res) => {
     try {
-      await storage.revokeDocumentPermission(req.params.id);
+      await storage.revokeDocumentPermission(req.params.id as string);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to revoke document permission" });

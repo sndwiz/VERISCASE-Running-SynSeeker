@@ -29,7 +29,7 @@ export class EvidenceStorage {
       chainOfCustody: (r.chainOfCustody as any[]) || [],
       storageKey: r.storageKey || undefined,
       isArchived: r.isArchived || false,
-      archivedAt: r.archivedAt ? toISOString(r.archivedAt) : undefined,
+      archivedAt: r.archivedAt ? (toISOString(r.archivedAt) ?? undefined) : undefined,
       archivedBy: r.archivedBy || undefined,
       ocrJobId: r.ocrJobId || undefined,
       extractedText: r.extractedText || undefined,
@@ -120,7 +120,7 @@ export class EvidenceStorage {
       processingTime: r.processingTime || undefined,
       error: r.error || undefined,
       createdAt: toISOString(r.createdAt) || new Date().toISOString(),
-      completedAt: r.completedAt ? toISOString(r.completedAt) || undefined : undefined,
+      completedAt: r.completedAt ? (toISOString(r.completedAt) ?? undefined) : undefined,
     }));
   }
 
@@ -139,7 +139,7 @@ export class EvidenceStorage {
       processingTime: row.processingTime || undefined,
       error: row.error || undefined,
       createdAt: toISOString(row.createdAt) || new Date().toISOString(),
-      completedAt: row.completedAt ? toISOString(row.completedAt) || undefined : undefined,
+      completedAt: row.completedAt ? (toISOString(row.completedAt) ?? undefined) : undefined,
     };
   }
 

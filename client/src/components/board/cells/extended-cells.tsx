@@ -63,6 +63,7 @@ import { format, parseISO } from "date-fns";
 interface CellProps {
   value: any;
   onChange: (value: any) => void;
+  onClick?: () => void;
   options?: string[];
   taskId?: string;
 }

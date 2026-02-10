@@ -226,7 +226,8 @@ export function registerEmailIntelRoutes(app: Express): void {
   /** GET /api/email-intel/emails/:id — single email detail */
   app.get("/api/email-intel/emails/:id", async (req: Request, res: Response) => {
     try {
-      const [email] = await db.select().from(analyzedEmails).where(eq(analyzedEmails.id, req.params.id));
+      const emailId = req.params.id as string;
+      const [email] = await db.select().from(analyzedEmails).where(eq(analyzedEmails.id, emailId));
       if (!email) return res.status(404).json({ error: "Email not found" });
 
       // Also grab alerts for this email
@@ -249,23 +250,24 @@ export function registerEmailIntelRoutes(app: Express): void {
   /** POST /api/email-intel/emails/:id/link — manually link email to matter */
   app.post("/api/email-intel/emails/:id/link", async (req: Request, res: Response) => {
     try {
+      const emailId = req.params.id as string;
       const { matterId } = req.body;
       if (!matterId) return res.status(400).json({ error: "matterId required" });
 
-      const [matter] = await db.select().from(matters).where(eq(matters.id, matterId));
+      const [matter] = await db.select().from(matters).where(eq(matters.id, matterId as string));
       if (!matter) return res.status(404).json({ error: "Matter not found" });
 
       const [updated] = await db
         .update(analyzedEmails)
         .set({ matterId, clientId: matter.clientId, autoLinked: false, updatedAt: new Date() })
-        .where(eq(analyzedEmails.id, req.params.id))
+        .where(eq(analyzedEmails.id, emailId))
         .returning();
 
       // Update alerts too
       await db
         .update(adminAlerts)
         .set({ matterId })
-        .where(eq(adminAlerts.emailId, req.params.id));
+        .where(eq(adminAlerts.emailId, emailId));
 
       res.json(updated);
     } catch (error) {
@@ -304,10 +306,11 @@ export function registerEmailIntelRoutes(app: Express): void {
   /** POST /api/email-intel/alerts/:id/acknowledge */
   app.post("/api/email-intel/alerts/:id/acknowledge", async (req: Request, res: Response) => {
     try {
+      const alertId = req.params.id as string;
       const [updated] = await db
         .update(adminAlerts)
         .set({ acknowledged: true, acknowledgedAt: new Date(), acknowledgedBy: req.body.acknowledgedBy || "Lauren" })
-        .where(eq(adminAlerts.id, req.params.id))
+        .where(eq(adminAlerts.id, alertId))
         .returning();
 
       res.json(updated);
@@ -352,10 +355,11 @@ export function registerEmailIntelRoutes(app: Express): void {
   /** GET /api/email-intel/contacts/:email — contact detail */
   app.get("/api/email-intel/contacts/:email", async (req: Request, res: Response) => {
     try {
+      const contactEmail = req.params.email as string;
       const [contact] = await db
         .select()
         .from(emailContacts)
-        .where(eq(emailContacts.email, req.params.email));
+        .where(eq(emailContacts.email, contactEmail));
 
       if (!contact) return res.status(404).json({ error: "Contact not found" });
 
@@ -363,7 +367,7 @@ export function registerEmailIntelRoutes(app: Express): void {
       const emails = await db
         .select()
         .from(analyzedEmails)
-        .where(eq(analyzedEmails.sender, req.params.email))
+        .where(eq(analyzedEmails.sender, contactEmail))
         .orderBy(desc(analyzedEmails.emailDate))
         .limit(50);
 
@@ -484,16 +488,17 @@ export function registerEmailIntelRoutes(app: Express): void {
   /** GET /api/email-intel/matter/:matterId/emails — all emails for a matter */
   app.get("/api/email-intel/matter/:matterId/emails", async (req: Request, res: Response) => {
     try {
+      const mId = req.params.matterId as string;
       const emails = await db
         .select()
         .from(analyzedEmails)
-        .where(eq(analyzedEmails.matterId, req.params.matterId))
+        .where(eq(analyzedEmails.matterId, mId))
         .orderBy(desc(analyzedEmails.emailDate));
 
       const alerts = await db
         .select()
         .from(adminAlerts)
-        .where(eq(adminAlerts.matterId, req.params.matterId))
+        .where(eq(adminAlerts.matterId, mId))
         .orderBy(desc(adminAlerts.createdAt));
 
       res.json({ emails, alerts, total: emails.length });
@@ -552,9 +557,9 @@ async function upsertContact(
     .where(eq(emailContacts.email, emailAddr.toLowerCase()));
 
   if (existing) {
-    const names = new Set([...(existing.names as string[] || []), name].filter(Boolean));
-    const domains = new Set([...(existing.domains as string[] || []), domain].filter(Boolean));
-    const matterIds = new Set([...(existing.matterIds as string[] || []), matterId].filter(Boolean));
+    const names = new Set(([...(existing.names as string[] || []), name] as string[]).filter(Boolean));
+    const domains = new Set(([...(existing.domains as string[] || []), domain] as string[]).filter(Boolean));
+    const matterIds = new Set(([...(existing.matterIds as string[] || []), matterId] as string[]).filter(Boolean));
     const timeline = [...(existing.behaviorTimeline as any[] || []), {
       date: new Date().toISOString(),
       sentiment: analysis.sentiment,
@@ -574,11 +579,11 @@ async function upsertContact(
     const avgDeception = timeline.reduce((sum: number, t: any) => sum + (t.deceptionScore || 0), 0) / timeline.length;
 
     await db.update(emailContacts).set({
-      names: [...names],
-      domains: [...domains],
+      names: Array.from(names),
+      domains: Array.from(domains),
       isLawyer: existing.isLawyer || analysis.isLawyerComm,
       totalEmails,
-      matterIds: [...matterIds],
+      matterIds: Array.from(matterIds),
       dominantSentiment: dominant,
       avgDeceptionScore: Math.round(avgDeception * 100) / 100,
       alertCount,

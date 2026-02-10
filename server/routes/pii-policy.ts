@@ -60,7 +60,7 @@ export function registerPIIPolicyRoutes(app: Express): void {
   app.patch("/api/pii-policies/:id", requireAdmin(), async (req, res) => {
     try {
       const data = insertPiiPolicySchema.partial().parse(req.body);
-      const policy = await storage.updatePIIPolicy(req.params.id, data);
+      const policy = await storage.updatePIIPolicy(req.params.id as string, data);
       if (!policy) return res.status(404).json({ error: "PII policy not found" });
       res.json(policy);
     } catch (error) {
