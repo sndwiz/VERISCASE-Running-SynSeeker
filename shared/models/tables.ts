@@ -504,6 +504,27 @@ export const timeEntries = pgTable("time_entries", {
   index("IDX_time_entries_matter_id").on(table.matterId),
 ]);
 
+// ============ TIME ENTRY SUPPORTING DOCS ============
+export const timeEntrySupportingDocs = pgTable("time_entry_supporting_docs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id, { onDelete: "cascade" }),
+  matterId: varchar("matter_id").notNull(),
+  docType: varchar("doc_type", { length: 50 }).notNull(),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  filePath: varchar("file_path", { length: 1000 }),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  linkedEmailId: varchar("linked_email_id"),
+  notes: text("notes"),
+  uploadedBy: varchar("uploaded_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_supporting_docs_time_entry").on(table.timeEntryId),
+]);
+
+export type TimeEntrySupportingDoc = typeof timeEntrySupportingDocs.$inferSelect;
+export type InsertTimeEntrySupportingDoc = typeof timeEntrySupportingDocs.$inferInsert;
+
 // ============ CALENDAR EVENTS ============
 export const calendarEvents = pgTable("calendar_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

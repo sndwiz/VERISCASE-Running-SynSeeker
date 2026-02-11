@@ -48,6 +48,7 @@ import { registerRecoveryBinRoutes } from "./recovery-bin";
 import { registerCustomFieldRoutes } from "./custom-fields";
 import { registerTextSnippetRoutes } from "./text-snippets";
 import { registerPIIPolicyRoutes } from "./pii-policy";
+import { registerTimeEntryDocsRoutes } from "./time-entry-docs";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -99,4 +100,5 @@ export function registerAllRoutes(app: Express): void {
   registerCustomFieldRoutes(app);
   registerTextSnippetRoutes(app);
   registerPIIPolicyRoutes(app);
+  registerTimeEntryDocsRoutes(app);
 }

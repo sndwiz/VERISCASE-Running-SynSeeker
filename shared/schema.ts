@@ -1583,6 +1583,38 @@ export const insertTimeEntrySchema = z.object({
 
 export const updateTimeEntrySchema = insertTimeEntrySchema.partial().omit({ matterId: true, userId: true });
 
+// ============ TIME ENTRY SUPPORTING DOCS ============
+
+export interface TimeEntrySupportingDoc {
+  id: string;
+  timeEntryId: string;
+  matterId: string;
+  docType: string;
+  fileName: string;
+  filePath?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  linkedEmailId?: string | null;
+  notes?: string | null;
+  uploadedBy?: string | null;
+  createdAt: string;
+}
+
+export const insertSupportingDocSchema = z.object({
+  timeEntryId: z.string(),
+  matterId: z.string(),
+  docType: z.enum(["phone_bill", "travel", "web_search", "email", "receipt", "screenshot", "other"]),
+  fileName: z.string(),
+  filePath: z.string().optional(),
+  fileSize: z.number().optional(),
+  mimeType: z.string().optional(),
+  linkedEmailId: z.string().optional(),
+  notes: z.string().optional(),
+  uploadedBy: z.string().optional(),
+});
+
+export type InsertSupportingDoc = z.infer<typeof insertSupportingDocSchema>;
+
 // ============ CALENDAR EVENTS ============
 
 export type CalendarEventType = "court-date" | "hearing" | "deadline" | "meeting" | "deposition" | "filing" | "reminder" | "other";

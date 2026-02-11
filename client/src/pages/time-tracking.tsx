@@ -11,13 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, Plus, Trash2, DollarSign, Calendar, FileText, Filter, TrendingUp } from "lucide-react";
+import { Clock, Plus, Trash2, DollarSign, Calendar, FileText, Filter, TrendingUp, ChevronDown, ChevronRight } from "lucide-react";
+import { TimeEntryDocsPanel } from "@/components/time-entry-docs-panel";
 import type { TimeEntry, Matter } from "@shared/schema";
 
 export default function TimeTrackingPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filterMatterId, setFilterMatterId] = useState<string>("");
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     matterId: "",
     date: new Date().toISOString().split("T")[0],
@@ -314,55 +316,71 @@ export default function TimeTrackingPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {timeEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-start justify-between gap-2 p-4 border rounded-lg hover-elevate"
-                  data-testid={`time-entry-${entry.id}`}
-                >
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{formatHours(entry.hours)}</span>
-                      <Badge variant={entry.billableStatus === "billable" ? "default" : "secondary"}>
-                        {entry.billableStatus}
-                      </Badge>
-                      {entry.activityCode && (
-                        <Badge variant="outline">{entry.activityCode}</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{entry.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        {getMatterName(entry.matterId)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(entry.date).toLocaleDateString()}
-                      </span>
-                      {entry.hourlyRate && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          ${(entry.hours * entry.hourlyRate).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMutation.mutate(entry.id)}
-                        data-testid={`button-delete-${entry.id}`}
+              {timeEntries.map((entry) => {
+                const isExpanded = expandedEntryId === entry.id;
+                return (
+                  <div
+                    key={entry.id}
+                    className="p-4 border rounded-lg"
+                    data-testid={`time-entry-${entry.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div
+                        className="space-y-1 flex-1 cursor-pointer"
+                        onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
+                        data-testid={`toggle-expand-${entry.id}`}
                       >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete this time entry</TooltipContent>
-                  </Tooltip>
-                </div>
-              ))}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          }
+                          <span className="font-medium">{formatHours(entry.hours)}</span>
+                          <Badge variant={entry.billableStatus === "billable" ? "default" : "secondary"}>
+                            {entry.billableStatus}
+                          </Badge>
+                          {entry.activityCode && (
+                            <Badge variant="outline">{entry.activityCode}</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground pl-6">{entry.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pl-6 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {getMatterName(entry.matterId)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(entry.date).toLocaleDateString()}
+                          </span>
+                          {entry.hourlyRate && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="h-3 w-3" />
+                              ${(entry.hours * entry.hourlyRate).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteMutation.mutate(entry.id)}
+                            data-testid={`button-delete-${entry.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Delete this time entry</TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {isExpanded && (
+                      <TimeEntryDocsPanel timeEntryId={entry.id} matterId={entry.matterId} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

@@ -8,6 +8,13 @@
       "when": 1770763099225,
       "tag": "0000_lean_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770772291250,
+      "tag": "0001_left_jubilee",
+      "breakpoints": true
     }
   ]
 }
