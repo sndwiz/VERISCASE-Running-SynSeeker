@@ -14,6 +14,7 @@ interface BoardTableHeaderProps {
   onColumnHide?: (columnId: string) => void;
   onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
   onColumnUpdateDescription?: (columnId: string, description: string) => void;
+  onColumnAIAutofill?: (columnId: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
   allSelected?: boolean;
@@ -30,6 +31,7 @@ export function BoardTableHeader({
   onColumnHide,
   onColumnChangeType,
   onColumnUpdateDescription,
+  onColumnAIAutofill,
   currentSort,
   onOpenColumnCenter,
   allSelected = false,
@@ -73,6 +75,7 @@ export function BoardTableHeader({
             onHide={onColumnHide}
             onChangeType={onColumnChangeType}
             onUpdateDescription={onColumnUpdateDescription}
+            onAIAutofill={onColumnAIAutofill}
             currentSort={currentSort}
           />
         </div>

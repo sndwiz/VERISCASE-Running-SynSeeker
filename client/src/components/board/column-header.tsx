@@ -42,6 +42,7 @@ import {
   MinusCircle,
   EyeOff,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import type { ColumnDef, ColumnType } from "@shared/schema";
 
@@ -55,8 +56,11 @@ interface ColumnHeaderProps {
   onHide?: (columnId: string) => void;
   onChangeType?: (columnId: string, newType: ColumnType) => void;
   onUpdateDescription?: (columnId: string, description: string) => void;
+  onAIAutofill?: (columnId: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
 }
+
+const AI_AUTOFILL_COLUMN_TYPES: ColumnType[] = ["status", "label", "dropdown", "priority", "tags"];
 
 const COLUMN_TYPES_FOR_CHANGE: { type: ColumnType; label: string }[] = [
   { type: "text", label: "Text" },
@@ -83,6 +87,7 @@ export function ColumnHeader({
   onHide,
   onChangeType,
   onUpdateDescription,
+  onAIAutofill,
   currentSort,
 }: ColumnHeaderProps) {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -167,6 +172,19 @@ export function ColumnHeader({
               <DropdownMenuItem onClick={() => onFilter(column.id)} data-testid={`filter-${column.id}`}>
                 <Filter className="h-4 w-4 mr-2" />
                 Filter by this column
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          {onAIAutofill && AI_AUTOFILL_COLUMN_TYPES.includes(column.type) && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onAIAutofill(column.id)}
+                data-testid={`ai-autofill-${column.id}`}
+              >
+                <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                Autofill with AI
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

@@ -21,6 +21,7 @@ import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
 import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
+import { AIAutofillDialog } from "@/components/board/ai-autofill-dialog";
 import { ViewTabs, KanbanView, CalendarView, DashboardView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,6 +58,7 @@ export default function BoardPage() {
   const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
   const [columnCenterOpen, setColumnCenterOpen] = useState(false);
   const [activeView, setActiveView] = useState<BoardViewType>("table");
+  const [aiAutofillColumnId, setAiAutofillColumnId] = useState<string | null>(null);
   const [density, setDensity] = useState<"comfort" | "compact" | "ultra-compact">(() => {
     const saved = localStorage.getItem("board-density");
     return (saved as "comfort" | "compact" | "ultra-compact") || "comfort";
@@ -498,6 +500,7 @@ export default function BoardPage() {
                     onColumnHide={handleColumnHide}
                     onColumnChangeType={handleColumnChangeType}
                     onColumnUpdateDescription={handleColumnUpdateDescription}
+                    onColumnAIAutofill={(colId) => setAiAutofillColumnId(colId)}
                     currentSort={currentSort}
                     onOpenColumnCenter={() => setColumnCenterOpen(true)}
                     allSelected={selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
@@ -642,6 +645,19 @@ export default function BoardPage() {
       {boardId && <WorkflowRecorder boardId={boardId} />}
 
       {boardId && <BoardChatPanel boardId={boardId} boardName={board?.name} />}
+
+      {board && aiAutofillColumnId && (() => {
+        const col = board.columns.find((c) => c.id === aiAutofillColumnId);
+        if (!col) return null;
+        return (
+          <AIAutofillDialog
+            open={true}
+            onOpenChange={(open) => { if (!open) setAiAutofillColumnId(null); }}
+            board={board}
+            targetColumn={col}
+          />
+        );
+      })()}
     </div>
   );
 }
