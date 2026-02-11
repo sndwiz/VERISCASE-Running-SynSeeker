@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw, Cpu, DollarSign, Zap, AlertTriangle, Activity, Shield, Trash2, Eye, Columns } from "lucide-react";
+import { User, Bell, Palette, Users, Loader2, BarChart3, CheckCircle2, Clock, TrendingUp, Server, Wifi, WifiOff, RefreshCw, Cpu, DollarSign, Zap, AlertTriangle, Activity, Shield, Trash2, Eye, Columns, Monitor } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import AIEventLogPage from "@/pages/admin/ai-event-log";
 import ManageUsersPage from "@/pages/admin/manage-users";
 import RolesPermissionsPage from "@/pages/admin/roles-permissions";
 import RecoveryBinPage from "@/pages/admin/recovery-bin";
+import ActiveSessionsPage from "@/pages/admin/active-sessions";
 
 interface AuthUser {
   id: string;
@@ -220,6 +221,12 @@ export default function SettingsPage() {
             <TabsTrigger value="custom-fields" data-testid="tab-custom-fields">
               <Columns className="h-4 w-4 mr-2" />
               Custom Fields
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="sessions" data-testid="tab-sessions">
+              <Monitor className="h-4 w-4 mr-2" />
+              Sessions
             </TabsTrigger>
           )}
         </TabsList>
@@ -666,6 +673,12 @@ export default function SettingsPage() {
         {isAdmin && (
           <TabsContent value="custom-fields">
             <CustomFieldsSettings />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="sessions">
+            <ActiveSessionsPage />
           </TabsContent>
         )}
       </Tabs>

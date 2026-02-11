@@ -101,6 +101,69 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // Admin: Get active sessions
+  app.get("/api/admin/sessions", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { db } = await import("../../db");
+      const { sql } = await import("drizzle-orm");
+      const result = await db.execute(sql`
+        SELECT sid, sess, expire FROM sessions WHERE expire > NOW()
+      `);
+      const rows = result as unknown as any[];
+      const currentSid = (req as any).sessionID;
+      const sessions: any[] = [];
+      for (const row of rows) {
+        try {
+          const sess = typeof row.sess === "string" ? JSON.parse(row.sess) : row.sess;
+          const claims = sess?.passport?.user?.claims;
+          if (!claims?.sub) continue;
+          sessions.push({
+            sid: row.sid,
+            userId: claims.sub,
+            email: claims.email || null,
+            firstName: claims.first_name || null,
+            lastName: claims.last_name || null,
+            lastActivity: sess?.lastActivity || null,
+            lastIp: sess?.lastIp || null,
+            initialIp: sess?.initialIp || null,
+            ipHistory: sess?.ipHistory || [],
+            expiresAt: row.expire,
+            isCurrent: row.sid === currentSid,
+          });
+        } catch {
+          continue;
+        }
+      }
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching active sessions:", error);
+      res.status(500).json({ message: "Failed to fetch active sessions" });
+    }
+  });
+
+  // Admin: Terminate a session
+  app.delete("/api/admin/sessions/:sid", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { sid } = req.params;
+      const currentUserSid = req.sessionID;
+      if (sid === currentUserSid) {
+        return res.status(400).json({ message: "Cannot terminate your own session" });
+      }
+      const { db } = await import("../../db");
+      const { sql } = await import("drizzle-orm");
+      const existing = await db.execute(sql`SELECT sid FROM sessions WHERE sid = ${sid}`);
+      const existingRows = existing as unknown as any[];
+      if (!existingRows || existingRows.length === 0) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      await db.execute(sql`DELETE FROM sessions WHERE sid = ${sid}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error terminating session:", error);
+      res.status(500).json({ message: "Failed to terminate session" });
+    }
+  });
+
   // Admin: Get team performance metrics
   app.get("/api/admin/performance", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
