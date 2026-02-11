@@ -97,7 +97,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "high",
       latencyHint: "medium",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
+      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
     },
     {
       modelId: "gpt-4o",
@@ -112,7 +112,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "medium",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
+      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
     },
     {
       modelId: "gpt-4o-mini",
@@ -127,7 +127,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "low",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
+      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
     },
     {
       modelId: "gemini-2.5-flash",

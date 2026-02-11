@@ -144,7 +144,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 16384,
     contextWindow: 128000,
-    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
   },
   {
     id: "gpt-4o",
@@ -153,7 +153,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
   },
   {
     id: "gpt-4o-mini",
@@ -162,7 +162,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
   },
   {
     id: "gemini-2.5-flash",
@@ -217,11 +217,12 @@ const anthropic = new Anthropic({
 });
 
 function getOpenAIClient(): OpenAI {
-  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-    throw new Error("OpenAI API key not configured. Please set up OpenAI integration.");
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OpenAI API key not configured. Add your key in AI Resources → API Connections.");
   }
   return new OpenAI({
-    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+    apiKey,
     baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   });
 }

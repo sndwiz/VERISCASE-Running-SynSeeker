@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import { ModelPicker, BatmodeBadge } from "@/components/model-picker";
 import {
   Cpu,
@@ -29,6 +32,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  Key,
+  Plug,
+  Trash2,
+  TestTube2,
+  Shield,
 } from "lucide-react";
 
 interface DashboardData {
@@ -91,6 +99,204 @@ interface DashboardData {
   timestamp: string;
 }
 
+interface ProviderConnection {
+  id: string;
+  name: string;
+  provider: string;
+  connected: boolean;
+  managed: "replit" | "user";
+  description: string;
+  envKey: string;
+  maskedKey?: string;
+}
+
+function ProviderConnectionCard({
+  conn,
+  onSaveKey,
+  onRemoveKey,
+  onTestConnection,
+  isSaving,
+  isTesting,
+  testResult,
+  isAdmin,
+}: {
+  conn: ProviderConnection;
+  onSaveKey: (providerId: string, key: string) => void;
+  onRemoveKey: (providerId: string) => void;
+  onTestConnection: (providerId: string) => void;
+  isSaving: boolean;
+  isTesting: boolean;
+  testResult?: { success: boolean; latencyMs?: number; error?: string } | null;
+  isAdmin: boolean;
+}) {
+  const [keyInput, setKeyInput] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  const isManaged = conn.managed === "replit";
+
+  const providerColors: Record<string, string> = {
+    anthropic: "text-orange-600 dark:text-orange-400",
+    gemini: "text-blue-600 dark:text-blue-400",
+    openai: "text-green-600 dark:text-green-400",
+    deepseek: "text-purple-600 dark:text-purple-400",
+  };
+
+  return (
+    <Card data-testid={`card-connection-${conn.id}`}>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="rounded-md bg-muted p-2">
+              <Plug className={`h-5 w-5 ${providerColors[conn.id] || "text-foreground"}`} />
+            </div>
+            <div>
+              <p className="font-medium text-sm" data-testid={`text-provider-name-${conn.id}`}>
+                {conn.name}
+              </p>
+              <p className="text-xs text-muted-foreground">{conn.description}</p>
+            </div>
+          </div>
+          <Badge
+            variant={conn.connected ? "default" : "outline"}
+            data-testid={`badge-status-${conn.id}`}
+          >
+            {conn.connected ? (
+              <>
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Connected
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Not Connected
+              </>
+            )}
+          </Badge>
+        </div>
+
+        {isManaged && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-3 w-3" />
+            <span>Managed by Replit — key is automatically configured</span>
+          </div>
+        )}
+
+        {conn.connected && conn.maskedKey && isAdmin && (
+          <div className="flex items-center gap-2 text-xs">
+            <Key className="h-3 w-3 text-muted-foreground" />
+            <code className="bg-muted px-2 py-0.5 rounded text-xs" data-testid={`text-masked-key-${conn.id}`}>
+              {conn.maskedKey}
+            </code>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {conn.connected && isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onTestConnection(conn.id)}
+              disabled={isTesting}
+              data-testid={`button-test-${conn.id}`}
+            >
+              {isTesting ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <TestTube2 className="h-3.5 w-3.5 mr-1" />
+              )}
+              Test Connection
+            </Button>
+          )}
+
+          {!isManaged && !editing && !conn.connected && isAdmin && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setEditing(true)}
+              data-testid={`button-add-key-${conn.id}`}
+            >
+              <Key className="h-3.5 w-3.5 mr-1" />
+              Add API Key
+            </Button>
+          )}
+
+          {!isManaged && conn.connected && !editing && isAdmin && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(true)}
+                data-testid={`button-update-key-${conn.id}`}
+              >
+                <Key className="h-3.5 w-3.5 mr-1" />
+                Update Key
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onRemoveKey(conn.id)}
+                data-testid={`button-remove-key-${conn.id}`}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Disconnect
+              </Button>
+            </>
+          )}
+        </div>
+
+        {editing && !isManaged && isAdmin && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="password"
+              placeholder={`Paste your ${conn.name} API key...`}
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              className="text-xs"
+              data-testid={`input-key-${conn.id}`}
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                onSaveKey(conn.id, keyInput);
+                setKeyInput("");
+                setEditing(false);
+              }}
+              disabled={isSaving || keyInput.length < 10}
+              data-testid={`button-save-key-${conn.id}`}
+            >
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setEditing(false); setKeyInput(""); }}
+              data-testid={`button-cancel-key-${conn.id}`}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {testResult && (
+          <div className={`text-xs flex items-center gap-1 ${testResult.success ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+            {testResult.success ? (
+              <>
+                <CheckCircle2 className="h-3 w-3" />
+                Connection successful{testResult.latencyMs ? ` (${testResult.latencyMs}ms)` : ""}
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-3 w-3" />
+                {testResult.error || "Connection failed"}
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function formatBytes(mb: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb.toFixed(0)} MB`;
@@ -113,10 +319,17 @@ function StatusDot({ status }: { status: string }) {
 
 export default function SynSeekrResourcesPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; latencyMs?: number; error?: string }>>({});
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery<DashboardData>({
     queryKey: ["/api/synseekr-resources/dashboard"],
     refetchInterval: 15000,
+  });
+
+  const { data: connectionsData } = useQuery<{ connections: ProviderConnection[]; isAdmin: boolean }>({
+    queryKey: ["/api/ai-connections"],
   });
 
   const toggleModeMutation = useMutation({
@@ -130,6 +343,47 @@ export default function SynSeekrResourcesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/models"] });
     },
   });
+
+  const saveKeyMutation = useMutation({
+    mutationFn: async ({ providerId, apiKey }: { providerId: string; apiKey: string }) => {
+      const res = await apiRequest("POST", `/api/ai-connections/${providerId}/key`, { apiKey });
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/synseekr-resources/dashboard"] });
+      toast({ title: "API key saved", description: `${variables.providerId} connection configured successfully.` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to save key", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const removeKeyMutation = useMutation({
+    mutationFn: async (providerId: string) => {
+      const res = await apiRequest("DELETE", `/api/ai-connections/${providerId}/key`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/synseekr-resources/dashboard"] });
+      toast({ title: "Disconnected", description: "API key removed." });
+    },
+  });
+
+  const handleTestConnection = async (providerId: string) => {
+    setTestingProvider(providerId);
+    setTestResults((prev) => ({ ...prev, [providerId]: undefined as any }));
+    try {
+      const res = await apiRequest("POST", `/api/ai-connections/${providerId}/test`);
+      const result = await res.json();
+      setTestResults((prev) => ({ ...prev, [providerId]: result }));
+    } catch {
+      setTestResults((prev) => ({ ...prev, [providerId]: { success: false, error: "Test request failed" } }));
+    } finally {
+      setTestingProvider(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -306,6 +560,10 @@ export default function SynSeekrResourcesPage() {
               <TabsTrigger value="models" data-testid="tab-models-overview">
                 <Brain className="h-3.5 w-3.5 mr-1" />
                 Model Selection
+              </TabsTrigger>
+              <TabsTrigger value="connections" data-testid="tab-connections">
+                <Key className="h-3.5 w-3.5 mr-1" />
+                API Connections
               </TabsTrigger>
             </TabsList>
 
@@ -768,6 +1026,65 @@ export default function SynSeekrResourcesPage() {
                         <ArrowRight className="h-4 w-4 ml-1" />
                       </Button>
                     </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="connections" className="mt-4 space-y-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-md bg-muted p-2">
+                      <Key className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">API Connections</p>
+                      <p className="text-xs text-muted-foreground">
+                        Connect your own API keys for cloud AI providers. Anthropic and Gemini are
+                        automatically managed. You can add your own OpenAI (GPT) and DeepSeek keys below.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {connectionsData?.connections?.map((conn) => (
+                  <ProviderConnectionCard
+                    key={conn.id}
+                    conn={conn}
+                    onSaveKey={(providerId, key) => saveKeyMutation.mutate({ providerId, apiKey: key })}
+                    onRemoveKey={(providerId) => removeKeyMutation.mutate(providerId)}
+                    onTestConnection={handleTestConnection}
+                    isSaving={saveKeyMutation.isPending}
+                    isTesting={testingProvider === conn.id}
+                    testResult={testResults[conn.id]}
+                    isAdmin={connectionsData?.isAdmin ?? false}
+                  />
+                ))}
+              </div>
+
+              {(!connectionsData?.connections || connectionsData.connections.length === 0) && (
+                <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+                    <p className="text-sm">Loading connections...</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        API keys are stored securely on the server. Keys are never exposed to the browser
+                        — only masked previews are shown. When in SynSeekr Private mode, no external API
+                        calls are made regardless of which keys are configured.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
