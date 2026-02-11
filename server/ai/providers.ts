@@ -108,7 +108,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 200000,
-    available: true,
+    available: !!(process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY),
   },
   {
     id: "claude-3-5-sonnet-20241022",
@@ -117,7 +117,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 200000,
-    available: true,
+    available: !!(process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY),
   },
   {
     id: "claude-3-opus-20240229",
@@ -126,7 +126,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 200000,
-    available: true,
+    available: !!(process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY),
   },
   {
     id: "claude-3-haiku-20240307",
@@ -135,7 +135,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 200000,
-    available: true,
+    available: !!(process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY),
   },
   {
     id: "gpt-5.2",
@@ -144,7 +144,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 16384,
     contextWindow: 128000,
-    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
+    available: !!(process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
   },
   {
     id: "gpt-4o",
@@ -153,7 +153,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
+    available: !!(process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
   },
   {
     id: "gpt-4o-mini",
@@ -162,7 +162,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 4096,
     contextWindow: 128000,
-    available: !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY),
+    available: !!(process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY),
   },
   {
     id: "gemini-2.5-flash",
@@ -171,7 +171,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    available: !!(process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY),
   },
   {
     id: "gemini-2.5-pro",
@@ -180,7 +180,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    available: !!(process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY),
   },
   {
     id: "gemini-3-flash-preview",
@@ -189,7 +189,7 @@ export const AVAILABLE_MODELS: AIModel[] = [
     supportsVision: true,
     maxTokens: 8192,
     contextWindow: 1000000,
-    available: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    available: !!(process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY),
   },
   {
     id: "synseekr-qwen2.5-7b",
@@ -211,13 +211,19 @@ export const AVAILABLE_MODELS: AIModel[] = [
   },
 ];
 
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
+function getAnthropicClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("Anthropic API key not configured. Add your key in AI Resources → API Connections.");
+  }
+  return new Anthropic({
+    apiKey,
+    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  });
+}
 
 function getOpenAIClient(): OpenAI {
-  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OpenAI API key not configured. Add your key in AI Resources → API Connections.");
   }
@@ -228,11 +234,12 @@ function getOpenAIClient(): OpenAI {
 }
 
 function getGeminiClient(): GoogleGenAI {
-  if (!process.env.AI_INTEGRATIONS_GEMINI_API_KEY) {
-    throw new Error("Gemini API key not configured. Please set up Gemini integration.");
+  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key not configured. Add your key in AI Resources → API Connections.");
   }
   return new GoogleGenAI({
-    apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    apiKey,
     httpOptions: {
       apiVersion: "",
       baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
@@ -261,7 +268,7 @@ export async function* streamAnthropicResponse(
     }),
   }));
 
-  const stream = anthropic.messages.stream({
+  const stream = getAnthropicClient().messages.stream({
     model: config.model,
     max_tokens: config.maxTokens || 2048,
     messages: apiMessages,
@@ -616,7 +623,7 @@ export async function analyzeImageWithVision(
 
     const validMediaType = (mediaType as ImageMediaType) || "image/png";
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropicClient().messages.create({
       model: config.model,
       max_tokens: config.maxTokens || 4096,
       messages: [
@@ -640,7 +647,7 @@ export async function analyzeImageWithVision(
       ],
     });
 
-    const textBlock = response.content.find((block) => block.type === "text");
+    const textBlock = response.content.find((block: any) => block.type === "text");
     const result = textBlock?.type === "text" ? textBlock.text : "";
     const visionDurationMs = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, result, "success");
@@ -996,14 +1003,14 @@ export async function generateCompletion(
       return result;
     }
 
-    const response = await anthropic.messages.create({
+    const response = await getAnthropicClient().messages.create({
       model: effectiveModel,
       max_tokens: maxTokens,
       ...(options.system ? { system: options.system } : {}),
       messages,
     });
 
-    const textBlock = response.content.find((block) => block.type === "text");
+    const textBlock = response.content.find((block: any) => block.type === "text");
     const result = textBlock?.type === "text" ? textBlock.text : "";
     const anthropicDuration = Math.round(performance.now() - startTime);
     completeAIOp(id, startTime, result.slice(0, 500), "success");

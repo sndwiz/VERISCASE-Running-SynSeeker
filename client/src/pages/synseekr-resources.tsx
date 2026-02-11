@@ -108,6 +108,7 @@ interface ProviderConnection {
   description: string;
   envKey: string;
   maskedKey?: string;
+  hasReplitFallback?: boolean;
 }
 
 function ProviderConnectionCard({
@@ -132,7 +133,7 @@ function ProviderConnectionCard({
   const [keyInput, setKeyInput] = useState("");
   const [editing, setEditing] = useState(false);
 
-  const isManaged = conn.managed === "replit";
+  const isUsingReplitKey = conn.managed === "replit";
 
   const providerColors: Record<string, string> = {
     anthropic: "text-orange-600 dark:text-orange-400",
@@ -174,10 +175,17 @@ function ProviderConnectionCard({
           </Badge>
         </div>
 
-        {isManaged && (
+        {conn.connected && isUsingReplitKey && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Shield className="h-3 w-3" />
-            <span>Managed by Replit — key is automatically configured</span>
+            <span>Using auto-configured key — add your own to use on any server</span>
+          </div>
+        )}
+
+        {conn.connected && !isUsingReplitKey && conn.hasReplitFallback && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-3 w-3" />
+            <span>Using your key — auto-configured fallback available</span>
           </div>
         )}
 
@@ -208,7 +216,7 @@ function ProviderConnectionCard({
             </Button>
           )}
 
-          {!isManaged && !editing && !conn.connected && isAdmin && (
+          {!editing && !conn.connected && isAdmin && (
             <Button
               size="sm"
               variant="default"
@@ -220,7 +228,7 @@ function ProviderConnectionCard({
             </Button>
           )}
 
-          {!isManaged && conn.connected && !editing && isAdmin && (
+          {conn.connected && !editing && isAdmin && (
             <>
               <Button
                 size="sm"
@@ -231,20 +239,22 @@ function ProviderConnectionCard({
                 <Key className="h-3.5 w-3.5 mr-1" />
                 Update Key
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onRemoveKey(conn.id)}
-                data-testid={`button-remove-key-${conn.id}`}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Disconnect
-              </Button>
+              {!isUsingReplitKey && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRemoveKey(conn.id)}
+                  data-testid={`button-remove-key-${conn.id}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Disconnect
+                </Button>
+              )}
             </>
           )}
         </div>
 
-        {editing && !isManaged && isAdmin && (
+        {editing && isAdmin && (
           <div className="flex items-center gap-2">
             <Input
               type="password"
@@ -1041,8 +1051,8 @@ export default function SynSeekrResourcesPage() {
                     <div>
                       <p className="text-sm font-medium">API Connections</p>
                       <p className="text-xs text-muted-foreground">
-                        Connect your own API keys for cloud AI providers. Anthropic and Gemini are
-                        automatically managed. You can add your own OpenAI (GPT) and DeepSeek keys below.
+                        Connect your own API keys for all AI providers. Your keys are used first,
+                        with auto-configured keys as fallback when available. Portable across any server.
                       </p>
                     </div>
                   </div>

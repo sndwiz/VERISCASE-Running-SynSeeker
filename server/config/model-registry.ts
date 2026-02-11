@@ -37,7 +37,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "medium",
       latencyHint: "medium",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
+      available: checkEnv("ANTHROPIC_API_KEY") || checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
     },
     {
       modelId: "claude-3-5-sonnet-20241022",
@@ -52,7 +52,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "medium",
       latencyHint: "medium",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
+      available: checkEnv("ANTHROPIC_API_KEY") || checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
     },
     {
       modelId: "claude-3-opus-20240229",
@@ -67,7 +67,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "high",
       latencyHint: "slow",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
+      available: checkEnv("ANTHROPIC_API_KEY") || checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
     },
     {
       modelId: "claude-3-haiku-20240307",
@@ -82,7 +82,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "low",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
+      available: checkEnv("ANTHROPIC_API_KEY") || checkEnv("AI_INTEGRATIONS_ANTHROPIC_API_KEY"),
     },
     {
       modelId: "gpt-5.2",
@@ -97,7 +97,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "high",
       latencyHint: "medium",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
+      available: checkEnv("OPENAI_API_KEY") || checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
     },
     {
       modelId: "gpt-4o",
@@ -112,7 +112,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "medium",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
+      available: checkEnv("OPENAI_API_KEY") || checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
     },
     {
       modelId: "gpt-4o-mini",
@@ -127,7 +127,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "low",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY") || checkEnv("OPENAI_API_KEY"),
+      available: checkEnv("OPENAI_API_KEY") || checkEnv("AI_INTEGRATIONS_OPENAI_API_KEY"),
     },
     {
       modelId: "gemini-2.5-flash",
@@ -142,7 +142,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "low",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
+      available: checkEnv("GEMINI_API_KEY") || checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
     },
     {
       modelId: "gemini-2.5-pro",
@@ -157,7 +157,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "medium",
       latencyHint: "medium",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
+      available: checkEnv("GEMINI_API_KEY") || checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
     },
     {
       modelId: "gemini-3-flash-preview",
@@ -172,7 +172,7 @@ export function buildModelRegistry(): ModelRegistryEntry[] {
       costHint: "low",
       latencyHint: "fast",
       supportsVision: true,
-      available: checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
+      available: checkEnv("GEMINI_API_KEY") || checkEnv("AI_INTEGRATIONS_GEMINI_API_KEY"),
     },
     {
       modelId: "deepseek-chat",
