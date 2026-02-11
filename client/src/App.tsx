@@ -74,6 +74,10 @@ const EmailIntelPage = lazy(() => import("@/pages/email-intel"));
 const ReportsPage = lazy(() => import("@/pages/reports"));
 const SynSeekerPage = lazy(() => import("@/pages/synseeker"));
 const SynSeekrResourcesPage = lazy(() => import("@/pages/synseekr-resources"));
+const CaseJournalPage = lazy(() => import("@/pages/case-journal"));
+const CaseOutcomePage = lazy(() => import("@/pages/case-outcome"));
+const KnowledgeBasePage = lazy(() => import("@/pages/knowledge-base"));
+const EvidenceViewsPage = lazy(() => import("@/pages/evidence-views"));
 
 function PageLoader() {
   return (
@@ -135,6 +139,10 @@ function Router() {
       <Route path="/ai-resources" component={SynSeekrResourcesPage} />
       <Route path="/synseeker" component={SynSeekerPage} />
       <Route path="/synseeker/:id" component={SynSeekerPage} />
+      <Route path="/matters/:matterId/journal" component={CaseJournalPage} />
+      <Route path="/matters/:matterId/outcome" component={CaseOutcomePage} />
+      <Route path="/matters/:matterId/evidence-views" component={EvidenceViewsPage} />
+      <Route path="/knowledge-base" component={KnowledgeBasePage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

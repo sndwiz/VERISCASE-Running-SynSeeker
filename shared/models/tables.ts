@@ -2097,3 +2097,103 @@ export const textSnippets = pgTable("text_snippets", {
 
 export type TextSnippet = typeof textSnippets.$inferSelect;
 export type InsertTextSnippet = typeof textSnippets.$inferInsert;
+
+// ============ CASE JOURNAL (TraceLogic) ============
+export const caseJournals = pgTable("case_journals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id", { length: 255 }).notNull(),
+  authorName: varchar("author_name", { length: 255 }).notNull(),
+  entryType: varchar("entry_type", { length: 50 }).notNull().default("observation"),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  privacyLevel: varchar("privacy_level", { length: 30 }).notNull().default("case_team"),
+  tags: jsonb("tags").default([]),
+  linkedDocIds: jsonb("linked_doc_ids").default([]),
+  linkedEntityIds: jsonb("linked_entity_ids").default([]),
+  epistemicStatus: varchar("epistemic_status", { length: 30 }).default("provisional"),
+  confidenceScore: real("confidence_score").default(0.5),
+  flagged: boolean("flagged").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_case_journals_matter_id").on(table.matterId),
+  index("IDX_case_journals_author_id").on(table.authorId),
+]);
+
+export type CaseJournal = typeof caseJournals.$inferSelect;
+export type InsertCaseJournal = typeof caseJournals.$inferInsert;
+
+// ============ CASE OUTCOMES (TraceLogic) ============
+export const caseOutcomes = pgTable("case_outcomes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  resolution: varchar("resolution", { length: 50 }).notNull(),
+  resolutionDate: varchar("resolution_date", { length: 50 }),
+  summary: text("summary").notNull(),
+  winningArguments: jsonb("winning_arguments").default([]),
+  losingArguments: jsonb("losing_arguments").default([]),
+  oppositionTactics: jsonb("opposition_tactics").default([]),
+  judgeNotes: text("judge_notes").default(""),
+  judgeTendencies: jsonb("judge_tendencies").default([]),
+  lessonsLearned: jsonb("lessons_learned").default([]),
+  keyDocuments: jsonb("key_documents").default([]),
+  settlementAmount: real("settlement_amount"),
+  awardedAmount: real("awarded_amount"),
+  submittedToKb: boolean("submitted_to_kb").default(false),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_case_outcomes_matter_id").on(table.matterId),
+]);
+
+export type CaseOutcome = typeof caseOutcomes.$inferSelect;
+export type InsertCaseOutcome = typeof caseOutcomes.$inferInsert;
+
+// ============ KNOWLEDGE BASE (TraceLogic) ============
+export const knowledgeBaseEntries = pgTable("knowledge_base_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: varchar("category", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  tags: jsonb("tags").default([]),
+  practiceArea: varchar("practice_area", { length: 100 }),
+  sourceMatterId: varchar("source_matter_id"),
+  sourceCaseOutcomeId: varchar("source_case_outcome_id"),
+  successRate: real("success_rate"),
+  usageCount: integer("usage_count").default(0),
+  status: varchar("status", { length: 30 }).notNull().default("pending_review"),
+  curatedBy: varchar("curated_by", { length: 255 }),
+  curatedAt: timestamp("curated_at"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_kb_category").on(table.category),
+  index("IDX_kb_status").on(table.status),
+]);
+
+export type KnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferSelect;
+export type InsertKnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferInsert;
+
+// ============ EVIDENCE VIEWS (TraceLogic) ============
+export const evidenceViews = pgTable("evidence_views", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matterId: varchar("matter_id").notNull().references(() => matters.id, { onDelete: "cascade" }),
+  viewType: varchar("view_type", { length: 30 }).notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  description: text("description").default(""),
+  entries: jsonb("entries").default([]),
+  metadata: jsonb("metadata").default({}),
+  epistemicStatus: varchar("epistemic_status", { length: 30 }).default("descriptive"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_evidence_views_matter_id").on(table.matterId),
+  index("IDX_evidence_views_type").on(table.viewType),
+]);
+
+export type EvidenceView = typeof evidenceViews.$inferSelect;
+export type InsertEvidenceView = typeof evidenceViews.$inferInsert;

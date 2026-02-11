@@ -181,6 +181,7 @@ const adminItems = [
   { title: "Model Advisor", url: "/model-advisor", icon: Brain },
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
   { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Knowledge Base", url: "/knowledge-base", icon: BookOpen },
 ];
 
 const aiInvestigationItems = [

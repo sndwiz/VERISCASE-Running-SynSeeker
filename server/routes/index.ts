@@ -50,6 +50,10 @@ import { registerTextSnippetRoutes } from "./text-snippets";
 import { registerPIIPolicyRoutes } from "./pii-policy";
 import { registerTimeEntryDocsRoutes } from "./time-entry-docs";
 import { registerSynSeekrResourceRoutes } from "./synseekr-resources";
+import { registerCaseJournalRoutes } from "./case-journal";
+import { registerCaseOutcomeRoutes } from "./case-outcome";
+import { registerKnowledgeBaseRoutes } from "./knowledge-base";
+import { registerEvidenceViewRoutes } from "./evidence-views";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -103,4 +107,8 @@ export function registerAllRoutes(app: Express): void {
   registerPIIPolicyRoutes(app);
   registerTimeEntryDocsRoutes(app);
   registerSynSeekrResourceRoutes(app);
+  registerCaseJournalRoutes(app);
+  registerCaseOutcomeRoutes(app);
+  registerKnowledgeBaseRoutes(app);
+  registerEvidenceViewRoutes(app);
 }
