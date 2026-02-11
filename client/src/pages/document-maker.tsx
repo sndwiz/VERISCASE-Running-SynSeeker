@@ -181,8 +181,8 @@ export default function DocumentMakerPage() {
   };
 
   return (
-    <div className="flex flex-col h-full p-6 space-y-6 overflow-y-auto">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex flex-col h-full p-3 md:p-6 space-y-4 md:space-y-6 overflow-y-auto">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
             <FilePlus2 className="h-5 w-5 text-primary-foreground" />
@@ -235,12 +235,12 @@ export default function DocumentMakerPage() {
                       placeholder="Search templates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 w-[200px]"
+                      className="pl-9 w-full md:w-[200px]"
                       data-testid="input-search-templates"
                     />
                   </div>
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-[160px]" data-testid="select-category">
+                    <SelectTrigger className="w-full md:w-[160px]" data-testid="select-category">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>

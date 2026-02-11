@@ -449,14 +449,14 @@ export default function AutomationsPage() {
 
   return (
     <div className="h-full flex flex-col" data-testid="page-automations">
-      <div className="flex items-center justify-between p-4 border-b gap-4">
+      <div className="flex items-center justify-between p-4 border-b gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Automations</h1>
           <p className="text-muted-foreground">AI-powered workflow automation</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-            <SelectTrigger className="w-[200px]" data-testid="select-board">
+            <SelectTrigger className="w-full md:w-[200px]" data-testid="select-board">
               <SelectValue placeholder="Select board" />
             </SelectTrigger>
             <SelectContent>
@@ -521,7 +521,7 @@ export default function AutomationsPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>When (Trigger)</Label>
                       <Select 

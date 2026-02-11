@@ -17,12 +17,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Bot, Calendar, Terminal, Circle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Bot, Calendar, Terminal, Circle, MoreVertical, BookOpen, ShieldAlert, Cpu } from "lucide-react";
 import { useProcessRecorder } from "@/hooks/use-process-recorder";
 import { ModelPicker, BatmodeBadge } from "@/components/model-picker";
 import { Link } from "wouter";
 import { HelpGuide } from "@/components/help-guide";
 import { WorkspaceProvider, useWorkspace } from "@/hooks/use-workspace";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
@@ -204,6 +206,8 @@ function AppLayout() {
     "--sidebar-width-icon": "3rem",
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
@@ -211,74 +215,131 @@ function AppLayout() {
           onCreateBoard={() => setCreateBoardOpen(true)}
         />
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-2 px-4 py-2 border-b shrink-0">
+          <header className="flex items-center justify-between gap-2 px-2 md:px-4 py-2 border-b shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2 flex-wrap">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href="/ai-chat">
-                    <Button variant="default" size="sm" className="gap-2" data-testid="button-verbo">
+                    <Button variant="default" size="sm" className="gap-1 md:gap-2" data-testid="button-verbo">
                       <Bot className="h-4 w-4" />
-                      Verbo
+                      <span className="hidden sm:inline">Verbo</span>
                     </Button>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent>AI legal assistant for research, analysis, and case strategy</TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/briefing">
-                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
-                      <Calendar className="h-4 w-4" />
-                      Daily Briefing
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Your personalized daily summary of tasks and deadlines</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/clawbot">
-                    <Button variant="outline" size="sm" className="gap-2" data-testid="button-clawbot-gateway">
-                      <Terminal className="h-4 w-4" />
-                      Clawbot
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Autonomous computer control via natural language</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={recorder.isRecording ? "destructive" : "outline"}
-                    size="sm"
-                    className="gap-2"
-                    onClick={async () => {
-                      if (recorder.isRecording) {
-                        const result = await recorder.stopRecording();
-                        if (result) {
-                          toast({ title: "Recording stopped", description: `Captured ${result.eventCount || 0} events. View in Process Recorder.` });
-                          setLocation("/process-recorder");
-                        }
-                      } else {
-                        const result = await recorder.startRecording();
-                        if (result) toast({ title: "Recording started", description: "Your actions are being captured." });
-                      }
-                    }}
-                    data-testid="button-record-process"
-                  >
-                    <Circle className={`h-3.5 w-3.5 ${recorder.isRecording ? "fill-current animate-pulse" : ""}`} />
-                    {recorder.isRecording ? `Recording (${recorder.eventCount})` : "Record"}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{recorder.isRecording ? "Stop recording and convert to automation/macro/playbook" : "Record your workflow to create automations, macros, or SOPs"}</TooltipContent>
-              </Tooltip>
-              <BatmodeBadge />
-              <ModelPicker />
-              <HelpGuide />
-              <KillSwitch />
+              {!isMobile && (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link href="/briefing">
+                        <Button variant="outline" size="sm" className="gap-2" data-testid="button-daily-briefing">
+                          <Calendar className="h-4 w-4" />
+                          <span className="hidden lg:inline">Daily Briefing</span>
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>Your personalized daily summary of tasks and deadlines</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link href="/clawbot">
+                        <Button variant="outline" size="sm" className="gap-2" data-testid="button-clawbot-gateway">
+                          <Terminal className="h-4 w-4" />
+                          <span className="hidden lg:inline">Clawbot</span>
+                        </Button>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>Autonomous computer control via natural language</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={recorder.isRecording ? "destructive" : "outline"}
+                        size="sm"
+                        className="gap-2"
+                        onClick={async () => {
+                          if (recorder.isRecording) {
+                            const result = await recorder.stopRecording();
+                            if (result) {
+                              toast({ title: "Recording stopped", description: `Captured ${result.eventCount || 0} events. View in Process Recorder.` });
+                              setLocation("/process-recorder");
+                            }
+                          } else {
+                            const result = await recorder.startRecording();
+                            if (result) toast({ title: "Recording started", description: "Your actions are being captured." });
+                          }
+                        }}
+                        data-testid="button-record-process"
+                      >
+                        <Circle className={`h-3.5 w-3.5 ${recorder.isRecording ? "fill-current animate-pulse" : ""}`} />
+                        {recorder.isRecording ? `Recording (${recorder.eventCount})` : "Record"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{recorder.isRecording ? "Stop recording and convert to automation/macro/playbook" : "Record your workflow to create automations, macros, or SOPs"}</TooltipContent>
+                  </Tooltip>
+                  <BatmodeBadge />
+                  <ModelPicker />
+                  <HelpGuide />
+                  <KillSwitch />
+                </>
+              )}
               <ThemeToggle />
               <UserMenu />
+              {isMobile && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" data-testid="button-mobile-menu">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem asChild>
+                      <Link href="/briefing" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Daily Briefing
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/clawbot" className="flex items-center gap-2">
+                        <Terminal className="h-4 w-4" />
+                        Clawbot Gateway
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        if (recorder.isRecording) {
+                          const result = await recorder.stopRecording();
+                          if (result) {
+                            toast({ title: "Recording stopped", description: `Captured ${result.eventCount || 0} events.` });
+                            setLocation("/process-recorder");
+                          }
+                        } else {
+                          const result = await recorder.startRecording();
+                          if (result) toast({ title: "Recording started", description: "Your actions are being captured." });
+                        }
+                      }}
+                    >
+                      <Circle className={`h-4 w-4 ${recorder.isRecording ? "fill-current animate-pulse text-destructive" : ""}`} />
+                      {recorder.isRecording ? `Stop Recording (${recorder.eventCount})` : "Record Process"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/ai-resources" className="flex items-center gap-2">
+                        <Cpu className="h-4 w-4" />
+                        AI Resources
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/product-guide" className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        Help Guide
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </header>
           <main className="flex-1 overflow-auto">

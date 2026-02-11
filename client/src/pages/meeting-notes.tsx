@@ -160,6 +160,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
         </div>
       </div>
       <Card>
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -229,6 +230,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
             ))}
           </TableBody>
         </Table>
+        </div>
       </Card>
     </div>
   );
@@ -236,7 +238,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
 
 function OverviewTab({ meeting }: { meeting: Meeting }) {
   return (
-    <div className="space-y-6" data-testid="tab-overview">
+    <div className="space-y-4 md:space-y-6" data-testid="tab-overview">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-2 pb-3">
           <div className="flex items-center gap-2">
@@ -529,7 +531,7 @@ export default function MeetingNotesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4" data-testid="meeting-notes-loading">
+      <div className="p-3 md:p-6 space-y-4" data-testid="meeting-notes-loading">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-64 w-full" />
@@ -539,7 +541,7 @@ export default function MeetingNotesPage() {
 
   if (isError) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center text-center" data-testid="meeting-notes-error">
+      <div className="p-3 md:p-6 flex flex-col items-center justify-center text-center" data-testid="meeting-notes-error">
         <p className="text-muted-foreground">Failed to load meetings. Please try refreshing.</p>
       </div>
     );

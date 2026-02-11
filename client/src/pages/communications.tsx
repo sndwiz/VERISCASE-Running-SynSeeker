@@ -73,7 +73,7 @@ function ClientPortalsContent() {
             <Filter className="h-4 w-4" />
           </Button>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[130px]" data-testid="select-sort-portals">
+            <SelectTrigger className="w-full md:w-[130px]" data-testid="select-sort-portals">
               <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue />
             </SelectTrigger>
@@ -258,7 +258,7 @@ function LogsContent() {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b space-y-3">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-semibold" data-testid="text-logs-title">Communication Logs</h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -273,7 +273,7 @@ function LogsContent() {
             />
           </div>
           <Select value={logType} onValueChange={setLogType}>
-            <SelectTrigger className="w-[150px]" data-testid="select-log-type">
+            <SelectTrigger className="w-full md:w-[150px]" data-testid="select-log-type">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -286,7 +286,7 @@ function LogsContent() {
             </SelectContent>
           </Select>
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[150px]" data-testid="select-log-date-range">
+            <SelectTrigger className="w-full md:w-[150px]" data-testid="select-log-date-range">
               <SelectValue placeholder="Date range" />
             </SelectTrigger>
             <SelectContent>

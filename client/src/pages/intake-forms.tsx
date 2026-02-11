@@ -113,7 +113,7 @@ export default function IntakeFormsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full p-6 space-y-6 overflow-y-auto" data-testid="page-intake-forms">
+    <div className="flex flex-col h-full p-3 md:p-6 space-y-4 md:space-y-6 overflow-y-auto" data-testid="page-intake-forms">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
@@ -223,7 +223,7 @@ function FormPreview({ template, onBack }: { template: FormTemplate; onBack: () 
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="max-w-3xl mx-auto p-6 pb-16">
+        <div className="max-w-3xl mx-auto p-3 md:p-6 pb-16">
           <Card className="overflow-visible">
             <CardContent className="p-8 space-y-8">
               <div className="text-center space-y-1" data-testid="section-firm-header">
@@ -303,7 +303,7 @@ function FormPreview({ template, onBack }: { template: FormTemplate; onBack: () 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label data-testid="label-email">Email *</Label>
                     <Input type="email" placeholder="email@example.com" disabled data-testid="input-email" />

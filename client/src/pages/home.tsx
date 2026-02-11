@@ -72,25 +72,25 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Welcome Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-welcome">
+          <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-welcome">
             Welcome to VERICASE
           </h1>
           <p className="text-muted-foreground mt-1">
             Your legal practice management dashboard
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" data-testid="button-quick-time">
-            <Clock className="h-4 w-4 mr-2" />
-            Log Time
+            <Clock className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Log Time</span>
           </Button>
           <Button data-testid="button-new-matter">
-            <Plus className="h-4 w-4 mr-2" />
-            New Matter
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">New Matter</span>
           </Button>
         </div>
       </div>
@@ -228,19 +228,19 @@ export default function HomePage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto py-3 md:py-4 flex flex-col gap-2">
               <Calendar className="h-5 w-5" />
               <span>Schedule Meeting</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto py-3 md:py-4 flex flex-col gap-2">
               <FileText className="h-5 w-5" />
               <span>Draft Document</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto py-3 md:py-4 flex flex-col gap-2">
               <Users className="h-5 w-5" />
               <span>Add Client</span>
             </Button>
-            <Button variant="outline" className="h-auto py-4 flex flex-col gap-2">
+            <Button variant="outline" className="h-auto py-3 md:py-4 flex flex-col gap-2">
               <AlertCircle className="h-5 w-5" />
               <span>Set Deadline</span>
             </Button>

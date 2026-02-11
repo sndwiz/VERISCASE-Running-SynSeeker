@@ -139,7 +139,7 @@ export default function SettingsPage() {
   const isAdmin = currentUser?.role === "admin";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-3 md:p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold" data-testid="text-settings-title">
           Settings

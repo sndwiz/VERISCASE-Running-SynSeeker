@@ -349,7 +349,7 @@ export default function ClientDetailDashboard() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 space-y-6" data-testid="page-client-detail-dashboard">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="page-client-detail-dashboard">
         <div className="flex items-center gap-3 flex-wrap">
           <Link href="/client-dashboard">
             <Button variant="ghost" size="icon" data-testid="button-back-dashboard">

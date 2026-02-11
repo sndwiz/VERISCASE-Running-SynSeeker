@@ -127,7 +127,7 @@ function ReportCatalog() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -139,7 +139,7 @@ function ReportCatalog() {
   }
 
   return (
-    <div className="p-6 space-y-6" data-testid="reports-catalog">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="reports-catalog">
       <div>
         <h1 className="text-2xl font-semibold" data-testid="text-reports-title">Reports</h1>
         <p className="text-sm text-muted-foreground">Pre-built reports across billing, productivity, cases, AI operations, and compliance</p>
@@ -243,6 +243,7 @@ function ReportCatalog() {
       ) : (
         <Card>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -279,6 +280,7 @@ function ReportCatalog() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -422,7 +424,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
 
   return (
     <div className="flex h-full" data-testid="report-detail">
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 md:p-6 space-y-4 md:space-y-6">
         <div className="flex flex-wrap items-center gap-2 justify-start text-sm text-muted-foreground">
           <Link href="/reports" className="hover:underline" data-testid="link-reports-breadcrumb">Reports</Link>
           <ChevronRight className="h-3.5 w-3.5" />

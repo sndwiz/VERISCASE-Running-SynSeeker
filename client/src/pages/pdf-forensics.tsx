@@ -145,9 +145,9 @@ export default function PdfForensicsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto p-4 space-y-4 md:space-y-6">
         {!report && (
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-2xl mx-auto space-y-4 md:space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><FileSearch className="h-5 w-5" /> Upload PDF for Analysis</CardTitle>

@@ -311,7 +311,7 @@ export default function MattersPage() {
 
   return (
     <div className="flex flex-col h-full" data-testid="page-matters">
-      <div className="flex items-center justify-between gap-4 p-4 border-b">
+      <div className="flex items-center justify-between gap-3 flex-wrap p-4 border-b">
         <div className="flex items-center gap-3">
           <Scale className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-semibold" data-testid="text-matters-title">Matters</h1>
@@ -329,7 +329,7 @@ export default function MattersPage() {
               <DialogDescription>Open a new case or matter for a client.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Client</Label>
                   <Select
@@ -366,7 +366,7 @@ export default function MattersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Matter Name</Label>
                   <Input
@@ -387,7 +387,7 @@ export default function MattersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Practice Area</Label>
                   <Select
@@ -422,7 +422,7 @@ export default function MattersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Court</Label>
                   <Select
@@ -572,7 +572,7 @@ export default function MattersPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center justify-between gap-4 px-4 pt-3 pb-2 border-b">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-4 px-3 md:px-4 pt-3 pb-2 border-b">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setCurrentPage(0); }}>
           <TabsList>
             <TabsTrigger value="all" data-testid="tab-all">
@@ -597,7 +597,7 @@ export default function MattersPage() {
               placeholder="Filter by keyword"
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setCurrentPage(0); }}
-              className="pl-8 w-[200px]"
+              className="pl-8 w-full md:w-[200px]"
               data-testid="input-search"
             />
           </div>
@@ -606,7 +606,7 @@ export default function MattersPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" data-testid="button-columns">
                 <Columns3 className="h-4 w-4 mr-1" />
-                Columns
+                <span className="hidden md:inline">Columns</span>
                 <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -629,7 +629,7 @@ export default function MattersPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" data-testid="button-filters">
                 <SlidersHorizontal className="h-4 w-4 mr-1" />
-                Filters
+                <span className="hidden md:inline">Filters</span>
                 <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -668,6 +668,7 @@ export default function MattersPage() {
             </p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -845,6 +846,7 @@ export default function MattersPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </ScrollArea>
 

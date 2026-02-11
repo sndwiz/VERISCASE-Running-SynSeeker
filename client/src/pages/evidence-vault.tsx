@@ -382,7 +382,7 @@ export default function EvidenceVaultPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
-            <SelectTrigger className="w-[200px]" data-testid="select-matter">
+            <SelectTrigger className="w-full md:w-[200px]" data-testid="select-matter">
               <SelectValue placeholder="Select matter" />
             </SelectTrigger>
             <SelectContent>
@@ -395,7 +395,7 @@ export default function EvidenceVaultPage() {
           </Select>
 
           <Select value={uploadConfidentiality} onValueChange={setUploadConfidentiality}>
-            <SelectTrigger className="w-[150px]" data-testid="select-upload-confidentiality">
+            <SelectTrigger className="w-full md:w-[150px]" data-testid="select-upload-confidentiality">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -554,7 +554,7 @@ export default function EvidenceVaultPage() {
             </ScrollArea>
           </div>
 
-          <div className="w-[420px] flex flex-col">
+          <div className="w-full md:w-[420px] flex flex-col">
             {selectedFile ? (
               <Tabs defaultValue="details" className="flex-1 flex flex-col">
                 <TabsList className="mx-4 mt-4">
@@ -635,7 +635,7 @@ export default function EvidenceVaultPage() {
                     <div className="pt-4 border-t space-y-2">
                       {selectedFile.storageKey && (
                         <>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <Button
                               variant="outline"
                               onClick={() => handleDownload(selectedFile.id)}

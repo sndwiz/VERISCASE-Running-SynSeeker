@@ -286,7 +286,7 @@ export default function CalendarPage() {
   const manualCount = events.length - autoSyncedCount;
 
   return (
-    <div className="p-6 space-y-6" data-testid="calendar-page">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="calendar-page">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Unified Calendar</h1>
@@ -351,7 +351,7 @@ export default function CalendarPage() {
                     data-testid="input-title"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Event Type *</Label>
                     <Select value={formData.eventType} onValueChange={(v: CalendarEventType) => setFormData(prev => ({ ...prev, eventType: v }))}>
@@ -385,7 +385,7 @@ export default function CalendarPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Start Date *</Label>
                     <Input
@@ -572,7 +572,7 @@ export default function CalendarPage() {
                     key={idx}
                     onClick={() => setSelectedDate(dateStr)}
                     className={`
-                      min-h-[80px] p-1 border rounded cursor-pointer transition-colors
+                      min-h-[40px] md:min-h-[80px] p-1 border rounded cursor-pointer transition-colors
                       ${isCurrentMonth ? "bg-background" : "bg-muted/30 text-muted-foreground"}
                       ${isToday(date) ? "border-primary" : "border-border"}
                       ${isSelected ? "ring-2 ring-primary" : ""}

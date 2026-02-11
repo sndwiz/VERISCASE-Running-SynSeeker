@@ -485,7 +485,7 @@ function VeribotView({
 }) {
   return (
     <ScrollArea className="flex-1">
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 max-w-6xl mx-auto">
         <div className="flex items-center gap-3" data-testid="matter-selector-section">
           <Select value={selectedMatterId} onValueChange={onMatterChange}>
             <SelectTrigger className="w-64" data-testid="select-matter">
@@ -655,7 +655,7 @@ function LibraryView({
 }) {
   return (
     <ScrollArea className="flex-1">
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 max-w-6xl mx-auto">
         <div>
           <h2 className="text-lg font-semibold" data-testid="text-library-header">Library</h2>
           <p className="text-sm text-muted-foreground">Saved workflow templates and document templates</p>
@@ -795,7 +795,7 @@ function DraftView({
 
   return (
     <ScrollArea className="flex-1">
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6 max-w-6xl mx-auto">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold" data-testid="text-drafts-header">Drafts</h2>

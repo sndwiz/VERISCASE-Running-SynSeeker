@@ -448,7 +448,7 @@ export default function SynSeekrResourcesPage() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
           <Card data-testid="card-mode-switcher">
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">

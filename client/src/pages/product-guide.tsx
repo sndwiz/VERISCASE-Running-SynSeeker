@@ -172,7 +172,7 @@ export default function ProductGuidePage() {
 
 function FullGuide() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -778,7 +778,7 @@ function FullGuide() {
 
 function BulletPointSummary() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">VERICASE at a Glance</CardTitle>

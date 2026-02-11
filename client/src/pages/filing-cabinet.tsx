@@ -359,7 +359,7 @@ export default function FilingCabinetPage() {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col gap-4">
+    <div className="p-3 md:p-6 h-full flex flex-col gap-3 md:gap-4">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">Filing Cabinet</h1>
@@ -367,7 +367,7 @@ export default function FilingCabinetPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
-            <SelectTrigger className="w-[250px]" data-testid="select-matter">
+            <SelectTrigger className="w-full md:w-[250px]" data-testid="select-matter">
               <SelectValue placeholder="Select a matter" />
             </SelectTrigger>
             <SelectContent>
@@ -416,7 +416,7 @@ export default function FilingCabinetPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 min-h-0">
           <Card className="w-64 shrink-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Categories</CardTitle>

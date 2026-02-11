@@ -113,8 +113,8 @@ function InvestigationList() {
   const investigations = data?.data || [];
 
   return (
-    <div className="h-full overflow-auto p-6" data-testid="synseeker-page">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full overflow-auto p-3 md:p-6" data-testid="synseeker-page">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <Radar className="h-6 w-6" />
@@ -322,7 +322,7 @@ function NewInvestigationForm({ onCreated }: { onCreated: (id: string) => void }
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label htmlFor="targetState">State</Label>
           <Input
@@ -407,8 +407,8 @@ function InvestigationDetail({ id, onBack }: { id: string; onBack: () => void })
 
   if (isLoading) {
     return (
-      <div className="h-full overflow-auto p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="h-full overflow-auto p-3 md:p-6">
+        <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-64 w-full" />
@@ -431,8 +431,8 @@ function InvestigationDetail({ id, onBack }: { id: string; onBack: () => void })
   }
 
   return (
-    <div className="h-full overflow-auto p-6" data-testid="investigation-detail">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="h-full overflow-auto p-3 md:p-6" data-testid="investigation-detail">
+      <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
         <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="icon" onClick={onBack} data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
@@ -774,7 +774,7 @@ function EntitiesTab({ entities }: { entities: any[] }) {
                 {type} ({items.length})
               </h3>
             </div>
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -823,7 +823,7 @@ function ConnectionsTab({ connections, entities }: { connections: any[]; entitie
   }
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>

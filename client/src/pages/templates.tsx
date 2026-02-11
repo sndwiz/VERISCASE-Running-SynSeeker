@@ -512,7 +512,7 @@ function CreateTemplateDialog({ open, onClose, defaultType }: { open: boolean; o
           <DialogDescription>Add a new reusable template to your library</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Type</Label>
               <Select value={type} onValueChange={setType}>

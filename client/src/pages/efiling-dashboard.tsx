@@ -298,7 +298,7 @@ export default function EFilingDashboard() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
-            <SelectTrigger className="w-[280px]" data-testid="select-matter">
+            <SelectTrigger className="w-full md:w-[280px]" data-testid="select-matter">
               <SelectValue placeholder="Select a matter..." />
             </SelectTrigger>
             <SelectContent>
@@ -549,6 +549,7 @@ export default function EFilingDashboard() {
                       <CardTitle>Recent Filings</CardTitle>
                     </CardHeader>
                     <CardContent>
+                      <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -576,6 +577,7 @@ export default function EFilingDashboard() {
                           ))}
                         </TableBody>
                       </Table>
+                      </div>
                     </CardContent>
                   </Card>
                 )}

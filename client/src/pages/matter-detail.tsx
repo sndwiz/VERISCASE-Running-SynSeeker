@@ -321,7 +321,7 @@ export default function MatterDetailPage() {
 
         <ScrollArea className="flex-1">
           <TabsContent value="dashboard" className="m-0 p-0">
-            <div className="p-6 space-y-6">
+            <div className="p-3 md:p-6 space-y-4 md:space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                   <Card>
@@ -332,7 +332,7 @@ export default function MatterDetailPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Work in progress</p>
                           <p className="text-2xl font-bold" data-testid="text-wip">$0.00</p>

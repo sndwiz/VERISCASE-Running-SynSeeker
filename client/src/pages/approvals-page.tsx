@@ -304,7 +304,7 @@ export default function ApprovalsPage() {
                 <Label>Assigned To *</Label>
                 <Input placeholder="Comma-separated names" value={formData.assignedTo} onChange={(e) => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))} data-testid="input-assigned-to" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Due Date</Label>
                   <Input type="date" value={formData.dueDate} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} data-testid="input-due-date" />
@@ -376,7 +376,7 @@ export default function ApprovalsPage() {
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[140px]" data-testid="select-filter-status"><SelectValue placeholder="All Status" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-[140px]" data-testid="select-filter-status"><SelectValue placeholder="All Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Status</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
@@ -388,7 +388,7 @@ export default function ApprovalsPage() {
           </Select>
         </div>
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[150px]" data-testid="select-filter-type"><SelectValue placeholder="All Types" /></SelectTrigger>
+          <SelectTrigger className="w-full md:w-[150px]" data-testid="select-filter-type"><SelectValue placeholder="All Types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Types</SelectItem>
             {(Object.entries(typeConfig) as [ApprovalType, typeof typeConfig[ApprovalType]][]).map(([key, cfg]) => (

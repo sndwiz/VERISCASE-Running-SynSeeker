@@ -95,7 +95,7 @@ export default function BillingDashboard() {
 
   if (loadingSummary) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -120,7 +120,7 @@ export default function BillingDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6" data-testid="billing-dashboard">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="billing-dashboard">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold" data-testid="text-billing-title">Firm Billing Dashboard</h1>
@@ -163,6 +163,7 @@ export default function BillingDashboard() {
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -204,6 +205,7 @@ export default function BillingDashboard() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -212,6 +214,7 @@ export default function BillingDashboard() {
         <TabsContent value="expenses" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -247,6 +250,7 @@ export default function BillingDashboard() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -254,6 +258,7 @@ export default function BillingDashboard() {
         <TabsContent value="payments" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -287,6 +292,7 @@ export default function BillingDashboard() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -294,6 +300,7 @@ export default function BillingDashboard() {
         <TabsContent value="trust" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -336,6 +343,7 @@ export default function BillingDashboard() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

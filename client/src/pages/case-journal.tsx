@@ -229,7 +229,7 @@ export default function CaseJournalPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -326,7 +326,7 @@ export default function CaseJournalPage() {
               <Label>Title</Label>
               <Input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Entry title..." data-testid="input-entry-title" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Type</Label>
                 <Select value={formType} onValueChange={setFormType}>
@@ -356,7 +356,7 @@ export default function CaseJournalPage() {
                 data-testid="textarea-entry-content"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Epistemic Status</Label>
                 <Select value={formEpistemic} onValueChange={setFormEpistemic}>

@@ -207,7 +207,7 @@ export default function TeamMembersPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>First Name</Label>
                   <Input
@@ -228,7 +228,7 @@ export default function TeamMembersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Select value={form.role} onValueChange={v => setForm(p => ({ ...p, role: v }))}>
@@ -253,7 +253,7 @@ export default function TeamMembersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Email</Label>
                   <Input
@@ -274,7 +274,7 @@ export default function TeamMembersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Bar Number</Label>
                   <Input
@@ -371,7 +371,7 @@ export default function TeamMembersPage() {
             />
           </div>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[160px]" data-testid="select-role-filter">
+            <SelectTrigger className="w-full md:w-[160px]" data-testid="select-role-filter">
               <SelectValue placeholder="Filter by role" />
             </SelectTrigger>
             <SelectContent>
@@ -385,6 +385,7 @@ export default function TeamMembersPage() {
 
         <Card>
           <ScrollArea className="h-[calc(100vh-380px)]">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -461,6 +462,7 @@ export default function TeamMembersPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </ScrollArea>
         </Card>
       </div>

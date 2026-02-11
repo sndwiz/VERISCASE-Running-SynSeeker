@@ -192,11 +192,11 @@ export default function CaseOutcomePage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4">
         <div className="max-w-3xl mx-auto space-y-6">
           <Card className="p-5 space-y-4">
             <h2 className="font-semibold" data-testid="text-resolution-section">Resolution</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Resolution</Label>
                 <Select value={resolution} onValueChange={setResolution}>
@@ -211,7 +211,7 @@ export default function CaseOutcomePage() {
                 <Input type="date" value={resolutionDate} onChange={e => setResolutionDate(e.target.value)} data-testid="input-resolution-date" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Settlement Amount</Label>
                 <Input type="number" value={settlementAmount} onChange={e => setSettlementAmount(e.target.value)} placeholder="0.00" data-testid="input-settlement" />

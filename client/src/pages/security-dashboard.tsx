@@ -386,7 +386,7 @@ export default function SecurityDashboardPage() {
                     <CardTitle className="text-base">Audit Trail</CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setAuditPage(0); }}>
-                        <SelectTrigger className="w-[180px]" data-testid="select-action-filter">
+                        <SelectTrigger className="w-full md:w-[180px]" data-testid="select-action-filter">
                           <SelectValue placeholder="Filter by action" />
                         </SelectTrigger>
                         <SelectContent>

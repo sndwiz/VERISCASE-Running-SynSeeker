@@ -91,7 +91,7 @@ export default function DailyBriefingPage() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold" data-testid="text-briefing-greeting">
             {briefing.greeting}, {briefing.user.name}
@@ -443,7 +443,7 @@ function TaskRow({
 
 function BriefingSkeleton() {
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-5 w-48" />

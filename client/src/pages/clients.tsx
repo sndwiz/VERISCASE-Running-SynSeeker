@@ -222,10 +222,10 @@ export default function ClientsPage() {
   };
 
   return (
-    <div className="h-full flex" data-testid="page-clients">
-      <div className="flex-1 flex flex-col border-r">
+    <div className="h-full flex flex-col md:flex-row" data-testid="page-clients">
+      <div className="flex-1 flex flex-col md:border-r min-h-0">
         <div className="p-4 border-b space-y-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold">Clients</h1>
               <p className="text-muted-foreground">Manage client information and relationships</p>
@@ -243,7 +243,7 @@ export default function ClientsPage() {
                   <DialogDescription>Enter client information to create a new record.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Name</Label>
                       <Input 
@@ -270,7 +270,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Email</Label>
                       <Input 
@@ -338,7 +338,7 @@ export default function ClientsPage() {
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[140px]" data-testid="select-type-filter">
+              <SelectTrigger className="w-[120px] md:w-[140px]" data-testid="select-type-filter">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -403,7 +403,7 @@ export default function ClientsPage() {
         </ScrollArea>
       </div>
 
-      <div className="w-[400px] flex flex-col">
+      <div className="w-full md:w-[400px] flex flex-col">
         {selectedClient ? (
           <>
             <div className="p-4 border-b">
@@ -551,7 +551,7 @@ export default function ClientsPage() {
             <DialogDescription>Update client information.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name</Label>
                 <Input 
@@ -577,7 +577,7 @@ export default function ClientsPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input 
@@ -680,7 +680,7 @@ export default function ClientsPage() {
             <span>Step 2 of 3: Open a matter</span>
           </div>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Matter Name</Label>
                 <Input
@@ -700,7 +700,7 @@ export default function ClientsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Practice Area</Label>
                 <Select
