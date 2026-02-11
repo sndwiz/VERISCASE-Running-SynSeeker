@@ -49,6 +49,7 @@ import { registerCustomFieldRoutes } from "./custom-fields";
 import { registerTextSnippetRoutes } from "./text-snippets";
 import { registerPIIPolicyRoutes } from "./pii-policy";
 import { registerTimeEntryDocsRoutes } from "./time-entry-docs";
+import { registerSynSeekrResourceRoutes } from "./synseekr-resources";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -101,4 +102,5 @@ export function registerAllRoutes(app: Express): void {
   registerTextSnippetRoutes(app);
   registerPIIPolicyRoutes(app);
   registerTimeEntryDocsRoutes(app);
+  registerSynSeekrResourceRoutes(app);
 }

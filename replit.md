@@ -36,7 +36,8 @@ The system adopts a Monday.com-style board architecture, offering highly customi
 - **Billing Verifier:** Client-side time entry verification and invoice preparation system with CSV/JSON import, UTBMS code detection, and export options.
 - **Template Library:** Email intelligence template system with 5 types and 20 pre-built legal email templates.
 - **Process Recorder:** Workflow capture system that converts app events into automations, macros, or SOPs.
-- **Model Intelligence Advisor:** An open-source model tracking and recommendation system that monitors models, provides quality scores, task-specific recommendations, and alerts.
+- **Model Intelligence Advisor:** An open-source model tracking and recommendation system that monitors models, provides quality scores, task-specific recommendations, and alerts. Accessible from the AI Resources dashboard.
+- **AI Resources Dashboard:** Dual-mode control center for switching between "SynSeekr Private" (local models, no external API calls) and "Full Integrated" (cloud models: Claude, GPT, Gemini). Features GPU/CPU/VRAM/disk monitoring when in private mode, AI operations cost tracking, model selection picker, and links to Model Advisor.
 - **Help System & Tooltips:** Centralized feature metadata library providing tooltips, descriptions, and searchable guides with "Ask VeriBot" integration.
 - **AI Operations Monitor:** In-memory AI usage tracking system for cost, latency, and performance, with an admin-only dashboard.
 - **Reports Hub:** Clio-style reports system with 14 pre-built reports across 5 categories, featuring a card/table catalog view, preview modal, detail view with summary stats bar, sortable data table, column visibility, pagination, text filter, and CSV export.

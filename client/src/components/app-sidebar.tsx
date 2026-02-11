@@ -177,6 +177,7 @@ const adminItems = [
   { title: "Team Members", url: "/team-members", icon: UserCheck },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
+  { title: "AI Resources", url: "/ai-resources", icon: Server },
   { title: "Model Advisor", url: "/model-advisor", icon: Brain },
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
   { title: "Reports", url: "/reports", icon: BarChart3 },

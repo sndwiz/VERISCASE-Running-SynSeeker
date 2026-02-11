@@ -162,12 +162,12 @@ export function BatmodeBadge() {
             {isBatmode ? (
               <>
                 <WifiOff className="h-3 w-3" />
-                Batmode
+                Private
               </>
             ) : (
               <>
                 <Wifi className="h-3 w-3" />
-                Online
+                Integrated
               </>
             )}
           </Badge>
@@ -175,8 +175,8 @@ export function BatmodeBadge() {
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {isBatmode
-          ? "BATMODE — OFFLINE PRIVATE. No external API calls. Click to go online."
-          : "ONLINE — External AI models available. Click to switch to Batmode (offline private)."}
+          ? "SynSeekr Private — No external API calls. All data stays local. Click to switch to Full Integrated."
+          : "Full Integrated — Cloud AI models active. Click to switch to SynSeekr Private mode."}
       </TooltipContent>
     </Tooltip>
   );
