@@ -168,6 +168,8 @@ function AppLayout() {
   const recorder = useProcessRecorder();
   const { activeWorkspaceId } = useWorkspace();
 
+  const isMobile = useIsMobile();
+
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     retry: false,
@@ -205,8 +207,6 @@ function AppLayout() {
     "--sidebar-width": "18rem",
     "--sidebar-width-icon": "3rem",
   };
-
-  const isMobile = useIsMobile();
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
