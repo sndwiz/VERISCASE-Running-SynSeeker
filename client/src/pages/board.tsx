@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Loader2, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ export default function BoardPage() {
   const [, params] = useRoute("/boards/:id");
   const boardId = params?.id;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const {
     createGroup: createGroupMutation,
@@ -600,6 +602,13 @@ export default function BoardPage() {
         onSubmit={(data) => createTaskMutation.mutate(data)}
         groups={groups}
         defaultGroupId={defaultGroupId}
+        onCreateGroup={async (data) => {
+          const res = await apiRequest("POST", `/api/boards/${boardId}/groups`, data);
+          const newGroup = await res.json();
+          queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "groups"] });
+          toast({ title: "Group created successfully" });
+          return newGroup;
+        }}
       />
 
       <TaskDetailModal
