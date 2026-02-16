@@ -1,6 +1,8 @@
-import { useState, useMemo, memo, useCallback } from "react";
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal, GripVertical } from "lucide-react";
+import { useState, useMemo, useRef, memo, useCallback } from "react";
+import { ChevronDown, ChevronRight, Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +133,7 @@ function GroupSummaryRow({
 
   return (
     <div 
-      className="flex items-center gap-0 py-1.5 border-t border-border/30 bg-muted/20"
+      className="flex items-center gap-0 py-1.5 border-t border-border/50 bg-muted/20"
       data-testid="group-summary-row"
     >
       <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit" style={{ borderLeft: `3px solid ${groupColor}` }} />
@@ -147,7 +149,7 @@ function GroupSummaryRow({
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1 flex items-center border-l border-border/30"
+          className="px-1 flex items-center border-l border-border/50"
           style={{ width: col.width, minWidth: col.width }}
         >
           {renderSummaryCell(col)}
@@ -176,6 +178,7 @@ interface TaskGroupProps {
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
   canDeleteTasks?: boolean;
+  onInlineAddTask?: (groupId: string, title: string) => void;
 }
 
 export const TaskGroup = memo(function TaskGroup({
@@ -196,9 +199,13 @@ export const TaskGroup = memo(function TaskGroup({
   currentSort,
   onOpenColumnCenter,
   canDeleteTasks = true,
+  onInlineAddTask,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "not-started" | "in-progress" | "completed">("all");
+  const [inlineTaskName, setInlineTaskName] = useState("");
+  const [isInlineEditing, setIsInlineEditing] = useState(false);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
   const visibleColumns = columns.filter((col) => col.visible).sort((a, b) => a.order - b.order);
 
   const notStartedTasks = tasks.filter(t => t.status === "not-started");
@@ -214,15 +221,48 @@ export const TaskGroup = memo(function TaskGroup({
     }
   }, [workflowFilter, tasks, notStartedTasks, inProgressTasks, completedTasks]);
 
+  const handleInlineSubmit = useCallback(() => {
+    if (inlineTaskName.trim() && onInlineAddTask) {
+      onInlineAddTask(group.id, inlineTaskName.trim());
+      setInlineTaskName("");
+      setIsInlineEditing(false);
+    }
+  }, [inlineTaskName, onInlineAddTask, group.id]);
+
+  const handleInlineKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleInlineSubmit();
+    } else if (e.key === "Escape") {
+      setInlineTaskName("");
+      setIsInlineEditing(false);
+    }
+  }, [handleInlineSubmit]);
+
+  const startInlineEdit = useCallback(() => {
+    if (onInlineAddTask) {
+      setIsInlineEditing(true);
+      setTimeout(() => inlineInputRef.current?.focus(), 0);
+    } else {
+      onAddTask();
+    }
+  }, [onInlineAddTask, onAddTask]);
+
+  const filterItems = [
+    { key: "all" as const, label: "All", count: tasks.length },
+    { key: "not-started" as const, label: "Not Started", count: notStartedTasks.length },
+    { key: "in-progress" as const, label: "In Progress", count: inProgressTasks.length },
+    { key: "completed" as const, label: "Done", count: completedTasks.length },
+  ];
+
   return (
     <div
-      className="mb-6"
+      className="mb-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="flex items-center gap-2 py-2.5 px-3 cursor-pointer rounded-t-md"
-        style={{ backgroundColor: `${group.color}15` }}
+        className="flex items-center gap-2 py-2 px-2 cursor-pointer"
         onClick={onToggleCollapse}
         data-testid={`group-header-${group.id}`}
       >
@@ -236,29 +276,25 @@ export const TaskGroup = memo(function TaskGroup({
         <span className="font-semibold text-sm" style={{ color: group.color }}>
           {group.title}
         </span>
-        <span className="text-xs text-muted-foreground ml-1">
+        <span className="text-xs text-muted-foreground">
           {tasks.length} {tasks.length === 1 ? "item" : "items"}
         </span>
 
-        <div className="flex items-center gap-0.5 ml-3" onClick={(e) => e.stopPropagation()}>
-          {([
-            { key: "all" as const, label: "All", count: tasks.length },
-            { key: "not-started" as const, label: "Not Started", count: notStartedTasks.length },
-            { key: "in-progress" as const, label: "In Progress", count: inProgressTasks.length },
-            { key: "completed" as const, label: "Done", count: completedTasks.length },
-          ]).map(f => (
-            <button
+        <div className="flex items-center gap-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
+          {filterItems.map(f => (
+            <Badge
               key={f.key}
-              className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+              variant={workflowFilter === f.key ? "default" : "outline"}
+              className={`text-[10px] px-1.5 py-0 h-5 cursor-pointer font-normal ${
                 workflowFilter === f.key
-                  ? "bg-primary/15 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? ""
+                  : "text-muted-foreground border-transparent"
               }`}
               onClick={() => setWorkflowFilter(f.key)}
               data-testid={`filter-workflow-${group.id}-${f.key}`}
             >
               {f.label} ({f.count})
-            </button>
+            </Badge>
           ))}
         </div>
 
@@ -322,13 +358,13 @@ export const TaskGroup = memo(function TaskGroup({
               />
             ))}
 
-            {tasks.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted-foreground border-b border-border/30">
+            {tasks.length === 0 && !isInlineEditing && (
+              <div className="py-4 text-center text-sm text-muted-foreground border-b border-border/50">
                 No tasks in this group.{" "}
                 <Button
                   variant="ghost"
                   className="text-primary"
-                  onClick={onAddTask}
+                  onClick={startInlineEdit}
                   data-testid={`button-add-first-task-${group.id}`}
                 >
                   Add one
@@ -337,13 +373,53 @@ export const TaskGroup = memo(function TaskGroup({
             )}
 
             <div
-              className="flex items-center gap-2 py-1.5 px-3 text-sm text-muted-foreground cursor-pointer border-b border-border/30 hover-elevate"
-              onClick={onAddTask}
+              className="flex items-center gap-0 border-b border-border/50 hover-elevate cursor-pointer"
+              onClick={!isInlineEditing ? startInlineEdit : undefined}
               data-testid={`row-add-task-${group.id}`}
             >
-              <div className="w-7 flex-shrink-0" />
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add task</span>
+              <div
+                className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center"
+              />
+              <div
+                className="min-w-[200px] w-[280px] flex-shrink-0 sticky left-10 z-30 bg-inherit"
+                style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+              >
+                {isInlineEditing ? (
+                  <Input
+                    ref={inlineInputRef}
+                    value={inlineTaskName}
+                    onChange={(e) => setInlineTaskName(e.target.value)}
+                    onKeyDown={handleInlineKeyDown}
+                    onBlur={() => {
+                      if (inlineTaskName.trim()) {
+                        handleInlineSubmit();
+                      } else {
+                        setIsInlineEditing(false);
+                      }
+                    }}
+                    placeholder="Enter task name..."
+                    className="h-8 text-sm border-0 shadow-none focus-visible:ring-1 focus-visible:ring-primary bg-transparent"
+                    autoFocus
+                    data-testid={`input-inline-task-${group.id}`}
+                  />
+                ) : (
+                  <div
+                    className="flex items-center gap-2 py-2 px-2 text-sm text-muted-foreground"
+                    onClick={startInlineEdit}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add task</span>
+                  </div>
+                )}
+              </div>
+              {visibleColumns.map((col) => (
+                <div
+                  key={col.id}
+                  className="border-l border-border/50"
+                  style={{ width: col.width, minWidth: col.width }}
+                />
+              ))}
+              <div className="w-8 flex-shrink-0" />
             </div>
 
             {tasks.length > 0 && (

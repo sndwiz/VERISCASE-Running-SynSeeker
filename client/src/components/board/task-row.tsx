@@ -257,7 +257,7 @@ export const TaskRow = memo(function TaskRow({
   return (
     <>
     <div
-      className={`flex items-center gap-0 py-1 px-0 transition-colors cursor-pointer border-b border-border/30 ${
+      className={`flex items-center gap-0 py-1 px-0 transition-colors cursor-pointer border-b border-border/50 ${
         isSelected
           ? "bg-primary/10"
           : isHovered
@@ -314,7 +314,7 @@ export const TaskRow = memo(function TaskRow({
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1 border-l border-border/30"
+          className="px-1 border-l border-border/50"
           style={{ width: col.width, minWidth: col.width }}
         >
           {renderCell(col)}

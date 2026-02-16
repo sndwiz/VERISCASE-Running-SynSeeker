@@ -22,7 +22,7 @@ export function ViewTabs({ activeView, onViewChange }: ViewTabsProps) {
   ];
 
   return (
-    <div className="flex items-center border-b bg-card/30 px-1" data-testid="board-view-tabs">
+    <div className="flex items-center px-1" data-testid="board-view-tabs">
       {views.map((v) => (
         <div key={v.id} className="relative">
           <Button

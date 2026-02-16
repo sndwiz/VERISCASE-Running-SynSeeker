@@ -2,14 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { BoardTableHeader } from "@/components/board/board-table-header";
 import { TaskGroup } from "@/components/board/task-group";
@@ -71,15 +65,6 @@ export default function BoardPage() {
     localStorage.setItem("board-density", d);
   }, []);
 
-  const scrollGrid = useCallback((direction: "left" | "right") => {
-    const el = document.getElementById("boardGridScroll");
-    if (el) el.scrollBy({ left: direction === "right" ? 480 : -480, behavior: "smooth" });
-  }, []);
-
-  const jumpToColumn = useCallback((colId: string) => {
-    const el = document.querySelector(`[data-col-id="${colId}"]`);
-    if (el) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, []);
 
   const { data: board, isLoading: boardLoading } = useQuery<Board>({
     queryKey: ["/api/boards/detail", boardId],
@@ -130,6 +115,10 @@ export default function BoardPage() {
     setDefaultGroupId(groupId);
     setCreateTaskOpen(true);
   };
+
+  const handleInlineAddTask = useCallback((groupId: string, title: string) => {
+    createTaskMutation.mutate({ title, groupId, priority: "medium" });
+  }, [createTaskMutation]);
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -430,49 +419,28 @@ export default function BoardPage() {
         onOpenColumnCenter={() => setColumnCenterOpen(true)}
       />
 
-      <ViewTabs activeView={activeView} onViewChange={setActiveView} />
+      <div className="flex items-center justify-between border-b px-2">
+        <ViewTabs activeView={activeView} onViewChange={setActiveView} />
+        {activeView === "table" && (
+          <div className="flex items-center gap-0.5 py-1">
+            {(["comfort", "compact", "ultra-compact"] as const).map(d => (
+              <Button
+                key={d}
+                variant={density === d ? "secondary" : "ghost"}
+                size="sm"
+                className="text-[11px] h-7 px-2"
+                onClick={() => handleDensityChange(d)}
+                data-testid={`button-density-${d}`}
+              >
+                {d === "ultra-compact" ? "Ultra" : d.charAt(0).toUpperCase() + d.slice(1)}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {activeView === "table" && (
         <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between gap-2 px-4 py-1.5 border-b bg-muted/30">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => scrollGrid("left")} data-testid="button-scroll-left" title="Scroll left">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => scrollGrid("right")} data-testid="button-scroll-right" title="Scroll right">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs" data-testid="button-jump-column">
-                    <ChevronsUpDown className="h-3.5 w-3.5" />
-                    Jump to column
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="max-h-64 overflow-auto">
-                  {board.columns.filter(c => c.visible).sort((a, b) => a.order - b.order).map(col => (
-                    <DropdownMenuItem key={col.id} onClick={() => jumpToColumn(col.id)} data-testid={`jump-col-${col.id}`}>
-                      {col.title}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex items-center gap-1">
-              {(["comfort", "compact", "ultra-compact"] as const).map(d => (
-                <Button
-                  key={d}
-                  variant={density === d ? "secondary" : "ghost"}
-                  size="sm"
-                  className="text-xs capitalize"
-                  onClick={() => handleDensityChange(d)}
-                  data-testid={`button-density-${d}`}
-                >
-                  {d === "ultra-compact" ? "Ultra" : d.charAt(0).toUpperCase() + d.slice(1)}
-                </Button>
-              ))}
-            </div>
-          </div>
           <div className="flex-1 overflow-y-auto">
             {sortedGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center p-4">
@@ -540,6 +508,7 @@ export default function BoardPage() {
                         currentSort={currentSort}
                         onOpenColumnCenter={() => setColumnCenterOpen(true)}
                         canDeleteTasks={canDeleteTasks}
+                        onInlineAddTask={handleInlineAddTask}
                       />
                     ))}
                   </div>

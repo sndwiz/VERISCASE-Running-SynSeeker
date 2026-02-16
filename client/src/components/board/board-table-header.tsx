@@ -61,7 +61,7 @@ export function BoardTableHeader({
       {visibleColumns.map((col) => (
         <div
           key={col.id}
-          className="flex-shrink-0 border-l border-border/30"
+          className="flex-shrink-0 border-l border-border/50"
           style={{ width: col.width, minWidth: col.width }}
           data-col-id={col.id}
         >
