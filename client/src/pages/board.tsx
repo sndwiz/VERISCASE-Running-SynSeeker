@@ -1,9 +1,20 @@
 import { useState, useMemo, useCallback } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel, type AutomationPrefill } from "@/components/board/automations-panel";
@@ -26,6 +37,7 @@ import { defaultStatusLabels } from "@shared/schema";
 
 export default function BoardPage() {
   const [, params] = useRoute("/boards/:id");
+  const [, setLocation] = useLocation();
   const boardId = params?.id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -58,6 +70,13 @@ export default function BoardPage() {
   const [aiAutofillColumnId, setAiAutofillColumnId] = useState<string | null>(null);
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editBoardDialogOpen, setEditBoardDialogOpen] = useState(false);
+  const [editBoardName, setEditBoardName] = useState("");
+  const [editBoardDescription, setEditBoardDescription] = useState("");
+  const [deleteBoardDialogOpen, setDeleteBoardDialogOpen] = useState(false);
+  const [columnFilter, setColumnFilter] = useState<{ columnId: string; value: string } | null>(null);
   const [density, setDensity] = useState<"comfort" | "compact" | "ultra-compact">(() => {
     const saved = localStorage.getItem("board-density");
     return (saved as "comfort" | "compact" | "ultra-compact") || "comfort";
@@ -115,8 +134,31 @@ export default function BoardPage() {
         (task) => task.assignees?.some(a => a.name === personFilter)
       );
     }
+    if (columnFilter) {
+      const filterVal = columnFilter.value.toLowerCase();
+      filtered = filtered.filter((task) => {
+        const col = board?.columns.find(c => c.id === columnFilter.columnId);
+        if (!col) return true;
+        let cellValue = "";
+        switch (col.type) {
+          case "status": cellValue = task.status; break;
+          case "priority": cellValue = task.priority; break;
+          case "date": cellValue = task.dueDate || ""; break;
+          case "person": cellValue = (task.assignees || []).map(a => a.name).join(", "); break;
+          case "progress": cellValue = String(task.progress || 0); break;
+          default: {
+            const cf = task.customFields?.[columnFilter.columnId];
+            if (cf == null) { cellValue = ""; break; }
+            if (Array.isArray(cf)) { cellValue = cf.join(", "); break; }
+            if (typeof cf === "object") { cellValue = Object.values(cf).join(" "); break; }
+            cellValue = String(cf);
+          }
+        }
+        return cellValue.toLowerCase().includes(filterVal);
+      });
+    }
     return filtered;
-  }, [tasks, searchQuery, personFilter]);
+  }, [tasks, searchQuery, personFilter, columnFilter, board?.columns]);
 
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => a.order - b.order);
@@ -306,8 +348,14 @@ export default function BoardPage() {
     }
   };
 
+  const [columnFilterDialogOpen, setColumnFilterDialogOpen] = useState(false);
+  const [columnFilterTarget, setColumnFilterTarget] = useState<string | null>(null);
+  const [columnFilterInput, setColumnFilterInput] = useState("");
+
   const handleColumnFilter = (columnId: string) => {
-    toast({ title: `Opening filter for column "${board?.columns.find(c => c.id === columnId)?.title}"` });
+    setColumnFilterTarget(columnId);
+    setColumnFilterInput(columnFilter?.columnId === columnId ? columnFilter.value : "");
+    setColumnFilterDialogOpen(true);
   };
 
   const handleColumnDuplicate = (columnId: string) => {
@@ -437,8 +485,12 @@ export default function BoardPage() {
         onSearchChange={setSearchQuery}
         onAddTask={() => handleAddTask()}
         onAddGroup={() => setCreateGroupOpen(true)}
-        onEditBoard={() => {}}
-        onDeleteBoard={() => {}}
+        onEditBoard={() => {
+          setEditBoardName(board.name);
+          setEditBoardDescription(board.description || "");
+          setEditBoardDialogOpen(true);
+        }}
+        onDeleteBoard={() => setDeleteBoardDialogOpen(true)}
         onToggleColumn={handleToggleColumn}
         onAddColumn={handleAddColumn}
         onRemoveColumn={handleRemoveColumn}
@@ -532,7 +584,10 @@ export default function BoardPage() {
                             })
                           }
                           onAddTask={() => handleAddTask(group.id)}
-                          onEditGroup={() => {}}
+                          onEditGroup={() => {
+                            setEditGroupId(group.id);
+                            setEditGroupName(group.title);
+                          }}
                           onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
                           onTaskClick={handleTaskClick}
                           onTaskUpdate={handleTaskUpdate}
@@ -722,6 +777,206 @@ export default function BoardPage() {
           />
         );
       })()}
+
+      <Dialog open={!!editGroupId} onOpenChange={(open) => { if (!open) setEditGroupId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Rename Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Group Name</Label>
+              <Input
+                id="group-name"
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+                placeholder="Enter group name..."
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && editGroupId && editGroupName.trim()) {
+                    updateGroupMutation.mutate({ groupId: editGroupId, updates: { title: editGroupName.trim() } });
+                    setEditGroupId(null);
+                  }
+                }}
+                data-testid="input-rename-group"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGroupId(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (editGroupId && editGroupName.trim()) {
+                  updateGroupMutation.mutate({ groupId: editGroupId, updates: { title: editGroupName.trim() } });
+                  setEditGroupId(null);
+                }
+              }}
+              data-testid="button-save-group-name"
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editBoardDialogOpen} onOpenChange={setEditBoardDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Board</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="board-name">Board Name</Label>
+              <Input
+                id="board-name"
+                value={editBoardName}
+                onChange={(e) => setEditBoardName(e.target.value)}
+                placeholder="Enter board name..."
+                autoFocus
+                data-testid="input-edit-board-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="board-desc">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea
+                id="board-desc"
+                value={editBoardDescription}
+                onChange={(e) => setEditBoardDescription(e.target.value)}
+                placeholder="Board description..."
+                className="min-h-[80px]"
+                data-testid="input-edit-board-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditBoardDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (editBoardName.trim()) {
+                  updateBoardMutation.mutate({ name: editBoardName.trim(), description: editBoardDescription });
+                  toast({ title: "Board updated" });
+                  setEditBoardDialogOpen(false);
+                }
+              }}
+              data-testid="button-save-board"
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteBoardDialogOpen} onOpenChange={setDeleteBoardDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Board</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this board? This will remove all groups, tasks, and data. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBoardDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await apiRequest("DELETE", `/api/boards/${boardId}`);
+                  queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+                  toast({ title: "Board deleted" });
+                  setDeleteBoardDialogOpen(false);
+                  setLocation("/");
+                } catch {
+                  toast({ title: "Failed to delete board", variant: "destructive" });
+                }
+              }}
+              data-testid="button-confirm-delete-board"
+            >
+              Delete Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={columnFilterDialogOpen} onOpenChange={setColumnFilterDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Filter: {board?.columns.find(c => c.id === columnFilterTarget)?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="column-filter-value">Contains</Label>
+              <Input
+                id="column-filter-value"
+                value={columnFilterInput}
+                onChange={(e) => setColumnFilterInput(e.target.value)}
+                placeholder="Type to filter..."
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && columnFilterTarget) {
+                    if (columnFilterInput.trim()) {
+                      setColumnFilter({ columnId: columnFilterTarget, value: columnFilterInput.trim() });
+                    } else {
+                      setColumnFilter(null);
+                    }
+                    setColumnFilterDialogOpen(false);
+                  }
+                }}
+                data-testid="input-column-filter"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            {columnFilter?.columnId === columnFilterTarget && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setColumnFilter(null);
+                  setColumnFilterInput("");
+                  setColumnFilterDialogOpen(false);
+                }}
+                data-testid="button-clear-column-filter"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Filter
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                if (columnFilterTarget) {
+                  if (columnFilterInput.trim()) {
+                    setColumnFilter({ columnId: columnFilterTarget, value: columnFilterInput.trim() });
+                  } else {
+                    setColumnFilter(null);
+                  }
+                  setColumnFilterDialogOpen(false);
+                }
+              }}
+              data-testid="button-apply-column-filter"
+            >
+              Apply Filter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {columnFilter && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg flex items-center gap-2 text-sm">
+          <Filter className="h-4 w-4" />
+          <span>Filtering by "{board?.columns.find(c => c.id === columnFilter.columnId)?.title}" contains "{columnFilter.value}"</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setColumnFilter(null)}
+            data-testid="button-dismiss-column-filter"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
