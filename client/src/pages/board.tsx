@@ -254,7 +254,19 @@ export default function BoardPage() {
   };
 
   const handleBulkDuplicate = () => {
-    toast({ title: `Duplicating ${selectedTaskIds.size} tasks...` });
+    const selectedTasks = tasks.filter(t => selectedTaskIds.has(t.id));
+    selectedTasks.forEach(task => {
+      createTaskMutation.mutate({
+        title: `${task.title} (copy)`,
+        groupId: task.groupId,
+        priority: task.priority,
+        status: task.status,
+        dueDate: task.dueDate,
+        startDate: task.startDate,
+        assignees: task.assignees,
+      });
+    });
+    toast({ title: `Duplicated ${selectedTaskIds.size} tasks` });
     handleClearSelection();
   };
 

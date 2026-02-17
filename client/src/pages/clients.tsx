@@ -230,7 +230,12 @@ export default function ClientsPage() {
               <h1 className="text-2xl font-bold">Clients</h1>
               <p className="text-muted-foreground">Manage client information and relationships</p>
             </div>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <Dialog open={showCreateDialog} onOpenChange={(open) => {
+              if (open) {
+                setClientForm({ name: "", type: "individual", email: "", phone: "", address: "", notes: "" });
+              }
+              setShowCreateDialog(open);
+            }}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-client">
                   <Plus className="h-4 w-4 mr-2" />

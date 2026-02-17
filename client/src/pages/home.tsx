@@ -84,14 +84,18 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" data-testid="button-quick-time">
-            <Clock className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Log Time</span>
-          </Button>
-          <Button data-testid="button-new-matter">
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">New Matter</span>
-          </Button>
+          <Link href="/billing">
+            <Button variant="outline" data-testid="button-quick-time">
+              <Clock className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Log Time</span>
+            </Button>
+          </Link>
+          <Link href="/matters">
+            <Button data-testid="button-new-matter">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Matter</span>
+            </Button>
+          </Link>
         </div>
       </div>
 

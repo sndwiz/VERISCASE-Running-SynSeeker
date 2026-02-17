@@ -145,7 +145,7 @@ export function TaskDetailModal({
       apiRequest("POST", `/api/tasks/${task?.id}/mirror`, data),
     onSuccess: () => {
       toast({ title: "Task mirrored successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", mirrorTargetBoardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", mirrorTargetBoardId, "tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       setShowMirrorSection(false);
       setMirrorTargetBoardId("");
@@ -162,9 +162,9 @@ export function TaskDetailModal({
     onSuccess: () => {
       toast({ title: "Task moved to board successfully" });
       if (boardId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", boardId, "tasks"] });
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/boards", moveTargetBoardId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/boards/detail", moveTargetBoardId, "tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       setShowMoveSection(false);
       setMoveTargetBoardId("");
