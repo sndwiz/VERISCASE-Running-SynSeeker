@@ -198,38 +198,98 @@ function buildSentence(trigger?: TriggerDef, action?: ActionDef, config?: Record
   return sentence;
 }
 
-function ColumnSelector({ columns, value, onChange, label }: {
+function ColumnSelector({ columns, value, onChange, label, onCreateColumn }: {
   columns: ColumnDef[];
   value?: string;
   onChange: (colId: string) => void;
   label: string;
+  onCreateColumn?: (name: string, type: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newColName, setNewColName] = useState("");
   const selectedCol = columns.find(c => c.id === value);
+
+  const inferredType = label.toLowerCase().includes("date") ? "date"
+    : label.toLowerCase().includes("number") ? "number"
+    : label.toLowerCase().includes("status") ? "status"
+    : label.toLowerCase().includes("person") ? "person"
+    : "text";
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button className="text-primary underline decoration-dotted underline-offset-4 font-semibold cursor-pointer" data-testid="button-select-column">
-          {selectedCol?.title || label}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
-        <p className="text-xs text-muted-foreground mb-2 px-2">Select a column</p>
-        <div className="space-y-0.5">
-          {columns.map(col => (
-            <button
-              key={col.id}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover-elevate"
-              onClick={() => { onChange(col.id); setOpen(false); }}
-              data-testid={`column-option-${col.id}`}
-            >
-              <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-              {col.title}
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <span data-selector="column" onClick={(e) => e.stopPropagation()}>
+      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setShowCreate(false); setNewColName(""); } }}>
+        <PopoverTrigger asChild>
+          <button className="text-primary underline decoration-dotted underline-offset-4 font-semibold cursor-pointer" data-testid="button-select-column">
+            {selectedCol?.title || label}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2" align="start">
+          {showCreate ? (
+            <div className="space-y-2 p-1">
+              <p className="text-xs text-muted-foreground px-1">Create a new {inferredType} column</p>
+              <Input
+                placeholder="Column name..."
+                value={newColName}
+                onChange={(e) => setNewColName(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newColName.trim() && onCreateColumn) {
+                    onCreateColumn(newColName.trim(), inferredType);
+                    setNewColName("");
+                    setShowCreate(false);
+                    setOpen(false);
+                  }
+                }}
+                data-testid="input-new-column-name"
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" disabled={!newColName.trim()} onClick={() => {
+                  if (onCreateColumn && newColName.trim()) {
+                    onCreateColumn(newColName.trim(), inferredType);
+                    setNewColName("");
+                    setShowCreate(false);
+                    setOpen(false);
+                  }
+                }} data-testid="button-confirm-create-column">
+                  Create
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowCreate(false)} data-testid="button-cancel-create-column">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-2 px-2">Select a column</p>
+              <div className="space-y-0.5">
+                {columns.map(col => (
+                  <button
+                    key={col.id}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover-elevate"
+                    onClick={() => { onChange(col.id); setOpen(false); }}
+                    data-testid={`column-option-${col.id}`}
+                  >
+                    <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                    {col.title}
+                  </button>
+                ))}
+              </div>
+              {onCreateColumn && (
+                <button
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover-elevate mt-1 border-t pt-2 text-primary"
+                  onClick={() => setShowCreate(true)}
+                  data-testid="button-create-new-column"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create new column
+                </button>
+              )}
+            </>
+          )}
+        </PopoverContent>
+      </Popover>
+    </span>
   );
 }
 
@@ -242,6 +302,7 @@ function GroupSelector({ groups, value, onChange, label }: {
   const [open, setOpen] = useState(false);
   const selectedGroup = groups.find(g => g.id === value);
   return (
+    <span data-selector="group" onClick={(e) => e.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="text-primary underline decoration-dotted underline-offset-4 font-semibold cursor-pointer" data-testid="button-select-group">
@@ -265,6 +326,7 @@ function GroupSelector({ groups, value, onChange, label }: {
         </div>
       </PopoverContent>
     </Popover>
+    </span>
   );
 }
 
@@ -279,6 +341,7 @@ function BoardSelector({ boards, value, onChange, label }: {
   const selectedBoard = boards.find(b => b.id === value);
   const filtered = boards.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
   return (
+    <span data-selector="board" onClick={(e) => e.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="text-primary underline decoration-dotted underline-offset-4 font-semibold cursor-pointer" data-testid="button-select-board">
@@ -312,6 +375,7 @@ function BoardSelector({ boards, value, onChange, label }: {
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    </span>
   );
 }
 
@@ -326,6 +390,7 @@ function StatusValueSelector({ columns, columnId, value, onChange, label }: {
   const col = columns.find(c => c.id === columnId);
   const options = col?.options || col?.statusLabels?.map(l => l.label) || [];
   return (
+    <span data-selector="status_value" onClick={(e) => e.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="text-green-400 underline decoration-dotted underline-offset-4 font-semibold cursor-pointer" data-testid="button-select-status-value">
@@ -365,10 +430,11 @@ function StatusValueSelector({ columns, columnId, value, onChange, label }: {
         )}
       </PopoverContent>
     </Popover>
+    </span>
   );
 }
 
-function InlineSentence({ trigger, action, config, setConfig, columns, groups, boards }: {
+function InlineSentence({ trigger, action, config, setConfig, columns, groups, boards, onSentenceClick, onCreateColumn }: {
   trigger?: TriggerDef;
   action?: ActionDef;
   config: Record<string, any>;
@@ -376,18 +442,31 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
   columns: ColumnDef[];
   groups: Group[];
   boards: Board[];
+  onSentenceClick?: () => void;
+  onCreateColumn?: (name: string, type: string) => void;
 }) {
   if (!trigger && !action) return null;
 
   const renderConfiguredSentence = (def: TriggerDef | ActionDef, prefix: string) => {
     const fields = def.configFields || [];
+    const usedFieldKeys = new Set<string>();
+    const TOKEN_TYPE_MAP: Record<string, string> = {
+      column: "column",
+      value: "status_value",
+      group: "group",
+      board: "board",
+      person: "person",
+    };
     const parts = def.sentence.split(/(\{[^}]+\})/g);
     return parts.map((part, i) => {
       const match = part.match(/^\{(\w+)\}$/);
       if (!match) return <span key={i}>{part}</span>;
       const token = match[1];
-      const field = fields.find(f => f.label === token || f.key === token);
+      const expectedType = TOKEN_TYPE_MAP[token];
+      const field = fields.find(f => f.label === token || f.key === token)
+        || (expectedType ? fields.find(f => f.type === expectedType && !usedFieldKeys.has(f.key)) : undefined);
       if (!field) return <span key={i} className="font-semibold">{token}</span>;
+      usedFieldKeys.add(field.key);
 
       if (field.type === "column") {
         return (
@@ -397,16 +476,20 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
             value={config[field.key]}
             onChange={(v) => setConfig({ ...config, [field.key]: v })}
             label={field.label}
+            onCreateColumn={onCreateColumn}
           />
         );
       }
       if (field.type === "status_value") {
-        const colKey = fields.find(f => f.type === "column")?.key;
+        const usedColumnKeys = Array.from(usedFieldKeys).filter(k => fields.find(f => f.key === k && f.type === "column"));
+        const pairedColKey = usedColumnKeys.length > 0
+          ? usedColumnKeys[usedColumnKeys.length - 1]
+          : fields.find(f => f.type === "column")?.key;
         return (
           <StatusValueSelector
             key={i}
             columns={columns}
-            columnId={colKey ? config[colKey] : undefined}
+            columnId={pairedColKey ? config[pairedColKey] : undefined}
             value={config[field.key]}
             onChange={(v) => setConfig({ ...config, [field.key]: v })}
             label={field.label}
@@ -439,10 +522,19 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
     });
   };
 
+  const handleSentenceTextClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-selector]')) return;
+    onSentenceClick?.();
+  };
+
   return (
     <div className="space-y-4">
       {trigger && (
-        <p className="text-xl font-light" data-testid="text-trigger-sentence">
+        <p
+          className={`text-xl font-light ${onSentenceClick ? "cursor-pointer" : ""}`}
+          data-testid="text-trigger-sentence"
+          onClick={handleSentenceTextClick}
+        >
           {trigger.configFields && trigger.configFields.length > 0
             ? <>When {renderConfiguredSentence(trigger, "trigger")}</>
             : <>{trigger.sentence.startsWith("When") ? trigger.sentence : `When ${trigger.label}`}</>
@@ -455,7 +547,11 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
         </div>
       )}
       {action && (
-        <p className="text-xl font-light" data-testid="text-action-sentence">
+        <p
+          className={`text-xl font-light ${onSentenceClick ? "cursor-pointer" : ""}`}
+          data-testid="text-action-sentence"
+          onClick={handleSentenceTextClick}
+        >
           Then {action.configFields && action.configFields.length > 0
             ? renderConfiguredSentence(action, "action")
             : action.sentence
@@ -571,6 +667,37 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
       toast({ title: "Automation deleted" });
     },
   });
+
+  const handleCreateColumn = (name: string, type: string) => {
+    if (!board) return;
+    const newCol: ColumnDef = {
+      id: `col_${Date.now()}`,
+      title: name,
+      type: type as any,
+      visible: true,
+      order: board.columns.length,
+      width: 150,
+    };
+    const updatedColumns = [...board.columns, newCol];
+    apiRequest("PATCH", `/api/boards/${boardId}`, { columns: updatedColumns })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId] });
+        setBuilderConfig(prev => {
+          const triggerFields = selectedTrigger?.configFields?.filter(f => f.type === "column") || [];
+          const actionFields = selectedAction?.configFields?.filter(f => f.type === "column") || [];
+          const allColFields = [...triggerFields, ...actionFields];
+          const unsetField = allColFields.find(f => !prev[f.key]);
+          if (unsetField) {
+            return { ...prev, [unsetField.key]: newCol.id };
+          }
+          return prev;
+        });
+        toast({ title: `Column "${name}" created`, description: `A new ${type} column has been added to the board.` });
+      })
+      .catch(() => {
+        toast({ title: "Failed to create column", variant: "destructive" });
+      });
+  };
 
   const resetBuilder = () => {
     setSelectedTrigger(undefined);
@@ -820,16 +947,16 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
               <div className="flex-1 flex flex-col items-center justify-center gap-2">
                 <div className="w-full max-w-lg space-y-4">
                   {selectedTrigger ? (
-                    <div className="cursor-pointer" onClick={() => setBuilderStep("selecting_trigger")}>
-                      <InlineSentence
-                        trigger={selectedTrigger}
-                        config={builderConfig}
-                        setConfig={setBuilderConfig}
-                        columns={columns}
-                        groups={groups}
-                        boards={allBoards}
-                      />
-                    </div>
+                    <InlineSentence
+                      trigger={selectedTrigger}
+                      config={builderConfig}
+                      setConfig={setBuilderConfig}
+                      columns={columns}
+                      groups={groups}
+                      boards={allBoards}
+                      onSentenceClick={() => setBuilderStep("selecting_trigger")}
+                      onCreateColumn={handleCreateColumn}
+                    />
                   ) : (
                     <button
                       className="text-2xl font-light text-muted-foreground underline decoration-dotted underline-offset-4 cursor-pointer"
@@ -845,16 +972,16 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
                   </div>
 
                   {selectedAction ? (
-                    <div className="cursor-pointer" onClick={() => setBuilderStep("selecting_action")}>
-                      <InlineSentence
-                        action={selectedAction}
-                        config={builderConfig}
-                        setConfig={setBuilderConfig}
-                        columns={columns}
-                        groups={groups}
-                        boards={allBoards}
-                      />
-                    </div>
+                    <InlineSentence
+                      action={selectedAction}
+                      config={builderConfig}
+                      setConfig={setBuilderConfig}
+                      columns={columns}
+                      groups={groups}
+                      boards={allBoards}
+                      onSentenceClick={() => setBuilderStep("selecting_action")}
+                      onCreateColumn={handleCreateColumn}
+                    />
                   ) : (
                     <button
                       className="text-2xl font-light text-muted-foreground underline decoration-dotted underline-offset-4 cursor-pointer"
