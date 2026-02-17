@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TaskRow } from "./task-row";
+import { ColumnHeader } from "./column-header";
 import { AddColumnPopover } from "./add-column-popover";
 import type { Group, Task, ColumnDef, ColumnType, CustomStatusLabel, StatusType } from "@shared/schema";
 import { statusConfig } from "@shared/schema";
@@ -181,6 +183,17 @@ interface TaskGroupProps {
   onAddColumn?: (type: ColumnType, title: string) => void;
   canDeleteTasks?: boolean;
   onInlineAddTask?: (groupId: string, title: string) => void;
+  onColumnSort?: (columnId: string, direction: "asc" | "desc") => void;
+  onColumnFilter?: (columnId: string) => void;
+  onColumnDuplicate?: (columnId: string) => void;
+  onColumnRename?: (columnId: string, newTitle: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onColumnHide?: (columnId: string) => void;
+  onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
+  onColumnUpdateDescription?: (columnId: string, description: string) => void;
+  onColumnAIAutofill?: (columnId: string) => void;
+  allSelected?: boolean;
+  onSelectAll?: (selected: boolean) => void;
 }
 
 export const TaskGroup = memo(function TaskGroup({
@@ -203,6 +216,17 @@ export const TaskGroup = memo(function TaskGroup({
   onAddColumn,
   canDeleteTasks = true,
   onInlineAddTask,
+  onColumnSort,
+  onColumnFilter,
+  onColumnDuplicate,
+  onColumnRename,
+  onColumnDelete,
+  onColumnHide,
+  onColumnChangeType,
+  onColumnUpdateDescription,
+  onColumnAIAutofill,
+  allSelected = false,
+  onSelectAll,
 }: TaskGroupProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [workflowFilter, setWorkflowFilter] = useState<"all" | "not-started" | "in-progress" | "completed">("all");
@@ -344,6 +368,57 @@ export const TaskGroup = memo(function TaskGroup({
 
       {!group.collapsed && (
         <div style={{ borderLeft: `3px solid ${group.color}` }} className="border-r border-border">
+            <div
+              className="flex items-center gap-0 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted/60 dark:bg-muted/30 border-b border-border sticky top-0 z-40"
+              style={{ minHeight: "32px" }}
+              data-testid={`group-column-header-${group.id}`}
+            >
+              <div className="w-10 flex-shrink-0 sticky left-0 z-40 bg-muted/60 dark:bg-muted/30 flex items-center justify-center border-r border-border">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(checked) => onSelectAll?.(!!checked)}
+                  data-testid={`checkbox-select-all-${group.id}`}
+                />
+              </div>
+              <div
+                className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center sticky left-10 z-40 bg-muted/60 dark:bg-muted/30 border-r border-border sticky-col-shadow"
+              >
+                Task
+              </div>
+              {visibleColumns.map((col) => (
+                <div
+                  key={col.id}
+                  className="flex-shrink-0 border-r border-border"
+                  style={{ width: col.width, minWidth: col.width }}
+                  data-col-id={col.id}
+                >
+                  <ColumnHeader
+                    column={col}
+                    onSort={onColumnSort}
+                    onFilter={onColumnFilter}
+                    onDuplicate={onColumnDuplicate}
+                    onRename={onColumnRename}
+                    onDelete={onColumnDelete}
+                    onHide={onColumnHide}
+                    onChangeType={onColumnChangeType}
+                    onUpdateDescription={onColumnUpdateDescription}
+                    onAIAutofill={onColumnAIAutofill}
+                    currentSort={currentSort}
+                  />
+                </div>
+              ))}
+              <div className="flex-shrink-0 w-10 flex items-center justify-center border-r border-border">
+                {onAddColumn && onOpenColumnCenter ? (
+                  <AddColumnPopover
+                    onAddColumn={onAddColumn}
+                    onOpenMoreColumns={onOpenColumnCenter}
+                  />
+                ) : (
+                  <div className="w-10" />
+                )}
+              </div>
+            </div>
+
             {displayTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}

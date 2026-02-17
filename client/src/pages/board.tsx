@@ -5,7 +5,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
-import { BoardTableHeader } from "@/components/board/board-table-header";
 import { TaskGroup } from "@/components/board/task-group";
 import { AutomationsPanel } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
@@ -16,6 +15,7 @@ import { CreateGroupDialog } from "@/components/dialogs/create-group-dialog";
 import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
 import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
+import { InviteMemberDialog } from "@/components/dialogs/invite-member-dialog";
 import { AIAutofillDialog } from "@/components/board/ai-autofill-dialog";
 import { ViewTabs, KanbanView, CalendarView, DashboardView, GanttView, ChartView, CanvasView, DocView, FilesView, FormView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,7 @@ export default function BoardPage() {
   const [activeView, setActiveView] = useState<BoardViewType>("table");
   const [aiAutofillColumnId, setAiAutofillColumnId] = useState<string | null>(null);
   const [personFilter, setPersonFilter] = useState<string | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [density, setDensity] = useState<"comfort" | "compact" | "ultra-compact">(() => {
     const saved = localStorage.getItem("board-density");
     return (saved as "comfort" | "compact" | "ultra-compact") || "comfort";
@@ -446,7 +447,7 @@ export default function BoardPage() {
         taskCount={tasks.length}
         onOpenAutomations={() => setAutomationsPanelOpen(true)}
         onOpenColumnCenter={() => setColumnCenterOpen(true)}
-        onInvite={() => toast({ title: "Invite feature coming soon" })}
+        onInvite={() => setInviteDialogOpen(true)}
         onExport={() => {
           const csv = [
             ["Title", "Status", "Priority", "Due Date"].join(","),
@@ -512,63 +513,63 @@ export default function BoardPage() {
             ) : (
               <div id="boardGridScroll" className={`overflow-x-auto ${density === "compact" ? "board-compact" : density === "ultra-compact" ? "board-ultra-compact" : "board-comfort"}`}>
                 <div className="min-w-max">
-                  <BoardTableHeader
-                    columns={board.columns}
-                    onColumnSort={handleColumnSort}
-                    onColumnFilter={handleColumnFilter}
-                    onColumnDuplicate={handleColumnDuplicate}
-                    onColumnRename={handleColumnRename}
-                    onColumnDelete={handleRemoveColumn}
-                    onColumnHide={handleColumnHide}
-                    onColumnChangeType={handleColumnChangeType}
-                    onColumnUpdateDescription={handleColumnUpdateDescription}
-                    onColumnAIAutofill={(colId) => setAiAutofillColumnId(colId)}
-                    currentSort={currentSort}
-                    onOpenColumnCenter={() => setColumnCenterOpen(true)}
-                    onAddColumn={(type, title) => {
-                      handleAddColumn({ title, type, width: 120, visible: true });
-                    }}
-                    allSelected={selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
-                    onSelectAll={(selected) => {
-                      if (selected) {
-                        setSelectedTaskIds(new Set(tasks.map(t => t.id)));
-                      } else {
-                        setSelectedTaskIds(new Set());
-                      }
-                    }}
-                  />
                   <div className="px-0 py-1">
-                    {sortedGroups.map((group) => (
-                      <TaskGroup
-                        key={group.id}
-                        group={group}
-                        tasks={sortedTasks.filter((t) => t.groupId === group.id)}
-                        columns={board.columns.filter((c) => c.visible)}
-                        statusLabels={statusLabels}
-                        onToggleCollapse={() =>
-                          updateGroupMutation.mutate({
-                            groupId: group.id,
-                            updates: { collapsed: !group.collapsed },
-                          })
-                        }
-                        onAddTask={() => handleAddTask(group.id)}
-                        onEditGroup={() => {}}
-                        onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
-                        onTaskClick={handleTaskClick}
-                        onTaskUpdate={handleTaskUpdate}
-                        onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
-                        onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
-                        selectedTaskIds={selectedTaskIds}
-                        onSelectTask={handleSelectTask}
-                        currentSort={currentSort}
-                        onOpenColumnCenter={() => setColumnCenterOpen(true)}
-                        onAddColumn={(type, title) => {
-                          handleAddColumn({ title, type, width: 120, visible: true });
-                        }}
-                        canDeleteTasks={canDeleteTasks}
-                        onInlineAddTask={handleInlineAddTask}
-                      />
-                    ))}
+                    {sortedGroups.map((group) => {
+                      const groupTasks = sortedTasks.filter((t) => t.groupId === group.id);
+                      const groupAllSelected = groupTasks.length > 0 && groupTasks.every(t => selectedTaskIds.has(t.id));
+                      return (
+                        <TaskGroup
+                          key={group.id}
+                          group={group}
+                          tasks={groupTasks}
+                          columns={board.columns.filter((c) => c.visible)}
+                          statusLabels={statusLabels}
+                          onToggleCollapse={() =>
+                            updateGroupMutation.mutate({
+                              groupId: group.id,
+                              updates: { collapsed: !group.collapsed },
+                            })
+                          }
+                          onAddTask={() => handleAddTask(group.id)}
+                          onEditGroup={() => {}}
+                          onDeleteGroup={() => deleteGroupMutation.mutate(group.id)}
+                          onTaskClick={handleTaskClick}
+                          onTaskUpdate={handleTaskUpdate}
+                          onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+                          onEditStatusLabels={() => setEditStatusLabelsOpen(true)}
+                          selectedTaskIds={selectedTaskIds}
+                          onSelectTask={handleSelectTask}
+                          currentSort={currentSort}
+                          onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                          onAddColumn={(type, title) => {
+                            handleAddColumn({ title, type, width: 120, visible: true });
+                          }}
+                          canDeleteTasks={canDeleteTasks}
+                          onInlineAddTask={handleInlineAddTask}
+                          onColumnSort={handleColumnSort}
+                          onColumnFilter={handleColumnFilter}
+                          onColumnDuplicate={handleColumnDuplicate}
+                          onColumnRename={handleColumnRename}
+                          onColumnDelete={handleRemoveColumn}
+                          onColumnHide={handleColumnHide}
+                          onColumnChangeType={handleColumnChangeType}
+                          onColumnUpdateDescription={handleColumnUpdateDescription}
+                          onColumnAIAutofill={(colId) => setAiAutofillColumnId(colId)}
+                          allSelected={groupAllSelected}
+                          onSelectAll={(selected) => {
+                            if (selected) {
+                              const newIds = new Set(selectedTaskIds);
+                              groupTasks.forEach(t => newIds.add(t.id));
+                              setSelectedTaskIds(newIds);
+                            } else {
+                              const newIds = new Set(selectedTaskIds);
+                              groupTasks.forEach(t => newIds.delete(t.id));
+                              setSelectedTaskIds(newIds);
+                            }
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -688,6 +689,12 @@ export default function BoardPage() {
       {boardId && <WorkflowRecorder boardId={boardId} />}
 
       {boardId && <BoardChatPanel boardId={boardId} boardName={board?.name} />}
+
+      <InviteMemberDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        boardName={board?.name}
+      />
 
       {board && aiAutofillColumnId && (() => {
         const col = board.columns.find((c) => c.id === aiAutofillColumnId);

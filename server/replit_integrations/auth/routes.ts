@@ -69,6 +69,51 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/team/invite", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { email, role } = req.body as { email: string; role: string };
+      
+      if (!email || !email.trim()) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+      
+      const allowedRoles = ["member", "viewer"];
+      const assignedRole = (role && allowedRoles.includes(role)) ? role : "member";
+
+      const users = await authStorage.getAllUsers();
+      const existingUser = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase());
+      
+      if (existingUser) {
+        return res.status(409).json({ message: "This user is already a team member" });
+      }
+
+      const { db } = await import("../../db");
+      const { users: usersTable } = await import("@shared/models/auth");
+
+      const newUserId = `invited-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      await db.insert(usersTable).values({
+        id: newUserId,
+        email: email.trim().toLowerCase(),
+        firstName: email.trim().split("@")[0],
+        lastName: "",
+        role: assignedRole as "admin" | "member" | "viewer",
+      });
+
+      res.json({ 
+        message: `Invitation created for ${email.trim()}. They can sign in to access the workspace.`,
+        userId: newUserId,
+      });
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+      res.status(500).json({ message: "Failed to send invitation" });
+    }
+  });
+
   // Admin: Get all users
   app.get("/api/admin/users", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
