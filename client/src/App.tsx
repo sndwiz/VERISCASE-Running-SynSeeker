@@ -192,13 +192,21 @@ function AppLayout() {
       const board = await boardRes.json();
 
       if (data.groups && data.groups.length > 0) {
+        let groupErrors = 0;
         for (let i = 0; i < data.groups.length; i++) {
-          const g = data.groups[i];
-          await apiRequest("POST", `/api/boards/${board.id}/groups`, {
-            title: g.title,
-            color: g.color,
-            order: i,
-          });
+          try {
+            const g = data.groups[i];
+            await apiRequest("POST", `/api/boards/${board.id}/groups`, {
+              title: g.title,
+              color: g.color,
+              order: i,
+            });
+          } catch {
+            groupErrors++;
+          }
+        }
+        if (groupErrors > 0) {
+          throw new Error(`Board created but ${groupErrors} group(s) failed to create`);
         }
       }
       return board;
@@ -207,8 +215,13 @@ function AppLayout() {
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       toast({ title: "Board created successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to create board", variant: "destructive" });
+    onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
+      toast({
+        title: error.message?.includes("group") ? "Board created with errors" : "Failed to create board",
+        description: error.message?.includes("group") ? error.message : undefined,
+        variant: "destructive",
+      });
     },
   });
 

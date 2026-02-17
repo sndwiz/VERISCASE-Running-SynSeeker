@@ -464,18 +464,20 @@ function DetailsStep({
                 <FormControl>
                   <div className="flex gap-2 flex-wrap">
                     {colorOptions.map((color) => (
-                      <button
+                      <Button
                         key={color}
                         type="button"
-                        className={`w-8 h-8 rounded-md transition-transform ${
-                          field.value === color
-                            ? "ring-2 ring-offset-2 ring-primary scale-110"
-                            : ""
-                        }`}
-                        style={{ backgroundColor: color }}
+                        variant="outline"
+                        size="icon"
+                        className={field.value === color
+                          ? "ring-2 ring-offset-2 ring-primary"
+                          : ""}
+                        style={{ backgroundColor: color, borderColor: color }}
                         onClick={() => field.onChange(color)}
                         data-testid={`color-option-${color}`}
-                      />
+                      >
+                        {field.value === color && <Check className="h-4 w-4 text-white" />}
+                      </Button>
                     ))}
                   </div>
                 </FormControl>
