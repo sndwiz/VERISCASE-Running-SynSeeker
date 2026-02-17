@@ -341,7 +341,7 @@ export const TaskGroup = memo(function TaskGroup({
 
       {!group.collapsed && (
         <div style={{ borderLeft: `3px solid ${group.color}` }}>
-            {displayTasks.map((task) => (
+            {displayTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}
                 task={task}
@@ -355,6 +355,10 @@ export const TaskGroup = memo(function TaskGroup({
                 isSelected={selectedTaskIds.has(task.id)}
                 onSelect={onSelectTask}
                 canDelete={canDeleteTasks}
+                rowIndex={idx}
+                onAddRowBelow={() => {
+                  setIsInlineEditing(true);
+                }}
               />
             ))}
 

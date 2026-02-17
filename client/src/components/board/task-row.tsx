@@ -62,6 +62,8 @@ interface TaskRowProps {
   isSelected?: boolean;
   onSelect?: (taskId: string, selected: boolean) => void;
   canDelete?: boolean;
+  rowIndex?: number;
+  onAddRowBelow?: () => void;
 }
 
 export const TaskRow = memo(function TaskRow({
@@ -76,6 +78,8 @@ export const TaskRow = memo(function TaskRow({
   isSelected = false,
   onSelect,
   canDelete = true,
+  rowIndex = 0,
+  onAddRowBelow,
 }: TaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
@@ -138,10 +142,18 @@ export const TaskRow = memo(function TaskRow({
           />
         );
       case "date":
+        if (column.id === "due_date" || column.title === "Due Date") {
+          return (
+            <DateCell
+              value={task.dueDate}
+              onChange={(value: string | null) => onUpdate({ dueDate: value })}
+            />
+          );
+        }
         return (
           <DateCell
-            value={task.dueDate}
-            onChange={(value: string | null) => onUpdate({ dueDate: value })}
+            value={getCustomFieldValue() || null}
+            onChange={(value: string | null) => setCustomFieldValue(value || "")}
           />
         );
       case "person":
@@ -261,11 +273,39 @@ export const TaskRow = memo(function TaskRow({
         isSelected
           ? "bg-primary/10"
           : isHovered
-          ? "bg-muted/40"
+          ? "bg-muted/50"
+          : rowIndex % 2 === 1
+          ? "bg-muted/20"
           : "bg-background"
       }`}
+      tabIndex={0}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+          e.preventDefault();
+          if (onAddRowBelow) {
+            onAddRowBelow();
+          } else {
+            onClick();
+          }
+        }
+        if (e.key === "Tab") {
+          const cells = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[data-cell-index]');
+          const focusedCell = document.activeElement?.closest('[data-cell-index]');
+          if (focusedCell) {
+            const currentIdx = Number(focusedCell.getAttribute('data-cell-index'));
+            const nextIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
+            const nextCell = cells[nextIdx];
+            if (nextCell) {
+              e.preventDefault();
+              const focusable = nextCell.querySelector<HTMLElement>('input, button, [tabindex]');
+              if (focusable) focusable.focus();
+              else nextCell.focus();
+            }
+          }
+        }
+      }}
       data-testid={`task-row-${task.id}`}
     >
       <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5 sticky left-0 z-30 bg-inherit">
@@ -299,7 +339,7 @@ export const TaskRow = memo(function TaskRow({
             )}
           </Button>
         )}
-        <span className="text-sm truncate">{task.title}</span>
+        <span className="text-sm truncate" title={task.title}>{task.title}</span>
         {hasSubtasks && (
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded-sm shrink-0"
@@ -311,11 +351,12 @@ export const TaskRow = memo(function TaskRow({
         )}
       </div>
 
-      {columns.map((col) => (
+      {columns.map((col, colIdx) => (
         <div
           key={col.id}
           className="px-1 border-l border-border/50"
           style={{ width: col.width, minWidth: col.width }}
+          data-cell-index={colIdx}
         >
           {renderCell(col)}
         </div>

@@ -2,11 +2,44 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, Plus,
+  Table2, Columns3, Calendar as CalendarIcon, BarChart3,
+  GanttChart, Palette, FileText, Image, FormInput, LayoutDashboard,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import type { Board, Group, Task, CustomStatusLabel } from "@shared/schema";
 import { defaultStatusLabels } from "@shared/schema";
 
-export type BoardViewType = "table" | "kanban" | "calendar" | "dashboard";
+export type BoardViewType = "table" | "kanban" | "calendar" | "dashboard" | "gantt" | "chart" | "canvas" | "doc" | "files" | "form";
+
+interface ViewTabDef {
+  id: BoardViewType;
+  label: string;
+  icon: any;
+  primary?: boolean;
+}
+
+const ALL_VIEWS: ViewTabDef[] = [
+  { id: "table", label: "Main Table", icon: Table2, primary: true },
+  { id: "kanban", label: "Kanban", icon: Columns3, primary: true },
+  { id: "calendar", label: "Calendar", icon: CalendarIcon, primary: true },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, primary: true },
+  { id: "gantt", label: "Gantt", icon: GanttChart },
+  { id: "chart", label: "Chart", icon: BarChart3 },
+  { id: "canvas", label: "Canvas", icon: Palette },
+  { id: "doc", label: "Doc", icon: FileText },
+  { id: "files", label: "Files", icon: Image },
+  { id: "form", label: "Form", icon: FormInput },
+];
 
 interface ViewTabsProps {
   activeView: BoardViewType;
@@ -14,37 +47,127 @@ interface ViewTabsProps {
 }
 
 export function ViewTabs({ activeView, onViewChange }: ViewTabsProps) {
-  const views: { id: BoardViewType; label: string }[] = [
-    { id: "table", label: "Main Table" },
-    { id: "kanban", label: "Kanban" },
-    { id: "calendar", label: "Calendar" },
-    { id: "dashboard", label: "Dashboard" },
-  ];
+  const primaryViews = ALL_VIEWS.filter(v => v.primary);
+  const moreViews = ALL_VIEWS.filter(v => !v.primary);
+  const activeIsMore = moreViews.some(v => v.id === activeView);
+  const activeMoreView = activeIsMore ? ALL_VIEWS.find(v => v.id === activeView) : null;
 
   return (
-    <div className="flex items-center px-1" data-testid="board-view-tabs">
-      {views.map((v) => (
-        <div key={v.id} className="relative">
+    <div className="flex items-center px-1 gap-0 flex-wrap" data-testid="board-view-tabs">
+      {primaryViews.map((v) => {
+        const Icon = v.icon;
+        return (
+          <div key={v.id} className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewChange(v.id)}
+              className={`rounded-none gap-1.5 ${
+                activeView === v.id
+                  ? "font-semibold"
+                  : "text-muted-foreground"
+              }`}
+              data-testid={`tab-view-${v.id}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {v.label}
+            </Button>
+            {activeView === v.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t" />
+            )}
+          </div>
+        );
+      })}
+
+      {activeMoreView && (
+        <div className="relative">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onViewChange(v.id)}
-            className={`rounded-none ${
-              activeView === v.id
-                ? "text-primary font-semibold"
-                : "text-muted-foreground"
-            }`}
-            data-testid={`tab-view-${v.id}`}
+            className="rounded-none gap-1.5 font-semibold"
+            data-testid={`tab-view-${activeMoreView.id}`}
           >
-            {v.label}
+            <activeMoreView.icon className="h-3.5 w-3.5" />
+            {activeMoreView.label}
           </Button>
-          {activeView === v.id && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t" />
-          )}
+          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t" />
         </div>
-      ))}
+      )}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-none text-muted-foreground gap-1"
+            data-testid="button-more-views"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuLabel className="text-xs">Board Views</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {moreViews.map(v => {
+            const Icon = v.icon;
+            return (
+              <DropdownMenuItem
+                key={v.id}
+                onClick={() => onViewChange(v.id)}
+                className="gap-2"
+                data-testid={`menu-view-${v.id}`}
+              >
+                <Icon className="h-4 w-4" />
+                {v.label}
+                {v.id === activeView && (
+                  <Badge variant="secondary" className="ml-auto text-[10px]">Active</Badge>
+                )}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
+}
+
+export function StubView({ viewName, icon: Icon, description }: { viewName: string; icon: any; description: string }) {
+  return (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <div className="text-center max-w-sm">
+        <div className="mx-auto h-16 w-16 rounded-xl bg-muted flex items-center justify-center mb-4">
+          <Icon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">{viewName} View</h3>
+        <p className="text-sm text-muted-foreground mb-4">{description}</p>
+        <Badge variant="secondary">Coming Soon</Badge>
+      </div>
+    </div>
+  );
+}
+
+export function GanttView() {
+  return <StubView viewName="Gantt" icon={GanttChart} description="Visualize timelines and dependencies across your tasks with a Gantt chart." />;
+}
+
+export function ChartView() {
+  return <StubView viewName="Chart" icon={BarChart3} description="Create charts and graphs from your board data for visual reporting." />;
+}
+
+export function CanvasView() {
+  return <StubView viewName="Canvas" icon={Palette} description="Collaborate on a freeform canvas with your team. Draw, annotate, and brainstorm." />;
+}
+
+export function DocView() {
+  return <StubView viewName="Doc" icon={FileText} description="Create and collaborate on documents directly within your board." />;
+}
+
+export function FilesView() {
+  return <StubView viewName="File Gallery" icon={Image} description="Browse and manage all files attached to items in this board." />;
+}
+
+export function FormView() {
+  return <StubView viewName="Form" icon={FormInput} description="Create intake forms that automatically create items in this board." />;
 }
 
 function getStatusColor(status: string, statusLabels: CustomStatusLabel[]): string {

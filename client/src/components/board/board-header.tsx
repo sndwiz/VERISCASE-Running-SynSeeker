@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, X } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, X, UserPlus, Download, Bot, Plug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -52,11 +52,16 @@ interface BoardHeaderProps {
   onGroupByChange?: (value: GroupByOption) => void;
   taskCount?: number;
   onOpenAutomations?: () => void;
+  automationCount?: number;
   filters?: FilterGroup[];
   onFiltersChange?: (filters: FilterGroup[]) => void;
   sorts?: SortOption[];
   onSortsChange?: (sorts: SortOption[]) => void;
   onOpenColumnCenter?: () => void;
+  onInvite?: () => void;
+  onExport?: () => void;
+  onOpenIntegrations?: () => void;
+  onOpenSidekick?: () => void;
 }
 
 export function BoardHeader({
@@ -75,11 +80,16 @@ export function BoardHeader({
   onGroupByChange,
   taskCount = 0,
   onOpenAutomations,
+  automationCount = 0,
   filters = [],
   onFiltersChange,
   sorts = [],
   onSortsChange,
   onOpenColumnCenter,
+  onInvite,
+  onExport,
+  onOpenIntegrations,
+  onOpenSidekick,
 }: BoardHeaderProps) {
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(false);
   const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
@@ -361,11 +371,38 @@ export function BoardHeader({
             variant="outline" 
             size="sm" 
             className="gap-2" 
+            onClick={onOpenIntegrations}
+            data-testid="button-integrations"
+          >
+            <Plug className="h-4 w-4" />
+            Integrate
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2" 
             onClick={onOpenAutomations}
             data-testid="button-automations"
           >
             <Zap className="h-4 w-4" />
-            Automations
+            Automate
+            {automationCount > 0 && (
+              <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5">
+                {automationCount}
+              </Badge>
+            )}
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2" 
+            onClick={onInvite}
+            data-testid="button-invite"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite
           </Button>
 
           <Button onClick={onAddTask} data-testid="button-add-task">
@@ -387,6 +424,14 @@ export function BoardHeader({
               <DropdownMenuItem onClick={onEditBoard} data-testid="menu-edit-board">
                 <Settings className="h-4 w-4 mr-2" />
                 Edit Board
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExport} data-testid="menu-export-board">
+                <Download className="h-4 w-4 mr-2" />
+                Export Board
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenSidekick} data-testid="menu-sidekick">
+                <Bot className="h-4 w-4 mr-2" />
+                Sidekick
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

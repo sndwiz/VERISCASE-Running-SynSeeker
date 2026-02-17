@@ -17,7 +17,7 @@ import { CreateTaskDialog } from "@/components/dialogs/create-task-dialog";
 import { TaskDetailModal } from "@/components/dialogs/task-detail-modal";
 import { EditStatusLabelsDialog } from "@/components/dialogs/edit-status-labels-dialog";
 import { AIAutofillDialog } from "@/components/board/ai-autofill-dialog";
-import { ViewTabs, KanbanView, CalendarView, DashboardView, type BoardViewType } from "@/components/board/board-views";
+import { ViewTabs, KanbanView, CalendarView, DashboardView, GanttView, ChartView, CanvasView, DocView, FilesView, FormView, type BoardViewType } from "@/components/board/board-views";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useBoardMutations } from "@/hooks/use-board-mutations";
@@ -547,6 +547,13 @@ export default function BoardPage() {
           statusLabels={statusLabels}
         />
       )}
+
+      {activeView === "gantt" && <GanttView />}
+      {activeView === "chart" && <ChartView />}
+      {activeView === "canvas" && <CanvasView />}
+      {activeView === "doc" && <DocView />}
+      {activeView === "files" && <FilesView />}
+      {activeView === "form" && <FormView />}
 
       <BulkActionsBar
         selectedCount={selectedTaskIds.size}

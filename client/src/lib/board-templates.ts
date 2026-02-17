@@ -19,6 +19,35 @@ export interface BoardTemplate {
   category: "case-management" | "operations" | "financials";
 }
 
+export const STANDARD_STATUS_OPTIONS = ["Not Started", "Working on it", "Stuck", "Waiting for review", "Done"];
+export const STANDARD_PRIORITY_OPTIONS = ["Critical", "High", "Medium", "Low"];
+
+const UNIVERSAL_COLUMNS: BoardTemplateColumn[] = [
+  { key: "owner", title: "Owner", type: "person", width: 110 },
+  { key: "backup_owner", title: "Backup Owner", type: "person", width: 120 },
+  { key: "due_date", title: "Due Date", type: "date", width: 110 },
+  { key: "start_date", title: "Start Date", type: "date", width: 110 },
+  { key: "status", title: "Status", type: "status", width: 120, options: STANDARD_STATUS_OPTIONS },
+  { key: "priority", title: "Priority", type: "priority", width: 100 },
+  { key: "last_updated", title: "Last Updated", type: "date", width: 110 },
+];
+
+function mergeUniversalColumns(templateCols: BoardTemplateColumn[]): BoardTemplateColumn[] {
+  const existingKeys = new Set(templateCols.map(c => c.key));
+  const merged = [...templateCols];
+  for (const uc of UNIVERSAL_COLUMNS) {
+    if (!existingKeys.has(uc.key)) {
+      merged.push(uc);
+    } else {
+      const idx = merged.findIndex(c => c.key === uc.key);
+      if (idx !== -1 && uc.key === "status") {
+        merged[idx] = { ...merged[idx], options: STANDARD_STATUS_OPTIONS };
+      }
+    }
+  }
+  return merged;
+}
+
 const GROUP_COLORS = [
   "#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
   "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
@@ -350,7 +379,8 @@ export function getTemplateColumns(template: BoardTemplate): Array<{
   order: number;
   options?: string[];
 }> {
-  return template.columns.map((col, index) => ({
+  const merged = mergeUniversalColumns(template.columns);
+  return merged.map((col, index) => ({
     id: col.key,
     title: col.title,
     type: col.type,
