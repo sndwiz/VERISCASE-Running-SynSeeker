@@ -15,11 +15,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useTheme } from "@/lib/theme-provider";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { LayoutTemplate } from "lucide-react";
 import AIEventLogPage from "@/pages/admin/ai-event-log";
 import ManageUsersPage from "@/pages/admin/manage-users";
 import RolesPermissionsPage from "@/pages/admin/roles-permissions";
 import RecoveryBinPage from "@/pages/admin/recovery-bin";
 import ActiveSessionsPage from "@/pages/admin/active-sessions";
+import CustomFieldsSettingsComponent from "@/components/settings/custom-fields-settings";
+import MatterTemplatesSettings from "@/components/settings/matter-templates-settings";
 
 interface AuthUser {
   id: string;
@@ -221,6 +224,12 @@ export default function SettingsPage() {
             <TabsTrigger value="custom-fields" data-testid="tab-custom-fields">
               <Columns className="h-4 w-4 mr-2" />
               Custom Fields
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="matter-templates" data-testid="tab-matter-templates">
+              <LayoutTemplate className="h-4 w-4 mr-2" />
+              Templates
             </TabsTrigger>
           )}
           {isAdmin && (
@@ -672,7 +681,13 @@ export default function SettingsPage() {
 
         {isAdmin && (
           <TabsContent value="custom-fields">
-            <CustomFieldsSettings />
+            <CustomFieldsSettingsComponent />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="matter-templates">
+            <MatterTemplatesSettings />
           </TabsContent>
         )}
 
@@ -1401,241 +1416,3 @@ function PIIPolicySettings() {
   );
 }
 
-interface CustomField {
-  id: string;
-  entityType: string;
-  fieldName: string;
-  fieldType: string;
-  required: boolean;
-}
-
-const ENTITY_TYPES = [
-  { value: "client", label: "Client" },
-  { value: "matter", label: "Matter" },
-  { value: "task", label: "Task" },
-  { value: "document", label: "Document" },
-  { value: "time_entry", label: "Time Entry" },
-  { value: "invoice", label: "Invoice" },
-];
-
-const FIELD_TYPES = [
-  { value: "text", label: "Text" },
-  { value: "number", label: "Number" },
-  { value: "date", label: "Date" },
-  { value: "select", label: "Select" },
-  { value: "multiselect", label: "Multi-select" },
-  { value: "boolean", label: "Boolean" },
-  { value: "url", label: "URL" },
-];
-
-function CustomFieldsSettings() {
-  const { toast } = useToast();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newEntityType, setNewEntityType] = useState("client");
-  const [newFieldName, setNewFieldName] = useState("");
-  const [newFieldType, setNewFieldType] = useState("text");
-  const [newRequired, setNewRequired] = useState(false);
-
-  const { data: fields, isLoading } = useQuery<CustomField[]>({
-    queryKey: ["/api/custom-fields"],
-  });
-
-  const createFieldMutation = useMutation({
-    mutationFn: (data: { entityType: string; fieldName: string; fieldType: string; required: boolean }) =>
-      apiRequest("POST", "/api/custom-fields", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
-      toast({ title: "Custom field created" });
-      setShowAddForm(false);
-      setNewFieldName("");
-      setNewEntityType("client");
-      setNewFieldType("text");
-      setNewRequired(false);
-    },
-    onError: () => {
-      toast({ title: "Failed to create custom field", variant: "destructive" });
-    },
-  });
-
-  const deleteFieldMutation = useMutation({
-    mutationFn: (fieldId: string) =>
-      apiRequest("DELETE", `/api/custom-fields/${fieldId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
-      toast({ title: "Custom field deleted" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete custom field", variant: "destructive" });
-    },
-  });
-
-  const handleCreateField = () => {
-    if (!newFieldName.trim()) return;
-    createFieldMutation.mutate({
-      entityType: newEntityType,
-      fieldName: newFieldName,
-      fieldType: newFieldType,
-      required: newRequired,
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Columns className="h-5 w-5" />
-                Custom Fields
-              </CardTitle>
-              <CardDescription>
-                Define custom fields for different entity types
-              </CardDescription>
-            </div>
-            <Button
-              onClick={() => setShowAddForm(!showAddForm)}
-              data-testid="button-add-custom-field"
-            >
-              Add Field
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {showAddForm && (
-            <Card className="mb-6">
-              <CardContent className="pt-6 space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Entity Type</Label>
-                    <Select value={newEntityType} onValueChange={setNewEntityType}>
-                      <SelectTrigger data-testid="select-cf-entity-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ENTITY_TYPES.map((et) => (
-                          <SelectItem key={et.value} value={et.value}>
-                            {et.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Field Name</Label>
-                    <Input
-                      value={newFieldName}
-                      onChange={(e) => setNewFieldName(e.target.value)}
-                      placeholder="e.g., Case Number"
-                      data-testid="input-cf-field-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Field Type</Label>
-                    <Select value={newFieldType} onValueChange={setNewFieldType}>
-                      <SelectTrigger data-testid="select-cf-field-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FIELD_TYPES.map((ft) => (
-                          <SelectItem key={ft.value} value={ft.value}>
-                            {ft.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2 pt-6">
-                    <Checkbox
-                      id="cf-required"
-                      checked={newRequired}
-                      onCheckedChange={(checked) => setNewRequired(checked === true)}
-                      data-testid="checkbox-cf-required"
-                    />
-                    <Label htmlFor="cf-required" className="cursor-pointer">
-                      Required field
-                    </Label>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    onClick={handleCreateField}
-                    disabled={!newFieldName.trim() || createFieldMutation.isPending}
-                    data-testid="button-save-custom-field"
-                  >
-                    {createFieldMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Save Field
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setNewFieldName("");
-                    }}
-                    data-testid="button-cancel-add-field"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {!fields || fields.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Columns className="h-10 w-10 mb-3" />
-              <p>No custom fields defined yet</p>
-              <p className="text-sm mt-1">Add your first custom field to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {fields.map((field) => (
-                <div
-                  key={field.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-md border"
-                  data-testid={`row-custom-field-${field.id}`}
-                >
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Badge variant="outline" className="text-xs">
-                      {ENTITY_TYPES.find(e => e.value === field.entityType)?.label || field.entityType}
-                    </Badge>
-                    <div>
-                      <p className="text-sm font-medium" data-testid={`text-cf-name-${field.id}`}>
-                        {field.fieldName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {FIELD_TYPES.find(f => f.value === field.fieldType)?.label || field.fieldType}
-                        {field.required && " (required)"}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => deleteFieldMutation.mutate(field.id)}
-                    disabled={deleteFieldMutation.isPending}
-                    data-testid={`button-delete-cf-${field.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}

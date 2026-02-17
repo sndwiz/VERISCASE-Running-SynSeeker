@@ -176,6 +176,34 @@ export async function registerRoutes(
   // AI Ops - admin only (cost/performance monitoring)
   app.use("/api/ai-ops", isAuthenticated, requireAdmin);
   
+  // Global search - any authenticated role can search
+  app.use("/api/search", isAuthenticated, requireAnyRole);
+
+  // Data export/import - admin only
+  app.use("/api/export", isAuthenticated, requireAdmin);
+  app.use("/api/import", isAuthenticated, requireAdmin);
+
+  // Client portal - viewer can read, member+ can write
+  app.use("/api/client-portal", isAuthenticated, viewerReadOnly);
+
+  // E-Sign - viewer can read, member+ can write
+  app.use("/api/esign", isAuthenticated, viewerReadOnly);
+
+  // SMS - member or above (communication)
+  app.use("/api/sms", isAuthenticated, requireMemberOrAbove);
+
+  // Integrations - member or above (integration settings)
+  app.use("/api/integrations", isAuthenticated, requireMemberOrAbove);
+
+  // Custom fields - viewer can read, member+ can write
+  app.use("/api/custom-fields", isAuthenticated, viewerReadOnly);
+
+  // Matter templates - viewer can read, member+ can write
+  app.use("/api/matter-templates", isAuthenticated, viewerReadOnly);
+
+  // Trust reconciliation - member or above (financial)
+  app.use("/api/trust/reconciliation", isAuthenticated, requireMemberOrAbove);
+
   // Register all other API routes
   registerAllRoutes(app);
   

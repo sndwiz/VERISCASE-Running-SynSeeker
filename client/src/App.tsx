@@ -18,7 +18,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Bot, Calendar, Terminal, Circle, MoreVertical, BookOpen, ShieldAlert, Cpu } from "lucide-react";
+import { Bot, Calendar, Terminal, Circle, MoreVertical, BookOpen, ShieldAlert, Cpu, Search } from "lucide-react";
 import { useProcessRecorder } from "@/hooks/use-process-recorder";
 import { ModelPicker, BatmodeBadge } from "@/components/model-picker";
 import { Link } from "wouter";
@@ -80,6 +80,13 @@ const CaseJournalPage = lazy(() => import("@/pages/case-journal"));
 const CaseOutcomePage = lazy(() => import("@/pages/case-outcome"));
 const KnowledgeBasePage = lazy(() => import("@/pages/knowledge-base"));
 const EvidenceViewsPage = lazy(() => import("@/pages/evidence-views"));
+const GlobalSearchPage = lazy(() => import("@/pages/global-search"));
+const TrustReconciliationPage = lazy(() => import("@/pages/trust-reconciliation"));
+const DataPortabilityPage = lazy(() => import("@/pages/data-portability"));
+const ClientPortalPage = lazy(() => import("@/pages/client-portal"));
+const ESignPage = lazy(() => import("@/pages/esign"));
+const SmsPage = lazy(() => import("@/pages/sms"));
+const IntegrationsPage = lazy(() => import("@/pages/integrations"));
 
 function PageLoader() {
   return (
@@ -106,6 +113,7 @@ function Router() {
       <Route path="/clients/:clientId/billing" component={ClientBillingPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/billing" component={BillingDashboard} />
+      <Route path="/trust-reconciliation" component={TrustReconciliationPage} />
       <Route path="/client-dashboard/:clientId" component={ClientDetailDashboard} />
       <Route path="/client-dashboard" component={ClientDashboardPage} />
       <Route path="/documents" component={FilingCabinetPage} />
@@ -145,6 +153,12 @@ function Router() {
       <Route path="/matters/:matterId/outcome" component={CaseOutcomePage} />
       <Route path="/matters/:matterId/evidence-views" component={EvidenceViewsPage} />
       <Route path="/knowledge-base" component={KnowledgeBasePage} />
+      <Route path="/search" component={GlobalSearchPage} />
+      <Route path="/data-portability" component={DataPortabilityPage} />
+      <Route path="/client-portal" component={ClientPortalPage} />
+      <Route path="/esign" component={ESignPage} />
+      <Route path="/sms" component={SmsPage} />
+      <Route path="/integrations" component={IntegrationsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
@@ -258,6 +272,16 @@ function AppLayout() {
             <div className="flex items-center gap-1 md:gap-2 flex-wrap">
               <Tooltip>
                 <TooltipTrigger asChild>
+                  <Link href="/search">
+                    <Button variant="outline" size="icon" data-testid="button-global-search">
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Search across all entities</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Link href="/ai-chat">
                     <Button variant="default" size="sm" className="gap-1 md:gap-2" data-testid="button-verbo">
                       <Bot className="h-4 w-4" />
@@ -333,6 +357,12 @@ function AppLayout() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem asChild>
+                      <Link href="/search" className="flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        Search
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/briefing" className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />

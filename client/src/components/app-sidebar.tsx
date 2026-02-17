@@ -71,6 +71,11 @@ import {
   History,
   BarChart3,
   Radar,
+  Landmark,
+  HardDriveDownload,
+  PenTool,
+  Plug2,
+  Phone,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -146,6 +151,7 @@ const caseManagementItems = [
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Matters", url: "/matters", icon: Briefcase },
   { title: "Client Dashboard", url: "/client-dashboard", icon: LayoutDashboard },
+  { title: "Client Portal", url: "/client-portal", icon: Users },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Approvals", url: "/approvals", icon: Gavel },
 ];
@@ -157,16 +163,19 @@ const documentsItems = [
   { title: "PDF Pro", url: "/pdf-pro", icon: FileText },
   { title: "Document Wash", url: "/document-wash", icon: ShieldCheck },
   { title: "Templates", url: "/templates", icon: Library },
+  { title: "E-Sign", url: "/esign", icon: PenTool },
 ];
 
 const billingItems = [
   { title: "Time Tracking", url: "/time-tracking", icon: Clock },
   { title: "Billing", url: "/billing", icon: DollarSign },
+  { title: "Trust Reconciliation", url: "/trust-reconciliation", icon: Landmark },
   { title: "Billing Verifier", url: "/billing-verifier", icon: ClipboardCheck },
 ];
 
 const communicationItems = [
   { title: "Communications", url: "/communications", icon: MessageSquare },
+  { title: "SMS Messages", url: "/sms", icon: Phone },
   { title: "Master Chat", url: "/master-chat", icon: MessageSquare },
   { title: "Meeting Notes", url: "/meetings", icon: Mic },
   { title: "Legal AI", url: "/legal-ai", icon: Wand2 },
@@ -175,6 +184,7 @@ const communicationItems = [
 
 const adminItems = [
   { title: "Team Members", url: "/team-members", icon: UserCheck },
+  { title: "Integrations", url: "/integrations", icon: Plug2 },
   { title: "Intake Forms", url: "/intake-forms", icon: ClipboardList },
   { title: "Process Recorder", url: "/process-recorder", icon: CircleDot },
   { title: "AI Resources", url: "/ai-resources", icon: Server },
@@ -182,6 +192,7 @@ const adminItems = [
   { title: "Product Guide", url: "/product-guide", icon: BookOpen },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Knowledge Base", url: "/knowledge-base", icon: BookOpen },
+  { title: "Data Portability", url: "/data-portability", icon: HardDriveDownload },
 ];
 
 const aiInvestigationItems = [

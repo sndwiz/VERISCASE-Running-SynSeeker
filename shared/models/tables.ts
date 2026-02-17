@@ -2197,3 +2197,264 @@ export const evidenceViews = pgTable("evidence_views", {
 
 export type EvidenceView = typeof evidenceViews.$inferSelect;
 export type InsertEvidenceView = typeof evidenceViews.$inferInsert;
+
+// ============ MATTER TEMPLATES ============
+export const matterTemplates = pgTable("matter_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  practiceArea: varchar("practice_area", { length: 100 }).notNull(),
+  description: text("description"),
+  matterType: varchar("matter_type", { length: 100 }),
+  defaultGroups: jsonb("default_groups").default([]),
+  defaultColumns: jsonb("default_columns").default([]),
+  defaultCustomFields: jsonb("default_custom_fields").default([]),
+  automationRules: jsonb("automation_rules").default([]),
+  documentTemplates: jsonb("document_templates").default([]),
+  isBuiltIn: boolean("is_built_in").default(false),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type MatterTemplate = typeof matterTemplates.$inferSelect;
+export type InsertMatterTemplate = typeof matterTemplates.$inferInsert;
+
+// ============ TRUST RECONCILIATION BATCHES ============
+export const trustReconciliationBatches = pgTable("trust_reconciliation_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  bankAccountName: varchar("bank_account_name", { length: 255 }).notNull(),
+  periodStart: varchar("period_start", { length: 32 }).notNull(),
+  periodEnd: varchar("period_end", { length: 32 }).notNull(),
+  bankStatementBalance: real("bank_statement_balance").notNull(),
+  bookBalance: real("book_balance"),
+  clientLedgerTotal: real("client_ledger_total"),
+  status: varchar("status", { length: 30 }).default("draft"),
+  reconciledAt: timestamp("reconciled_at"),
+  reconciledBy: varchar("reconciled_by", { length: 255 }),
+  notes: text("notes"),
+  unmatchedItems: jsonb("unmatched_items").default([]),
+  adjustments: jsonb("adjustments").default([]),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type TrustReconciliationBatch = typeof trustReconciliationBatches.$inferSelect;
+export type InsertTrustReconciliationBatch = typeof trustReconciliationBatches.$inferInsert;
+
+// ============ BANK STATEMENT ENTRIES ============
+export const bankStatementEntries = pgTable("bank_statement_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => trustReconciliationBatches.id, { onDelete: "cascade" }),
+  date: varchar("date", { length: 32 }).notNull(),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  reference: varchar("reference", { length: 255 }),
+  matchedTransactionId: varchar("matched_transaction_id"),
+  matchStatus: varchar("match_status", { length: 30 }).default("unmatched"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_bank_entries_batch").on(table.batchId),
+]);
+
+export type BankStatementEntry = typeof bankStatementEntries.$inferSelect;
+export type InsertBankStatementEntry = typeof bankStatementEntries.$inferInsert;
+
+// ============ CLIENT PORTAL ACCESS ============
+export const clientPortalAccess = pgTable("client_portal_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  accessToken: varchar("access_token", { length: 255 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  permissions: jsonb("permissions").default(["view_matters", "view_invoices", "messaging", "view_documents"]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_portal_access_client").on(table.clientId),
+  index("IDX_portal_access_token").on(table.accessToken),
+]);
+
+export type ClientPortalAccess = typeof clientPortalAccess.$inferSelect;
+export type InsertClientPortalAccess = typeof clientPortalAccess.$inferInsert;
+
+// ============ CLIENT PORTAL MESSAGES ============
+export const clientPortalMessages = pgTable("client_portal_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  matterId: varchar("matter_id"),
+  senderType: varchar("sender_type", { length: 20 }).notNull(),
+  senderName: varchar("sender_name", { length: 255 }).notNull(),
+  senderId: varchar("sender_id", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").default(false),
+  attachments: jsonb("attachments").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_portal_messages_client").on(table.clientId),
+  index("IDX_portal_messages_matter").on(table.matterId),
+]);
+
+export type ClientPortalMessage = typeof clientPortalMessages.$inferSelect;
+export type InsertClientPortalMessage = typeof clientPortalMessages.$inferInsert;
+
+// ============ SHARED DOCUMENTS ============
+export const sharedDocuments = pgTable("shared_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  matterId: varchar("matter_id"),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileSize: integer("file_size").default(0),
+  mimeType: varchar("mime_type", { length: 100 }),
+  description: text("description"),
+  sharedBy: varchar("shared_by", { length: 255 }).notNull(),
+  sharedByName: varchar("shared_by_name", { length: 255 }).notNull(),
+  downloadCount: integer("download_count").default(0),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_shared_docs_client").on(table.clientId),
+]);
+
+export type SharedDocument = typeof sharedDocuments.$inferSelect;
+export type InsertSharedDocument = typeof sharedDocuments.$inferInsert;
+
+// ============ E-SIGN ENVELOPES ============
+export const esignEnvelopes = pgTable("esign_envelopes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 500 }).notNull(),
+  matterId: varchar("matter_id"),
+  clientId: varchar("client_id"),
+  documentName: varchar("document_name", { length: 500 }).notNull(),
+  status: varchar("status", { length: 30 }).default("draft"),
+  message: text("message"),
+  expiresAt: timestamp("expires_at"),
+  completedAt: timestamp("completed_at"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdByName: varchar("created_by_name", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type EsignEnvelope = typeof esignEnvelopes.$inferSelect;
+export type InsertEsignEnvelope = typeof esignEnvelopes.$inferInsert;
+
+// ============ E-SIGN SIGNERS ============
+export const esignSigners = pgTable("esign_signers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  envelopeId: varchar("envelope_id").notNull().references(() => esignEnvelopes.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  role: varchar("role", { length: 100 }),
+  order: integer("order").default(1),
+  status: varchar("status", { length: 30 }).default("pending"),
+  signedAt: timestamp("signed_at"),
+  declinedAt: timestamp("declined_at"),
+  declineReason: text("decline_reason"),
+  signatureData: text("signature_data"),
+  signingToken: varchar("signing_token", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_esign_signers_envelope").on(table.envelopeId),
+  index("IDX_esign_signers_token").on(table.signingToken),
+]);
+
+export type EsignSigner = typeof esignSigners.$inferSelect;
+export type InsertEsignSigner = typeof esignSigners.$inferInsert;
+
+// ============ E-SIGN AUDIT TRAIL ============
+export const esignAuditTrail = pgTable("esign_audit_trail", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  envelopeId: varchar("envelope_id").notNull().references(() => esignEnvelopes.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 100 }).notNull(),
+  actorName: varchar("actor_name", { length: 255 }).notNull(),
+  actorEmail: varchar("actor_email", { length: 255 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_esign_audit_envelope").on(table.envelopeId),
+]);
+
+export type EsignAuditTrailEntry = typeof esignAuditTrail.$inferSelect;
+export type InsertEsignAuditTrailEntry = typeof esignAuditTrail.$inferInsert;
+
+// ============ SMS MESSAGES ============
+export const smsMessages = pgTable("sms_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id"),
+  matterId: varchar("matter_id"),
+  contactName: varchar("contact_name", { length: 255 }).notNull(),
+  phoneNumber: varchar("phone_number", { length: 50 }).notNull(),
+  direction: varchar("direction", { length: 10 }).notNull(),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 30 }).default("sent"),
+  twilioSid: varchar("twilio_sid", { length: 255 }),
+  sentBy: varchar("sent_by", { length: 255 }),
+  sentByName: varchar("sent_by_name", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_sms_client").on(table.clientId),
+  index("IDX_sms_phone").on(table.phoneNumber),
+]);
+
+export type SmsMessage = typeof smsMessages.$inferSelect;
+export type InsertSmsMessage = typeof smsMessages.$inferInsert;
+
+// ============ INTEGRATION CONNECTIONS ============
+export const integrationConnections = pgTable("integration_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: varchar("provider", { length: 50 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  accountEmail: varchar("account_email", { length: 255 }),
+  status: varchar("status", { length: 30 }).default("connected"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  settings: jsonb("settings").default({}),
+  lastSyncAt: timestamp("last_sync_at"),
+  syncErrors: jsonb("sync_errors").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_integrations_user").on(table.userId),
+  index("IDX_integrations_provider").on(table.provider),
+]);
+
+export type IntegrationConnection = typeof integrationConnections.$inferSelect;
+export type InsertIntegrationConnection = typeof integrationConnections.$inferInsert;
+
+// ============ SYNCED EMAILS ============
+export const syncedEmails = pgTable("synced_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").notNull(),
+  externalId: varchar("external_id", { length: 255 }).notNull(),
+  matterId: varchar("matter_id"),
+  clientId: varchar("client_id"),
+  fromAddress: varchar("from_address", { length: 255 }).notNull(),
+  toAddresses: text("to_addresses").notNull(),
+  ccAddresses: text("cc_addresses"),
+  subject: varchar("subject", { length: 500 }),
+  bodyPreview: text("body_preview"),
+  receivedAt: timestamp("received_at"),
+  isRead: boolean("is_read").default(false),
+  hasAttachments: boolean("has_attachments").default(false),
+  folder: varchar("folder", { length: 100 }),
+  linkedMatterId: varchar("linked_matter_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_synced_emails_connection").on(table.connectionId),
+  index("IDX_synced_emails_matter").on(table.matterId),
+]);
+
+export type SyncedEmail = typeof syncedEmails.$inferSelect;
+export type InsertSyncedEmail = typeof syncedEmails.$inferInsert;

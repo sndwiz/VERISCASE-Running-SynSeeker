@@ -46,6 +46,7 @@ import { registerAIEventLogRoutes } from "./ai-event-log";
 import { registerRolesPermissionsRoutes } from "./roles-permissions";
 import { registerRecoveryBinRoutes } from "./recovery-bin";
 import { registerCustomFieldRoutes } from "./custom-fields";
+import { registerMatterTemplateRoutes } from "./matter-templates";
 import { registerTextSnippetRoutes } from "./text-snippets";
 import { registerPIIPolicyRoutes } from "./pii-policy";
 import { registerTimeEntryDocsRoutes } from "./time-entry-docs";
@@ -54,6 +55,14 @@ import { registerCaseJournalRoutes } from "./case-journal";
 import { registerCaseOutcomeRoutes } from "./case-outcome";
 import { registerKnowledgeBaseRoutes } from "./knowledge-base";
 import { registerEvidenceViewRoutes } from "./evidence-views";
+import { registerGlobalSearchRoutes } from "./global-search";
+import { registerTrustReconciliationRoutes } from "./trust-reconciliation";
+import { registerDataExportRoutes } from "./data-export";
+import { registerDataImportRoutes } from "./data-import";
+import { registerClientPortalRoutes } from "./client-portal";
+import { registerEsignRoutes } from "./esign";
+import { registerSmsRoutes } from "./sms";
+import { registerIntegrationRoutes } from "./integrations";
 
 export function registerAllRoutes(app: Express): void {
   registerClawbotRoutes(app);
@@ -103,6 +112,7 @@ export function registerAllRoutes(app: Express): void {
   registerRolesPermissionsRoutes(app);
   registerRecoveryBinRoutes(app);
   registerCustomFieldRoutes(app);
+  registerMatterTemplateRoutes(app);
   registerTextSnippetRoutes(app);
   registerPIIPolicyRoutes(app);
   registerTimeEntryDocsRoutes(app);
@@ -111,4 +121,12 @@ export function registerAllRoutes(app: Express): void {
   registerCaseOutcomeRoutes(app);
   registerKnowledgeBaseRoutes(app);
   registerEvidenceViewRoutes(app);
+  registerGlobalSearchRoutes(app);
+  registerTrustReconciliationRoutes(app);
+  registerDataExportRoutes(app);
+  registerDataImportRoutes(app);
+  registerClientPortalRoutes(app);
+  registerEsignRoutes(app);
+  registerSmsRoutes(app);
+  registerIntegrationRoutes(app);
 }

@@ -2983,6 +2983,11 @@ export const insertTextSnippetSchema = createInsertSchema(tables.textSnippets).o
 export type InsertTextSnippetInput = z.infer<typeof insertTextSnippetSchema>;
 export type SelectTextSnippet = typeof tables.textSnippets.$inferSelect;
 
+// ── Matter Templates Schemas ──
+export const insertMatterTemplateSchema = createInsertSchema(tables.matterTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertMatterTemplateInput = z.infer<typeof insertMatterTemplateSchema>;
+export type SelectMatterTemplate = typeof tables.matterTemplates.$inferSelect;
+
 // Re-export auth models (for Drizzle migrations)
 export { users, sessions, type User, type UpsertUser, type UserRole } from "./models/auth";
 
