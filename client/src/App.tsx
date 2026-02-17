@@ -11,7 +11,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { KillSwitch } from "@/components/kill-switch";
 import { AppSidebar } from "@/components/app-sidebar";
 import { UserMenu } from "@/components/user-menu";
-import { CreateBoardDialog } from "@/components/dialogs/create-board-dialog";
+import { CreateBoardDialog, type CreateBoardSubmitData } from "@/components/dialogs/create-board-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -176,8 +176,33 @@ function AppLayout() {
   });
 
   const createBoardMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string; color: string; clientId?: string | null; matterId?: string | null }) =>
-      apiRequest("POST", "/api/boards", { ...data, workspaceId: activeWorkspaceId }),
+    mutationFn: async (data: CreateBoardSubmitData) => {
+      const boardPayload: any = {
+        name: data.name,
+        description: data.description,
+        color: data.color,
+        clientId: data.clientId,
+        matterId: data.matterId,
+        workspaceId: activeWorkspaceId,
+      };
+      if (data.columns) {
+        boardPayload.columns = data.columns;
+      }
+      const boardRes = await apiRequest("POST", "/api/boards", boardPayload);
+      const board = await boardRes.json();
+
+      if (data.groups && data.groups.length > 0) {
+        for (let i = 0; i < data.groups.length; i++) {
+          const g = data.groups[i];
+          await apiRequest("POST", `/api/boards/${board.id}/groups`, {
+            title: g.title,
+            color: g.color,
+            order: i,
+          });
+        }
+      }
+      return board;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/boards"] });
       toast({ title: "Board created successfully" });
