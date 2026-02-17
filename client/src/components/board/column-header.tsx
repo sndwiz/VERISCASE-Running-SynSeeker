@@ -115,7 +115,7 @@ export function ColumnHeader({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="flex items-center gap-1 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors group"
+            className="flex items-center gap-1 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors group"
             data-testid={`column-header-${column.id}`}
           >
             <span className="flex-1 text-left truncate flex items-center gap-1">

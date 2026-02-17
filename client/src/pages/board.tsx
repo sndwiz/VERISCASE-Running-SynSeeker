@@ -482,7 +482,7 @@ export default function BoardPage() {
                       }
                     }}
                   />
-                  <div className="p-2">
+                  <div className="px-0 py-1">
                     {sortedGroups.map((group) => (
                       <TaskGroup
                         key={group.id}

@@ -133,13 +133,13 @@ function GroupSummaryRow({
 
   return (
     <div 
-      className="flex items-center gap-0 py-1.5 border-t border-border/50 bg-muted/20"
+      className="flex items-center gap-0 border-t-2 border-b border-border bg-muted/30 dark:bg-muted/10"
+      style={{ minHeight: "32px" }}
       data-testid="group-summary-row"
     >
-      <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit" style={{ borderLeft: `3px solid ${groupColor}` }} />
+      <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit border-r border-border" />
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-2 sticky left-10 z-30 bg-inherit"
-        style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 sticky left-10 z-30 bg-inherit border-r border-border flex items-center"
       >
         <span className="text-xs font-medium text-muted-foreground">
           {tasks.length}
@@ -149,8 +149,8 @@ function GroupSummaryRow({
       {columns.map((col) => (
         <div
           key={col.id}
-          className="px-1 flex items-center border-l border-border/50"
-          style={{ width: col.width, minWidth: col.width }}
+          className="px-1.5 flex items-center border-r border-border"
+          style={{ width: col.width, minWidth: col.width, minHeight: "32px" }}
         >
           {renderSummaryCell(col)}
         </div>
@@ -257,7 +257,7 @@ export const TaskGroup = memo(function TaskGroup({
 
   return (
     <div
-      className="mb-4"
+      className="mb-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -340,7 +340,7 @@ export const TaskGroup = memo(function TaskGroup({
       </div>
 
       {!group.collapsed && (
-        <div style={{ borderLeft: `3px solid ${group.color}` }}>
+        <div style={{ borderLeft: `3px solid ${group.color}` }} className="border-r border-border">
             {displayTasks.map((task, idx) => (
               <TaskRow
                 key={task.id}
@@ -363,11 +363,11 @@ export const TaskGroup = memo(function TaskGroup({
             ))}
 
             {tasks.length === 0 && !isInlineEditing && (
-              <div className="py-4 text-center text-sm text-muted-foreground border-b border-border/50">
+              <div className="flex items-center justify-center text-sm text-muted-foreground border-b border-border" style={{ minHeight: "36px" }}>
                 No tasks in this group.{" "}
                 <Button
                   variant="ghost"
-                  className="text-primary"
+                  size="sm"
                   onClick={startInlineEdit}
                   data-testid={`button-add-first-task-${group.id}`}
                 >
@@ -377,16 +377,16 @@ export const TaskGroup = memo(function TaskGroup({
             )}
 
             <div
-              className="flex items-center gap-0 border-b border-border/50 hover-elevate cursor-pointer"
+              className="flex items-center gap-0 border-b border-border hover-elevate cursor-pointer"
+              style={{ minHeight: "36px" }}
               onClick={!isInlineEditing ? startInlineEdit : undefined}
               data-testid={`row-add-task-${group.id}`}
             >
               <div
-                className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center"
+                className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center border-r border-border"
               />
               <div
-                className="min-w-[200px] w-[280px] flex-shrink-0 sticky left-10 z-30 bg-inherit"
-                style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+                className="min-w-[200px] w-[280px] flex-shrink-0 sticky left-10 z-30 bg-inherit border-r border-border"
               >
                 {isInlineEditing ? (
                   <Input
@@ -419,7 +419,7 @@ export const TaskGroup = memo(function TaskGroup({
               {visibleColumns.map((col) => (
                 <div
                   key={col.id}
-                  className="border-l border-border/50"
+                  className="border-r border-border"
                   style={{ width: col.width, minWidth: col.width }}
                 />
               ))}

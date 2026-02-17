@@ -41,10 +41,11 @@ export function BoardTableHeader({
 
   return (
     <div
-      className="flex items-center gap-0 text-xs font-medium text-muted-foreground py-1.5 bg-background/90 backdrop-blur-sm border-b border-border/40 sticky top-0 z-50"
+      className="flex items-center gap-0 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted/60 dark:bg-muted/30 border-b-2 border-border sticky top-0 z-50"
+      style={{ minHeight: "36px" }}
       data-testid="board-table-header"
     >
-      <div className="w-10 flex-shrink-0 sticky left-0 z-40 bg-background/90 backdrop-blur-sm flex items-center justify-center">
+      <div className="w-10 flex-shrink-0 sticky left-0 z-40 bg-muted/60 dark:bg-muted/30 flex items-center justify-center border-r border-border">
         <Checkbox
           checked={allSelected}
           onCheckedChange={(checked) => onSelectAll?.(!!checked)}
@@ -53,15 +54,14 @@ export function BoardTableHeader({
         />
       </div>
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-2 sticky left-10 z-40 bg-background/90 backdrop-blur-sm"
-        style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center sticky left-10 z-40 bg-muted/60 dark:bg-muted/30 border-r border-border"
       >
         Task
       </div>
       {visibleColumns.map((col) => (
         <div
           key={col.id}
-          className="flex-shrink-0 border-l border-border/50"
+          className="flex-shrink-0 border-r border-border"
           style={{ width: col.width, minWidth: col.width }}
           data-col-id={col.id}
         >
@@ -81,7 +81,7 @@ export function BoardTableHeader({
         </div>
       ))}
       {onOpenColumnCenter && (
-        <div className="flex-shrink-0 w-10 flex items-center justify-center">
+        <div className="flex-shrink-0 w-10 flex items-center justify-center border-r border-border">
           <Button
             variant="ghost"
             size="icon"

@@ -269,15 +269,16 @@ export const TaskRow = memo(function TaskRow({
   return (
     <>
     <div
-      className={`flex items-center gap-0 py-1 px-0 transition-colors cursor-pointer border-b border-border/50 ${
+      className={`flex items-center gap-0 px-0 transition-colors cursor-pointer border-b border-border ${
         isSelected
           ? "bg-primary/10"
           : isHovered
-          ? "bg-muted/50"
+          ? "bg-muted/40"
           : rowIndex % 2 === 1
-          ? "bg-muted/20"
+          ? "bg-muted/10 dark:bg-muted/5"
           : "bg-background"
       }`}
+      style={{ minHeight: "36px" }}
       tabIndex={0}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -308,7 +309,7 @@ export const TaskRow = memo(function TaskRow({
       }}
       data-testid={`task-row-${task.id}`}
     >
-      <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5 sticky left-0 z-30 bg-inherit">
+      <div className="w-10 flex items-center justify-center flex-shrink-0 gap-0.5 sticky left-0 z-30 bg-inherit border-r border-border">
         <Checkbox
           checked={isSelected}
           onCheckedChange={(checked) => onSelect?.(task.id, !!checked)}
@@ -319,8 +320,7 @@ export const TaskRow = memo(function TaskRow({
       </div>
 
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-2 flex items-center gap-1 sticky left-10 z-30 bg-inherit"
-        style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.04)" }}
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-1 sticky left-10 z-30 bg-inherit border-r border-border"
         onClick={onClick}
         data-testid={`task-title-${task.id}`}
       >
@@ -354,8 +354,8 @@ export const TaskRow = memo(function TaskRow({
       {columns.map((col, colIdx) => (
         <div
           key={col.id}
-          className="px-1 border-l border-border/50"
-          style={{ width: col.width, minWidth: col.width }}
+          className="px-1.5 flex items-center border-r border-border"
+          style={{ width: col.width, minWidth: col.width, minHeight: "36px" }}
           data-cell-index={colIdx}
         >
           {renderCell(col)}
