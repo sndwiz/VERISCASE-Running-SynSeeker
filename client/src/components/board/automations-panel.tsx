@@ -466,16 +466,23 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
   );
 }
 
+export interface AutomationPrefill {
+  triggerId?: string;
+  actionId?: string;
+  config?: Record<string, any>;
+}
+
 interface AutomationsPanelProps {
   boardId: string;
   open: boolean;
   onClose: () => void;
+  prefill?: AutomationPrefill | null;
 }
 
 type PanelView = "list" | "builder";
 type BuilderStep = "idle" | "selecting_trigger" | "selecting_action" | "configuring";
 
-export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelProps) {
+export function AutomationsPanel({ boardId, open, onClose, prefill }: AutomationsPanelProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [view, setView] = useState<PanelView>("list");
@@ -490,11 +497,27 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
   const [builderConfig, setBuilderConfig] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    if (open) {
+    if (open && prefill) {
+      const trigger = prefill.triggerId ? TRIGGERS.find(t => t.id === prefill.triggerId) : undefined;
+      const action = prefill.actionId ? ACTIONS.find(a => a.id === prefill.actionId) : undefined;
+      setSelectedTrigger(trigger);
+      setSelectedAction(action);
+      setBuilderConfig(prefill.config || {});
+      setView("builder");
+      if (trigger && action) {
+        setBuilderStep("configuring");
+      } else if (trigger && !action) {
+        setBuilderStep("selecting_action");
+      } else if (!trigger && action) {
+        setBuilderStep("selecting_trigger");
+      } else {
+        setBuilderStep("idle");
+      }
+    } else if (open) {
       setView("list");
       setActiveTab("automations");
     }
-  }, [open]);
+  }, [open, prefill]);
 
   const { data: rules = [], isLoading } = useQuery<AutomationRule[]>({
     queryKey: ["/api/boards", boardId, "automations"],

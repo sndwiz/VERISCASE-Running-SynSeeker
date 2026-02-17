@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, memo, useCallback } from "react";
-import { ChevronDown, ChevronRight, Plus, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, MoreHorizontal, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -192,6 +192,9 @@ interface TaskGroupProps {
   onColumnChangeType?: (columnId: string, newType: ColumnType) => void;
   onColumnUpdateDescription?: (columnId: string, description: string) => void;
   onColumnAIAutofill?: (columnId: string) => void;
+  onColumnAutomate?: (columnId: string) => void;
+  onAutomateGroup?: (groupId: string) => void;
+  onAutomateTask?: (taskId: string) => void;
   allSelected?: boolean;
   onSelectAll?: (selected: boolean) => void;
 }
@@ -225,6 +228,9 @@ export const TaskGroup = memo(function TaskGroup({
   onColumnChangeType,
   onColumnUpdateDescription,
   onColumnAIAutofill,
+  onColumnAutomate,
+  onAutomateGroup,
+  onAutomateTask,
   allSelected = false,
   onSelectAll,
 }: TaskGroupProps) {
@@ -354,6 +360,18 @@ export const TaskGroup = memo(function TaskGroup({
               <DropdownMenuItem onClick={onEditGroup}>
                 Rename Group
               </DropdownMenuItem>
+              {onAutomateGroup && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onAutomateGroup(group.id)}
+                    data-testid={`automate-group-${group.id}`}
+                  >
+                    <Zap className="h-4 w-4 mr-2 text-amber-500" />
+                    Automate this group
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onDeleteGroup}
@@ -403,6 +421,7 @@ export const TaskGroup = memo(function TaskGroup({
                     onChangeType={onColumnChangeType}
                     onUpdateDescription={onColumnUpdateDescription}
                     onAIAutofill={onColumnAIAutofill}
+                    onAutomate={onColumnAutomate}
                     currentSort={currentSort}
                   />
                 </div>
@@ -437,6 +456,7 @@ export const TaskGroup = memo(function TaskGroup({
                 onAddRowBelow={() => {
                   setIsInlineEditing(true);
                 }}
+                onAutomate={onAutomateTask}
               />
             ))}
 

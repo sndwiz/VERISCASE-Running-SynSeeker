@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoardHeader, type GroupByOption } from "@/components/board/board-header";
 import { TaskGroup } from "@/components/board/task-group";
-import { AutomationsPanel } from "@/components/board/automations-panel";
+import { AutomationsPanel, type AutomationPrefill } from "@/components/board/automations-panel";
 import { BulkActionsBar } from "@/components/board/bulk-actions-bar";
 import { WorkflowRecorder, useWorkflowRecorder } from "@/components/board/workflow-recorder";
 import { ColumnCenter } from "@/components/board/column-center";
@@ -49,6 +49,7 @@ export default function BoardPage() {
   const [defaultGroupId, setDefaultGroupId] = useState<string | undefined>();
   const [groupBy, setGroupBy] = useState<GroupByOption>("default");
   const [automationsPanelOpen, setAutomationsPanelOpen] = useState(false);
+  const [automationPrefill, setAutomationPrefill] = useState<AutomationPrefill | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [editStatusLabelsOpen, setEditStatusLabelsOpen] = useState(false);
   const [currentSort, setCurrentSort] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
@@ -445,7 +446,7 @@ export default function BoardPage() {
         groupBy={groupBy}
         onGroupByChange={setGroupBy}
         taskCount={tasks.length}
-        onOpenAutomations={() => setAutomationsPanelOpen(true)}
+        onOpenAutomations={() => { setAutomationPrefill(null); setAutomationsPanelOpen(true); }}
         onOpenColumnCenter={() => setColumnCenterOpen(true)}
         onInvite={() => setInviteDialogOpen(true)}
         onExport={() => {
@@ -555,6 +556,18 @@ export default function BoardPage() {
                           onColumnChangeType={handleColumnChangeType}
                           onColumnUpdateDescription={handleColumnUpdateDescription}
                           onColumnAIAutofill={(colId) => setAiAutofillColumnId(colId)}
+                          onColumnAutomate={(colId) => {
+                            setAutomationPrefill({ triggerId: "column_changed", config: { triggerField: colId } });
+                            setAutomationsPanelOpen(true);
+                          }}
+                          onAutomateGroup={(groupId) => {
+                            setAutomationPrefill({ actionId: "move_to_group", config: { targetGroup: groupId } });
+                            setAutomationsPanelOpen(true);
+                          }}
+                          onAutomateTask={() => {
+                            setAutomationPrefill({ triggerId: "status_changed" });
+                            setAutomationsPanelOpen(true);
+                          }}
                           allSelected={groupAllSelected}
                           onSelectAll={(selected) => {
                             if (selected) {
@@ -682,7 +695,8 @@ export default function BoardPage() {
         <AutomationsPanel
           boardId={boardId}
           open={automationsPanelOpen}
-          onClose={() => setAutomationsPanelOpen(false)}
+          onClose={() => { setAutomationsPanelOpen(false); setAutomationPrefill(null); }}
+          prefill={automationPrefill}
         />
       )}
 

@@ -1,5 +1,5 @@
 import { useState, memo, useCallback } from "react";
-import { MoreHorizontal, Trash2, ChevronRight, ChevronDown, Plus, Circle } from "lucide-react";
+import { MoreHorizontal, Trash2, ChevronRight, ChevronDown, Plus, Circle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,7 @@ interface TaskRowProps {
   canDelete?: boolean;
   rowIndex?: number;
   onAddRowBelow?: () => void;
+  onAutomate?: (taskId: string) => void;
 }
 
 export const TaskRow = memo(function TaskRow({
@@ -80,6 +81,7 @@ export const TaskRow = memo(function TaskRow({
   canDelete = true,
   rowIndex = 0,
   onAddRowBelow,
+  onAutomate,
 }: TaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
@@ -390,6 +392,18 @@ export const TaskRow = memo(function TaskRow({
               <Plus className="h-4 w-4 mr-2" />
               Add Subitem
             </DropdownMenuItem>
+            {onAutomate && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAutomate(task.id);
+                }}
+                data-testid={`menu-automate-task-${task.id}`}
+              >
+                <Zap className="h-4 w-4 mr-2 text-amber-500" />
+                Automate
+              </DropdownMenuItem>
+            )}
             {canDelete && (
               <DropdownMenuItem
                 onClick={(e) => {

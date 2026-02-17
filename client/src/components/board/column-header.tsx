@@ -43,6 +43,7 @@ import {
   EyeOff,
   RefreshCw,
   Sparkles,
+  Zap,
 } from "lucide-react";
 import type { ColumnDef, ColumnType } from "@shared/schema";
 
@@ -57,6 +58,7 @@ interface ColumnHeaderProps {
   onChangeType?: (columnId: string, newType: ColumnType) => void;
   onUpdateDescription?: (columnId: string, description: string) => void;
   onAIAutofill?: (columnId: string) => void;
+  onAutomate?: (columnId: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
 }
 
@@ -88,6 +90,7 @@ export function ColumnHeader({
   onChangeType,
   onUpdateDescription,
   onAIAutofill,
+  onAutomate,
   currentSort,
 }: ColumnHeaderProps) {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -185,6 +188,19 @@ export function ColumnHeader({
               >
                 <Sparkles className="h-4 w-4 mr-2 text-primary" />
                 Autofill with AI
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          {onAutomate && (
+            <>
+              <DropdownMenuItem
+                onClick={() => onAutomate(column.id)}
+                data-testid={`automate-${column.id}`}
+              >
+                <Zap className="h-4 w-4 mr-2 text-amber-500" />
+                Automate this column
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
