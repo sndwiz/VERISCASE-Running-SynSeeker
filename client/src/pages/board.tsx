@@ -525,6 +525,9 @@ export default function BoardPage() {
                     onColumnAIAutofill={(colId) => setAiAutofillColumnId(colId)}
                     currentSort={currentSort}
                     onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                    onAddColumn={(type, title) => {
+                      handleAddColumn({ title, type, width: 120, visible: true });
+                    }}
                     allSelected={selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
                     onSelectAll={(selected) => {
                       if (selected) {
@@ -559,6 +562,9 @@ export default function BoardPage() {
                         onSelectTask={handleSelectTask}
                         currentSort={currentSort}
                         onOpenColumnCenter={() => setColumnCenterOpen(true)}
+                        onAddColumn={(type, title) => {
+                          handleAddColumn({ title, type, width: 120, visible: true });
+                        }}
                         canDeleteTasks={canDeleteTasks}
                         onInlineAddTask={handleInlineAddTask}
                       />

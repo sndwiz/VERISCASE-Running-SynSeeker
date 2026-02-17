@@ -1,7 +1,6 @@
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ColumnHeader } from "./column-header";
+import { AddColumnPopover } from "./add-column-popover";
 import type { ColumnDef, ColumnType } from "@shared/schema";
 
 interface BoardTableHeaderProps {
@@ -17,6 +16,7 @@ interface BoardTableHeaderProps {
   onColumnAIAutofill?: (columnId: string) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
+  onAddColumn?: (type: ColumnType, title: string) => void;
   allSelected?: boolean;
   onSelectAll?: (selected: boolean) => void;
 }
@@ -34,6 +34,7 @@ export function BoardTableHeader({
   onColumnAIAutofill,
   currentSort,
   onOpenColumnCenter,
+  onAddColumn,
   allSelected = false,
   onSelectAll,
 }: BoardTableHeaderProps) {
@@ -80,20 +81,16 @@ export function BoardTableHeader({
           />
         </div>
       ))}
-      {onOpenColumnCenter && (
-        <div className="flex-shrink-0 w-10 flex items-center justify-center border-r border-border">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onOpenColumnCenter}
-            data-testid="button-add-column-header"
-            title="Add column"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      {!onOpenColumnCenter && <div className="w-8 flex-shrink-0" />}
+      <div className="flex-shrink-0 w-10 flex items-center justify-center border-r border-border">
+        {onAddColumn && onOpenColumnCenter ? (
+          <AddColumnPopover
+            onAddColumn={onAddColumn}
+            onOpenMoreColumns={onOpenColumnCenter}
+          />
+        ) : (
+          <div className="w-10" />
+        )}
+      </div>
     </div>
   );
 }

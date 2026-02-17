@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TaskRow } from "./task-row";
+import { AddColumnPopover } from "./add-column-popover";
 import type { Group, Task, ColumnDef, ColumnType, CustomStatusLabel, StatusType } from "@shared/schema";
 import { statusConfig } from "@shared/schema";
 
@@ -155,7 +156,7 @@ function GroupSummaryRow({
           {renderSummaryCell(col)}
         </div>
       ))}
-      <div className="w-8 flex-shrink-0" />
+      <div className="w-10 flex-shrink-0" />
     </div>
   );
 }
@@ -177,6 +178,7 @@ interface TaskGroupProps {
   onSelectTask?: (taskId: string, selected: boolean) => void;
   currentSort?: { columnId: string; direction: "asc" | "desc" } | null;
   onOpenColumnCenter?: () => void;
+  onAddColumn?: (type: ColumnType, title: string) => void;
   canDeleteTasks?: boolean;
   onInlineAddTask?: (groupId: string, title: string) => void;
 }
@@ -198,6 +200,7 @@ export const TaskGroup = memo(function TaskGroup({
   onSelectTask,
   currentSort,
   onOpenColumnCenter,
+  onAddColumn,
   canDeleteTasks = true,
   onInlineAddTask,
 }: TaskGroupProps) {
@@ -423,7 +426,14 @@ export const TaskGroup = memo(function TaskGroup({
                   style={{ width: col.width, minWidth: col.width }}
                 />
               ))}
-              <div className="w-8 flex-shrink-0" />
+              <div className="w-10 flex-shrink-0 flex items-center justify-center">
+                {onAddColumn && onOpenColumnCenter && (
+                  <AddColumnPopover
+                    onAddColumn={onAddColumn}
+                    onOpenMoreColumns={onOpenColumnCenter}
+                  />
+                )}
+              </div>
             </div>
 
             {tasks.length > 0 && (
