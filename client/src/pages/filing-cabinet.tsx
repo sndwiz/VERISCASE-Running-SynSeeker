@@ -360,12 +360,12 @@ export default function FilingCabinetPage() {
 
   return (
     <div className="p-3 md:p-6 h-full flex flex-col gap-3 md:gap-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Filing Cabinet</h1>
-          <p className="text-muted-foreground">Organize and classify legal documents</p>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Filing Cabinet</h1>
+          <p className="text-muted-foreground text-sm">Organize and classify legal documents</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedMatterId} onValueChange={setSelectedMatterId}>
             <SelectTrigger className="w-full md:w-[250px]" data-testid="select-matter">
               <SelectValue placeholder="Select a matter" />
@@ -387,8 +387,8 @@ export default function FilingCabinetPage() {
                     onClick={() => setShowBatchUploadDialog(true)} 
                     data-testid="button-batch-upload"
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Batch Upload
+                    <Upload className="h-4 w-4 mr-0 sm:mr-2" />
+                    <span className="hidden sm:inline">Batch Upload</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Upload multiple files at once</TooltipContent>
@@ -396,8 +396,8 @@ export default function FilingCabinetPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button onClick={() => setShowAddFileDialog(true)} data-testid="button-add-file">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add File
+                    <Plus className="h-4 w-4 mr-0 sm:mr-2" />
+                    <span className="hidden sm:inline">Add File</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Add a single file</TooltipContent>
@@ -417,12 +417,12 @@ export default function FilingCabinetPage() {
         </Card>
       ) : (
         <div className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 min-h-0">
-          <Card className="w-64 shrink-0">
+          <Card className="w-full md:w-64 shrink-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Categories</CardTitle>
             </CardHeader>
             <CardContent className="p-2">
-              <ScrollArea className="h-[calc(100vh-280px)]">
+              <ScrollArea className="max-h-[200px] md:max-h-[calc(100vh-280px)]">
                 <div className="space-y-1">
                   <Button
                     variant={selectedCategory === "all" ? "secondary" : "ghost"}
@@ -470,7 +470,7 @@ export default function FilingCabinetPage() {
 
           <Card className="flex-1 flex flex-col min-h-0">
             <CardHeader className="pb-2 shrink-0">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <CardTitle className="text-sm font-medium">
                   {selectedCategory === "all" ? "All Documents" : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1).replace("-", " ")}
                 </CardTitle>
@@ -481,7 +481,7 @@ export default function FilingCabinetPage() {
                       placeholder="Search files..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 w-64"
+                      className="pl-9 w-full sm:w-64"
                       data-testid="input-search-files"
                     />
                   </div>
@@ -506,7 +506,7 @@ export default function FilingCabinetPage() {
                       return (
                         <div
                           key={file.id}
-                          className="flex items-center gap-4 p-4 hover-elevate cursor-pointer"
+                          className="flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 hover-elevate cursor-pointer flex-wrap sm:flex-nowrap"
                           onClick={() => handleClassify(file)}
                           data-testid={`row-file-${file.id}`}
                         >
@@ -524,7 +524,7 @@ export default function FilingCabinetPage() {
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            <div className="flex items-center gap-2 sm:gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
                               <span className="flex items-center gap-1">
                                 <FileText className="h-3 w-3" />
                                 {file.fileName}
@@ -678,7 +678,7 @@ export default function FilingCabinetPage() {
               <TabsTrigger value="metadata" className="flex-1">Metadata</TabsTrigger>
             </TabsList>
             <TabsContent value="type" className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select 
@@ -724,7 +724,7 @@ export default function FilingCabinetPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Document Role</Label>
                   <Select 
@@ -773,7 +773,7 @@ export default function FilingCabinetPage() {
                   data-testid="input-caption-title"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Filing Date</Label>
                   <Input

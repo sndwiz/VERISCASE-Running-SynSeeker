@@ -119,7 +119,7 @@ function InvestigationList() {
           <div className="flex items-center gap-3">
             <Radar className="h-6 w-6" />
             <div>
-              <h1 className="text-2xl font-bold" data-testid="text-synseeker-title">SynSeeker</h1>
+              <h1 className="text-xl md:text-2xl font-bold" data-testid="text-synseeker-title">SynSeeker</h1>
               <p className="text-sm text-muted-foreground">Automated entity investigation engine</p>
             </div>
           </div>
@@ -439,7 +439,7 @@ function InvestigationDetail({ id, onBack }: { id: string; onBack: () => void })
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold truncate" data-testid="text-investigation-name">
+              <h1 className="text-xl md:text-2xl font-bold truncate" data-testid="text-investigation-name">
                 {investigation.targetName}
               </h1>
               <StatusBadge status={investigation.status} />
@@ -458,7 +458,7 @@ function InvestigationDetail({ id, onBack }: { id: string; onBack: () => void })
 
         {!isScanning && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
               <SummaryCard label="Total Findings" value={investigation.totalFindings} />
               <SummaryCard label="Critical Flags" value={investigation.criticalFlags} critical />
               <SummaryCard label="Entities" value={investigation.entityCount} />
@@ -484,7 +484,7 @@ function InvestigationDetail({ id, onBack }: { id: string; onBack: () => void })
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList data-testid="tabs-investigation">
+              <TabsList data-testid="tabs-investigation" className="flex-wrap h-auto">
                 <TabsTrigger value="findings" data-testid="tab-findings">
                   Findings ({investigation.findings?.length || 0})
                 </TabsTrigger>

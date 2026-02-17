@@ -246,7 +246,7 @@ export default function ApprovalsPage() {
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto" data-testid="approvals-page">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Lawyer Review Queue</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Lawyer Review Queue</h1>
           <p className="text-sm text-muted-foreground">Quick review, initial, approve or send back</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -341,7 +341,7 @@ export default function ApprovalsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="cursor-pointer hover-elevate" onClick={() => setFilterStatus("pending")} data-testid="card-pending">
           <CardHeader className="p-3 pb-1">
             <CardDescription className="text-xs">Pending</CardDescription>

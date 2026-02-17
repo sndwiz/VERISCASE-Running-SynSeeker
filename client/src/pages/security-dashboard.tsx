@@ -241,7 +241,7 @@ export default function SecurityDashboardPage() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-3 md:p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4">
@@ -318,7 +318,7 @@ export default function SecurityDashboardPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
+            <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="overview" data-testid="tab-overview">
                 <Gauge className="h-4 w-4 mr-1" />
                 Security Features

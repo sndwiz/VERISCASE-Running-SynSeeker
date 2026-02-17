@@ -326,7 +326,7 @@ function BoardLinkSection({ job }: { job: PipelineJob }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-        <SelectTrigger className="w-48" data-testid="select-link-board">
+        <SelectTrigger className="w-full sm:w-48" data-testid="select-link-board">
           <SelectValue placeholder="Select a board" />
         </SelectTrigger>
         <SelectContent>
@@ -519,7 +519,7 @@ export default function VideoPipelinePage() {
       <div className="max-w-4xl mx-auto p-4 space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Legal Video Pipeline</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground" data-testid="text-page-title">Legal Video Pipeline</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Convert iPhone screen recordings of legal documents into structured, searchable text using local AI models.
             </p>

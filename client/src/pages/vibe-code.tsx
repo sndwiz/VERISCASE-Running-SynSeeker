@@ -189,11 +189,11 @@ export default function VibeAutomatorPage() {
       )}
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="max-w-4xl mx-auto px-3 md:px-6 py-6 md:py-12">
           <div className="text-center mb-10">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Zap className="h-6 w-6 text-primary" />
-              <h1 className="text-3xl font-bold" data-testid="text-vibe-heading">
+              <h1 className="text-2xl md:text-3xl font-bold" data-testid="text-vibe-heading">
                 Vibe Automator
               </h1>
             </div>

@@ -425,7 +425,7 @@ function MessagesTab() {
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={selectedClientId} onValueChange={(v) => { setSelectedClientId(v); setSelectedMatterId(""); }}>
-          <SelectTrigger className="w-64" data-testid="select-message-client">
+          <SelectTrigger className="w-full md:w-64" data-testid="select-message-client">
             <SelectValue placeholder="Select a client" />
           </SelectTrigger>
           <SelectContent>
@@ -572,7 +572,7 @@ function SharedDocumentsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-          <SelectTrigger className="w-64" data-testid="select-docs-client">
+          <SelectTrigger className="w-full md:w-64" data-testid="select-docs-client">
             <SelectValue placeholder="All clients" />
           </SelectTrigger>
           <SelectContent>
@@ -688,9 +688,9 @@ function SharedDocumentsTab() {
 
 export default function ClientPortalPage() {
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Client Portal</h1>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Client Portal</h1>
         <p className="text-muted-foreground">Manage client access, communications, and shared documents</p>
       </div>
 

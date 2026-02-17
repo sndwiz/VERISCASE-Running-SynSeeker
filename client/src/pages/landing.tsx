@@ -54,7 +54,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between gap-4">
+        <div className="container mx-auto px-3 md:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-md bg-primary flex items-center justify-center" data-testid="logo-icon">
               <Scale className="h-5 w-5 text-primary-foreground" />
@@ -72,17 +72,17 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="py-16 px-6 flex-shrink-0">
+        <section className="py-10 md:py-16 px-3 md:px-6 flex-shrink-0">
           <div className="container mx-auto max-w-3xl text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10 text-primary text-xs font-medium mb-8" data-testid="badge-proprietary">
               <Lock className="h-3 w-3" />
               Authorized Access Only
             </div>
             
-            <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-2 uppercase" data-testid="text-hero-org">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight mb-2 uppercase" data-testid="text-hero-org">
               Synergy LAW
             </h1>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 text-foreground/85" data-testid="text-hero-product">
+            <h2 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-3 text-foreground/85" data-testid="text-hero-product">
               VERICASE
             </h2>
             <p className="text-sm text-muted-foreground mb-8 tracking-widest font-medium uppercase" data-testid="text-hero-engine">
@@ -102,7 +102,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           </div>
         </section>
 
-        <section className="py-12 px-6 bg-muted/30 flex-1">
+        <section className="py-8 md:py-12 px-3 md:px-6 bg-muted/30 flex-1">
           <div className="container mx-auto max-w-5xl">
             <div className="text-center mb-8">
               <h2 className="text-lg font-semibold mb-1" data-testid="text-capabilities-headline">Platform Capabilities</h2>
@@ -111,7 +111,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="grid-capabilities">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="grid-capabilities">
               {capabilities.map((cap, index) => (
                 <Card key={index} data-testid={`card-capability-${index}`}>
                   <CardContent className="pt-5 pb-4 px-5">
@@ -132,8 +132,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         </section>
       </main>
 
-      <footer className="border-t py-4 px-6" data-testid="section-footer">
-        <div className="container mx-auto flex items-center justify-between text-xs text-muted-foreground">
+      <footer className="border-t py-4 px-3 md:px-6" data-testid="section-footer">
+        <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <Scale className="h-3 w-3" />
             <span data-testid="text-copyright">Vericase by Synergy LAW</span>

@@ -138,14 +138,14 @@ export default function PdfForensicsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto" data-testid="pdf-forensics-page">
-      <div className="flex items-center justify-between gap-4 flex-wrap p-4 border-b">
+      <div className="flex items-center justify-between gap-4 flex-wrap p-3 md:p-4 border-b">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">PDF Forensic Analysis</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">PDF Forensic Analysis</h1>
           <p className="text-sm text-muted-foreground">Upload a PDF to analyze for manipulation, hidden content, and structural anomalies</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-4 md:space-y-6">
+      <div className="flex-1 overflow-auto p-3 md:p-4 space-y-4 md:space-y-6">
         {!report && (
           <div className="max-w-2xl mx-auto space-y-4 md:space-y-6">
             <Card>
@@ -235,7 +235,7 @@ export default function PdfForensicsPage() {
 
             <Card>
               <CardContent className="p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-xs text-muted-foreground uppercase">Filename</p>
                     <p className="font-medium truncate">{report.filename}</p>
@@ -256,7 +256,7 @@ export default function PdfForensicsPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {(["critical", "high", "medium", "low", "info"] as const).map(sev => {
                 const config = SEVERITY_CONFIG[sev];
                 const count = report.severityCounts[sev] || 0;

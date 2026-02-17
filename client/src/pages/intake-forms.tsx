@@ -120,7 +120,7 @@ export default function IntakeFormsPage() {
             <ClipboardList className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">
+            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
               Client Intake Forms
             </h1>
             <p className="text-muted-foreground" data-testid="text-page-subtitle">
@@ -274,7 +274,7 @@ function FormPreview({ template, onBack }: { template: FormTemplate; onBack: () 
                   Contact Information
                 </h2>
 
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="space-y-2">
                     <Label data-testid="label-prefix">Prefix</Label>
                     <Select disabled>
@@ -320,7 +320,7 @@ function FormPreview({ template, onBack }: { template: FormTemplate; onBack: () 
                   <Input placeholder="123 Main Street" disabled data-testid="input-street" />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <Label data-testid="label-city">City</Label>
                     <Input placeholder="City" disabled data-testid="input-city" />

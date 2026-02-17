@@ -76,7 +76,7 @@ function DiffView({ original, washed }: { original: string; washed: string }) {
   const maxLen = Math.max(origLines.length, washLines.length);
 
   return (
-    <div className="grid grid-cols-2 gap-2 font-mono text-xs" data-testid="diff-view">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 font-mono text-xs" data-testid="diff-view">
       <div>
         <div className="text-muted-foreground font-semibold mb-1 text-sm font-sans">Original</div>
         <div className="bg-red-50 dark:bg-red-950/20 rounded-md p-3 overflow-auto max-h-96 border border-red-200 dark:border-red-900/30">
@@ -116,7 +116,7 @@ function DiffView({ original, washed }: { original: string; washed: string }) {
 function PiiReportView({ report }: { report: WashPiiReport }) {
   return (
     <div className="space-y-4" data-testid="pii-report">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-3 text-center">
             <div className="text-2xl font-bold" data-testid="text-total-entities">{report.totalEntities}</div>
@@ -161,7 +161,7 @@ function PiiReportView({ report }: { report: WashPiiReport }) {
           <CardTitle className="text-sm">Entity Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-auto max-h-64">
+          <div className="overflow-x-auto max-h-64">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b">
@@ -312,7 +312,7 @@ export default function DocumentWashPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="input" data-testid="tab-input">

@@ -331,9 +331,9 @@ export default function ModelAdvisorPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-3 md:p-4">
         <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="rounded-md bg-muted p-2">

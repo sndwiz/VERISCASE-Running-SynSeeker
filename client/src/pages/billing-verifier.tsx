@@ -728,9 +728,9 @@ export default function BillingVerifierPage() {
 
   return (
     <div className="flex flex-col h-full overflow-auto" data-testid="billing-verifier-page">
-      <div className="flex items-center justify-between gap-4 flex-wrap p-4 border-b">
+      <div className="flex items-center justify-between gap-4 flex-wrap p-3 md:p-4 border-b">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Billing Verifier</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Billing Verifier</h1>
           <p className="text-sm text-muted-foreground">Time entry verification, multi-rounding comparison, Clio-ready export, and branded billing statements</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -761,7 +761,7 @@ export default function BillingVerifierPage() {
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-3 md:p-4">
           <TabsContent value="upload" className="mt-0">
             <UploadTab
               isProcessing={isProcessing}

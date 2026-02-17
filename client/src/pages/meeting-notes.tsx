@@ -111,17 +111,17 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
   return (
     <div className="p-4 md:p-6 space-y-4" data-testid="meeting-list-view">
       <div
-        className="relative rounded-md p-6 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 overflow-hidden"
+        className="relative rounded-md p-3 md:p-6 bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 overflow-hidden"
         data-testid="section-hero-banner"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/10 blur-3xl -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute top-0 right-0 w-48 md:w-64 h-48 md:h-64 rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/10 blur-3xl -translate-y-1/2 translate-x-1/4" />
         <div className="relative z-10 space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-blue-300" />
             <span className="text-xs font-medium text-blue-300" data-testid="badge-ai-powered">AI-Powered</span>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white" data-testid="text-hero-title">AI Meeting Notetaker</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white" data-testid="text-hero-title">AI Meeting Notetaker</h1>
             <p className="text-white/80 text-sm mt-1" data-testid="text-hero-subtitle">Turn discussions into results</p>
           </div>
           <ul className="space-y-1.5">
@@ -518,7 +518,7 @@ function MeetingDetailView({ meeting, onBack }: { meeting: Meeting; onBack: () =
           </Tabs>
         </div>
 
-        <div className="hidden lg:block w-80 border-l bg-background">
+        <div className="hidden lg:block w-64 xl:w-80 border-l bg-background">
           <AiSidekick meeting={meeting} />
         </div>
       </div>

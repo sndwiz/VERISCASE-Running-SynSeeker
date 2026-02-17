@@ -114,7 +114,7 @@ export default function TimeTrackingPage() {
     <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="time-tracking-page">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Time Tracking</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Time Tracking</h1>
           <p className="text-muted-foreground">Log and manage billable hours</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

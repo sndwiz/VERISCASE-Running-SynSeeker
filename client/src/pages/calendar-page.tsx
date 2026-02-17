@@ -289,7 +289,7 @@ export default function CalendarPage() {
     <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="calendar-page">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Unified Calendar</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Unified Calendar</h1>
           <p className="text-muted-foreground">
             All dates across your practice in one view
             <span className="ml-2 text-xs">
@@ -307,7 +307,7 @@ export default function CalendarPage() {
                 data-testid="button-sync-calendar"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-                Sync All
+                <span className="hidden sm:inline">Sync All</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Pull dates from all sources (tasks, filings, meetings, invoices)</TooltipContent>
@@ -331,7 +331,7 @@ export default function CalendarPage() {
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-event">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Event
+                    <span className="hidden sm:inline">Add Event</span>
                   </Button>
                 </DialogTrigger>
               </TooltipTrigger>
@@ -558,7 +558,7 @@ export default function CalendarPage() {
           <CardContent>
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map(day => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                <div key={day} className="text-center text-xs md:text-sm font-medium text-muted-foreground py-2">
                   {day}
                 </div>
               ))}

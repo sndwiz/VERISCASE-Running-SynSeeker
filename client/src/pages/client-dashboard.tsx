@@ -378,7 +378,7 @@ export default function ClientDashboardPage() {
       <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="page-client-dashboard">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-semibold" data-testid="text-page-title">Client Dashboard</h1>
+            <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-page-title">Client Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">Overview of all clients, cases, and upcoming activities</p>
           </div>
         </div>
@@ -459,7 +459,7 @@ export default function ClientDashboardPage() {
 
             return (
               <Card key={summary.client.id} className={healthColor} data-testid={`client-card-${summary.client.id}`}>
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

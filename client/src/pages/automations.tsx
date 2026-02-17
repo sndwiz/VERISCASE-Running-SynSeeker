@@ -449,9 +449,9 @@ export default function AutomationsPage() {
 
   return (
     <div className="h-full flex flex-col" data-testid="page-automations">
-      <div className="flex items-center justify-between p-4 border-b gap-4 flex-wrap">
+      <div className="flex items-center justify-between p-3 md:p-4 border-b gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Automations</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Automations</h1>
           <p className="text-muted-foreground">AI-powered workflow automation</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -679,7 +679,7 @@ export default function AutomationsPage() {
                               <h3 className="text-sm font-semibold">{category.name}</h3>
                               <Badge variant="secondary" className="text-xs">{categoryTemplates.length}</Badge>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                               {categoryTemplates.slice(0, 6).map((template) => (
                                 <TemplateCard 
                                   key={template.id} 
@@ -702,7 +702,7 @@ export default function AutomationsPage() {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {aiTemplates.map((template) => (
                           <TemplateCard 
                             key={template.id} 
@@ -721,7 +721,7 @@ export default function AutomationsPage() {
                           </div>
                           <h3 className="font-semibold">Slack</h3>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {integrationTemplates.filter(t => t.icon === "slack").map((template) => (
                             <TemplateCard 
                               key={template.id} 
@@ -739,7 +739,7 @@ export default function AutomationsPage() {
                           </div>
                           <h3 className="font-semibold">Gmail</h3>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {integrationTemplates.filter(t => t.icon === "gmail").map((template) => (
                             <TemplateCard 
                               key={template.id} 
@@ -757,7 +757,7 @@ export default function AutomationsPage() {
                           </div>
                           <h3 className="font-semibold">SMS / Twilio</h3>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {integrationTemplates.filter(t => t.icon === "sms").map((template) => (
                             <TemplateCard 
                               key={template.id} 
@@ -785,7 +785,7 @@ export default function AutomationsPage() {
       </div>
 
       {showAIBuilder && (
-        <div className="p-4 border-b bg-muted/30">
+        <div className="p-3 md:p-4 border-b bg-muted/30">
           <AIAutomationBuilder 
             onBuildAutomation={handleBuildFromAI}
             suggestedAutomations={suggestedAutomations}
@@ -800,7 +800,7 @@ export default function AutomationsPage() {
             <div className="absolute top-10 left-10 w-40 h-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.4), transparent)" }} />
             <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full" style={{ background: "radial-gradient(circle, rgba(20,184,166,0.3), transparent)" }} />
           </div>
-          <div className="relative px-6 py-8">
+          <div className="relative px-3 md:px-6 py-6 md:py-8">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-md" style={{ backgroundColor: "rgba(99,102,241,0.2)" }}>
@@ -840,7 +840,7 @@ export default function AutomationsPage() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="section-workflow-templates">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" data-testid="section-workflow-templates">
                 {[
                   { icon: MessageSquare, title: "Meeting Summarizer", desc: "Record, transcribe, and summarize meeting notes automatically", color: "#6366f1" },
                   { icon: Smile, title: "Feedback Sentiment", desc: "Analyze client feedback, detect sentiment, and route responses", color: "#ec4899" },
@@ -902,7 +902,7 @@ export default function AutomationsPage() {
         </div>
       ) : (
         <ScrollArea className="flex-1">
-          <div className="p-4 grid gap-4">
+          <div className="p-3 md:p-4 grid gap-4">
             {rules.map(rule => {
               const TriggerIcon = TRIGGER_TYPES[rule.triggerType as keyof typeof TRIGGER_TYPES]?.icon || Zap;
               const ActionIcon = ACTION_TYPES[rule.actionType as keyof typeof ACTION_TYPES]?.icon || Play;

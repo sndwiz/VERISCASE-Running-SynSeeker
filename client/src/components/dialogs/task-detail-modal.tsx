@@ -554,7 +554,7 @@ export function TaskDetailModal({
                 <div className="space-y-4">
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task Details</h4>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                         <CheckSquare className="h-3 w-3" />

@@ -249,7 +249,7 @@ export function BoardHeader({
           <Input
             type="search"
             placeholder="Search..."
-            className={`pl-7 h-8 text-sm transition-all ${searchExpanded || searchQuery ? "w-44" : "w-28"}`}
+            className={`pl-7 h-8 text-sm transition-all ${searchExpanded || searchQuery ? "w-32 sm:w-44" : "w-24 sm:w-28"}`}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onFocus={() => setSearchExpanded(true)}

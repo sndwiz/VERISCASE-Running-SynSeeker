@@ -129,7 +129,7 @@ function DashboardView({ onSelect, onCreate }: { onSelect: (id: string) => void;
     <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="trust-reconciliation-dashboard">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Trust Reconciliation</h1>
+          <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-page-title">Trust Reconciliation</h1>
           <p className="text-sm text-muted-foreground">Three-way IOLTA trust account reconciliation</p>
         </div>
         <Button onClick={onCreate} data-testid="button-new-reconciliation">
@@ -371,7 +371,7 @@ function DetailView({ batchId, onBack }: { batchId: string; onBack: () => void }
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold" data-testid="text-batch-name">{batch.name}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-batch-name">{batch.name}</h1>
             <p className="text-sm text-muted-foreground">
               {batch.bankAccountName} | {formatDate(batch.periodStart)} - {formatDate(batch.periodEnd)}
             </p>

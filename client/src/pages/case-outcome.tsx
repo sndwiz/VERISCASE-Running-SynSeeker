@@ -164,7 +164,7 @@ export default function CaseOutcomePage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 border-b flex-wrap">
+      <div className="flex items-center gap-3 p-3 md:p-4 border-b flex-wrap">
         <Link href={`/matters/${matterId}`}>
           <Button variant="ghost" size="icon" data-testid="button-back"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
@@ -179,7 +179,7 @@ export default function CaseOutcomePage() {
               data-testid="button-submit-kb"
             >
               {submitToKbMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              Submit to Knowledge Base
+              <span className="hidden sm:inline">Submit to Knowledge Base</span>
             </Button>
           )}
           {outcome?.submittedToKb && (

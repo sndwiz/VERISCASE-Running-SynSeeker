@@ -537,7 +537,7 @@ export default function BoardPage() {
         allCollapsed={allCollapsed}
       />
 
-      <div className="flex items-center justify-between border-b px-2">
+      <div className="flex items-center justify-between border-b px-2 flex-wrap gap-2">
         <ViewTabs activeView={activeView} onViewChange={setActiveView} />
         {activeView === "table" && (
           <div className="flex items-center gap-0.5 py-1">
@@ -975,9 +975,9 @@ export default function BoardPage() {
       </Dialog>
 
       {columnFilter && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg flex items-center gap-2 text-sm">
-          <Filter className="h-4 w-4" />
-          <span>Filtering by "{board?.columns.find(c => c.id === columnFilter.columnId)?.title}" contains "{columnFilter.value}"</span>
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md shadow-lg flex items-center gap-2 text-xs md:text-sm max-w-[90vw]">
+          <Filter className="h-4 w-4 shrink-0" />
+          <span className="truncate">Filtering by "{board?.columns.find(c => c.id === columnFilter.columnId)?.title}" contains "{columnFilter.value}"</span>
           <Button
             variant="secondary"
             size="sm"

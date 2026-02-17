@@ -208,9 +208,9 @@ export default function LegalResearchPage() {
   }, [completedCount, steps.length]);
 
   return (
-    <div className="p-6 space-y-6" data-testid="legal-research-page">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="legal-research-page">
       <div>
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Legal Research</h1>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Legal Research</h1>
         <p className="text-muted-foreground">Deep AI-powered legal research with multi-step analysis</p>
       </div>
 

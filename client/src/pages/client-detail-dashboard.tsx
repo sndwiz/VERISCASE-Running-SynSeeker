@@ -357,7 +357,7 @@ export default function ClientDetailDashboard() {
             </Button>
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-semibold truncate" data-testid="text-client-name">{client.name}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold truncate" data-testid="text-client-name">{client.name}</h1>
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5 flex-wrap">
               {client.company && (
                 <span className="flex items-center gap-1">
@@ -381,7 +381,7 @@ export default function ClientDetailDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Object.entries(statusConfig).map(([key, cfg]) => {
             const StatusIcon = cfg.icon;
             return (
@@ -443,7 +443,7 @@ export default function ClientDetailDashboard() {
 
                 return (
                   <Card key={matter.id} className={urgentDeadline ? "border-red-500/50" : ""} data-testid={`matter-card-${matter.id}`}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -594,7 +594,7 @@ export default function ClientDetailDashboard() {
                 const urgent = daysUntil(filing.startDate) <= 3;
                 return (
                   <Card key={filing.id} className={urgent ? "border-red-500/50" : ""} data-testid={`filing-card-${filing.id}`}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex-1 min-w-0">
                           <button
@@ -662,7 +662,7 @@ export default function ClientDetailDashboard() {
                 const urgent = (event.eventType === "deadline" || event.eventType === "court-date" || event.eventType === "hearing") && daysUntil(event.startDate) <= 3;
                 return (
                   <Card key={event.id} className={urgent ? "border-red-500/50" : ""} data-testid={`date-card-${event.id}`}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div className={`p-2 rounded-md bg-muted/50 shrink-0`}>

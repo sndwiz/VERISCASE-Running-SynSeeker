@@ -726,9 +726,9 @@ function ImportTab() {
 export default function DataPortabilityPage() {
   return (
     <div className="h-full overflow-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto p-3 md:p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">Data Portability</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Data Portability</h1>
           <p className="text-muted-foreground mt-1">Export your firm data or import from other legal practice management systems.</p>
         </div>
 

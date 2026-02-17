@@ -188,7 +188,7 @@ export default function DocumentMakerPage() {
             <FilePlus2 className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold" data-testid="text-page-title">
+            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">
               Document & Form Maker
             </h1>
             <p className="text-muted-foreground">
@@ -336,7 +336,7 @@ export default function DocumentMakerPage() {
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between gap-2 p-4 border rounded-lg hover-elevate"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 border rounded-lg hover-elevate"
                         data-testid={`row-document-${doc.id}`}
                       >
                         <div className="flex items-center gap-4">
@@ -414,7 +414,7 @@ export default function DocumentMakerPage() {
                     return (
                       <div
                         key={approval.id}
-                        className="flex items-center justify-between gap-2 p-4 border rounded-lg"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-4 border rounded-lg"
                         data-testid={`row-approval-${approval.id}`}
                       >
                         <div className="flex items-center gap-4">

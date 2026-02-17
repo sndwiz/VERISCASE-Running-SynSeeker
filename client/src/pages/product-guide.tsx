@@ -72,7 +72,7 @@ function CollapsibleSection({
         data-testid={`section-${title.toLowerCase().replace(/\s+/g, "-")}`}
       >
         <Icon className="h-5 w-5 text-primary shrink-0" />
-        <span className="font-semibold text-lg flex-1">{title}</span>
+        <span className="font-semibold text-base md:text-lg flex-1">{title}</span>
         {open ? (
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         ) : (
@@ -121,14 +121,14 @@ export default function ProductGuidePage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-6 pb-20">
+      <div className="max-w-5xl mx-auto p-3 md:p-6 pb-20">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
               <Scale className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight" data-testid="text-guide-title">
+              <h1 className="text-xl md:text-3xl font-bold tracking-tight" data-testid="text-guide-title">
                 VERICASE Product Guide
               </h1>
               <p className="text-muted-foreground">
@@ -145,7 +145,7 @@ export default function ProductGuidePage() {
           </p>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <Button
             variant={activeTab === "full" ? "default" : "outline"}
             onClick={() => setActiveTab("full")}

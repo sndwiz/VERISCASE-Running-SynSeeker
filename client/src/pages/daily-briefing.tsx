@@ -93,7 +93,7 @@ export default function DailyBriefingPage() {
     <ScrollArea className="h-full">
       <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold" data-testid="text-briefing-greeting">
+          <h1 className="text-2xl md:text-3xl font-bold" data-testid="text-briefing-greeting">
             {briefing.greeting}, {briefing.user.name}
           </h1>
           <p className="text-muted-foreground" data-testid="text-briefing-date">
@@ -101,7 +101,7 @@ export default function DailyBriefingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             title="Active Tasks"
             value={briefing.summary.totalActiveTasks}
@@ -151,7 +151,7 @@ export default function DailyBriefingPage() {
           </Card>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {briefing.tasks.overdue.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
@@ -235,7 +235,7 @@ export default function DailyBriefingPage() {
           </Card>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {briefing.matters.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
@@ -448,7 +448,7 @@ function BriefingSkeleton() {
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-5 w-48" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardContent className="p-4">
@@ -457,7 +457,7 @@ function BriefingSkeleton() {
           </Card>
         ))}
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[1, 2].map((i) => (
           <Card key={i}>
             <CardHeader>

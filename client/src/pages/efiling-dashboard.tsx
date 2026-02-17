@@ -289,11 +289,11 @@ export default function EFilingDashboard() {
   const STATUS_PIPELINE = ["draft", "review", "final", "file", "served", "confirmed"];
 
   return (
-    <div className="p-4 space-y-4 h-full overflow-auto" data-testid="efiling-dashboard">
+    <div className="p-3 md:p-4 space-y-4 h-full overflow-auto" data-testid="efiling-dashboard">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Zap className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold" data-testid="text-page-title">E-Filing Automation Brain</h1>
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">E-Filing Automation Brain</h1>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -322,7 +322,7 @@ export default function EFilingDashboard() {
                 ) : (
                   <Upload className="w-4 h-4" />
                 )}
-                <span className="ml-1">Ingest Document</span>
+                <span className="ml-1 hidden sm:inline">Ingest Document</span>
               </Button>
               <input
                 ref={fileInputRef}
@@ -337,7 +337,7 @@ export default function EFilingDashboard() {
 
           <Button variant="outline" onClick={() => seedRulesMutation.mutate()} data-testid="button-seed-rules">
             <Scale className="w-4 h-4" />
-            <span className="ml-1">Load Rules</span>
+            <span className="ml-1 hidden sm:inline">Load Rules</span>
           </Button>
         </div>
       </div>
@@ -371,9 +371,9 @@ export default function EFilingDashboard() {
               </div>
             ) : dashboard ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center gap-2 mb-1">
                         <Target className="w-4 h-4 text-primary" />
                         <span className="text-sm text-muted-foreground">Case Phase</span>
@@ -384,7 +384,7 @@ export default function EFilingDashboard() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center gap-2 mb-1">
                         <FileText className="w-4 h-4 text-blue-500" />
                         <span className="text-sm text-muted-foreground">Filings</span>
@@ -395,7 +395,7 @@ export default function EFilingDashboard() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm text-muted-foreground">Deadlines</span>
@@ -406,7 +406,7 @@ export default function EFilingDashboard() {
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-center gap-2 mb-1">
                         <AlertTriangle className="w-4 h-4 text-destructive" />
                         <span className="text-sm text-muted-foreground">Overdue</span>
@@ -420,7 +420,7 @@ export default function EFilingDashboard() {
 
                 {dashboard.warnings && dashboard.warnings.length > 0 && (
                   <Card className="border-yellow-500/50">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start gap-2">
                         <Shield className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
                         <div className="space-y-1">
@@ -621,7 +621,7 @@ export default function EFilingDashboard() {
                     No filings ingested yet. Upload a document to classify and track it.
                   </p>
                 ) : (
-                  <div className="overflow-auto">
+                  <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -681,7 +681,7 @@ export default function EFilingDashboard() {
                     No deadlines computed yet. Ingest filings with dates to trigger deadline computation.
                   </p>
                 ) : (
-                  <div className="overflow-auto">
+                  <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>

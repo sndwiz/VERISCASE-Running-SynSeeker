@@ -17,8 +17,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Bot, Send, Plus, Trash2, MessageSquare, Loader2, Briefcase, Link, Paperclip, Mic, LayoutGrid, FileText, Globe, BarChart3, Lightbulb, Sparkles, GraduationCap } from "lucide-react";
+import { Bot, Send, Plus, Trash2, MessageSquare, Loader2, Briefcase, Link, Paperclip, Mic, LayoutGrid, FileText, Globe, BarChart3, Lightbulb, Sparkles, GraduationCap, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,8 @@ interface Conversation {
 export default function AIChatPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [showSidebar, setShowSidebar] = useState(true);
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [landingMessage, setLandingMessage] = useState("");
@@ -278,19 +281,29 @@ export default function AIChatPage() {
     ? [...messages, { id: -1, conversationId: selectedConversationId || 0, role: "assistant" as const, content: streamingContent, createdAt: new Date().toISOString() }]
     : messages;
 
+  const sidebarVisible = isMobile ? showSidebar : true;
+  const chatVisible = isMobile ? !showSidebar : true;
+
   return (
     <div className="flex h-full">
-      <div className="w-64 border-r flex flex-col bg-muted/30">
-        <div className="p-4 border-b">
+      {sidebarVisible && (
+      <div className={cn("border-r flex flex-col bg-muted/30", isMobile ? "w-full" : "w-64")}>
+        <div className="p-4 border-b flex gap-2">
           <Button
             onClick={handleNewChat}
-            className="w-full"
+            className="flex-1"
             disabled={createConversationMutation.isPending}
             data-testid="button-new-chat"
           >
             <Plus className="h-4 w-4 mr-2" />
-            New Chat
+            <span className="hidden sm:inline">New Chat</span>
+            <span className="sm:hidden">New</span>
           </Button>
+          {isMobile && (
+            <Button variant="outline" size="icon" onClick={() => setShowSidebar(false)} data-testid="button-close-sidebar">
+              <PanelLeftClose className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         <div className="p-4 border-b space-y-3">
@@ -384,7 +397,7 @@ export default function AIChatPage() {
                     ? "bg-primary/10"
                     : "hover-elevate"
                 )}
-                onClick={() => setSelectedConversationId(conv.id)}
+                onClick={() => { setSelectedConversationId(conv.id); if (isMobile) setShowSidebar(false); }}
                 data-testid={`conversation-${conv.id}`}
               >
                 <MessageSquare className="h-4 w-4 shrink-0" />
@@ -411,8 +424,20 @@ export default function AIChatPage() {
           </div>
         </ScrollArea>
       </div>
+      )}
 
+      {chatVisible && (
       <div className="flex-1 flex flex-col">
+        {isMobile && (
+          <div className="p-2 border-b flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setShowSidebar(true)} data-testid="button-open-sidebar">
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground truncate">
+              {currentConversation?.title || "AI Chat"}
+            </span>
+          </div>
+        )}
         {selectedConversationId ? (
           <>
             <ScrollArea className="flex-1 p-4">
@@ -425,7 +450,7 @@ export default function AIChatPage() {
                   <div className="h-20 w-20 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mb-4 shadow-lg">
                     <Bot className="h-10 w-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold mb-2" data-testid="text-assistant-header">Verbo</h2>
+                  <h2 className="text-xl md:text-2xl font-bold mb-2" data-testid="text-assistant-header">Verbo</h2>
                   <p className="text-lg text-muted-foreground mb-1">Your AI Legal Assistant</p>
                   <p className="text-muted-foreground max-w-md" data-testid="text-assistant-description">
                     Ready to help with legal research, case analysis, document drafting, and more.
@@ -493,15 +518,15 @@ export default function AIChatPage() {
           </>
         ) : (
           <div className="flex flex-col h-full overflow-auto" data-testid="section-ai-greeting">
-            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-3xl mx-auto w-full">
+            <div className="flex-1 flex flex-col items-center justify-center px-3 md:px-6 py-6 md:py-12 max-w-3xl mx-auto w-full">
               <div className="text-center mb-8">
                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center mx-auto mb-5 shadow-lg">
                   <Bot className="h-8 w-8 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold mb-2" data-testid="text-ai-greeting-title">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2" data-testid="text-ai-greeting-title">
                   Hi there,
                 </h1>
-                <p className="text-2xl text-muted-foreground font-medium" data-testid="text-ai-greeting-subtitle">
+                <p className="text-lg md:text-xl lg:text-2xl text-muted-foreground font-medium" data-testid="text-ai-greeting-subtitle">
                   What would you like to do today?
                 </p>
               </div>
@@ -541,7 +566,7 @@ export default function AIChatPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap justify-center gap-6 mb-12" data-testid="section-quick-actions">
+              <div className="flex flex-wrap justify-center gap-3 md:gap-6 mb-8 md:mb-12" data-testid="section-quick-actions">
                 {QUICK_ACTIONS.map((action, i) => (
                   <button
                     key={i}
@@ -587,6 +612,7 @@ export default function AIChatPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

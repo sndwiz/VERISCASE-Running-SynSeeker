@@ -182,7 +182,7 @@ export default function TemplatesPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden p-4 gap-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList data-testid="tabs-template-type">
+          <TabsList data-testid="tabs-template-type" className="flex-wrap h-auto">
             {Object.entries(typeLabels).map(([key, label]) => {
               const Icon = typeIcons[key];
               return (

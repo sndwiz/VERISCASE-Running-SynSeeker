@@ -144,7 +144,7 @@ export default function SettingsPage() {
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold" data-testid="text-settings-title">
+        <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-settings-title">
           Settings
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -153,7 +153,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="general" data-testid="tab-general">
             <User className="h-4 w-4 mr-2" />
             General

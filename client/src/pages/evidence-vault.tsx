@@ -377,7 +377,7 @@ export default function EvidenceVaultPage() {
     <div className="h-full flex flex-col" data-testid="page-evidence-vault">
       <div className="flex items-center justify-between p-4 border-b gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Evidence Vault</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Evidence Vault</h1>
           <p className="text-muted-foreground text-sm">Immutable file storage with SHA-256 integrity and chain-of-custody tracking</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -419,8 +419,8 @@ export default function EvidenceVaultPage() {
             onClick={() => fileInputRef.current?.click()}
             data-testid="button-upload-evidence"
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Files
+            <Upload className="h-4 w-4 mr-0 sm:mr-2" />
+            <span className="hidden sm:inline">Upload Files</span>
           </Button>
 
           <Button
@@ -444,9 +444,9 @@ export default function EvidenceVaultPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           <div
-            className={`flex-1 flex flex-col border-r relative ${isDragging ? "ring-2 ring-primary ring-inset" : ""}`}
+            className={`flex-1 flex flex-col border-b md:border-b-0 md:border-r relative ${isDragging ? "ring-2 ring-primary ring-inset" : ""}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -554,7 +554,7 @@ export default function EvidenceVaultPage() {
             </ScrollArea>
           </div>
 
-          <div className="w-full md:w-[420px] flex flex-col">
+          <div className="w-full md:w-[420px] md:min-w-[320px] flex flex-col">
             {selectedFile ? (
               <Tabs defaultValue="details" className="flex-1 flex flex-col">
                 <TabsList className="mx-4 mt-4">

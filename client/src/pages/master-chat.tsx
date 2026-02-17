@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   MessageSquare, Send, AtSign, Hash, Users, Briefcase,
-  CheckCircle2, XCircle, Play, AlertTriangle, Search,
+  CheckCircle2, XCircle, Play, AlertTriangle, Search, ChevronLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Client, Matter } from "@shared/schema";
 
 interface ChatMessage {
@@ -75,6 +76,7 @@ function getSocket(userId?: string): Socket {
 
 export default function MasterChatPage() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [scope, setScope] = useState<ScopeType>("client");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -259,66 +261,72 @@ export default function MasterChatPage() {
   const pendingProposals = proposals.filter(p => p.status === "awaiting_approval");
   const approvedProposals = proposals.filter(p => p.status === "approved");
 
+  const showSidebar = !isMobile || !selectedId;
+  const showChat = !isMobile || !!selectedId;
+
   return (
-    <div className="flex h-full" data-testid="master-chat-page">
-      <div className="w-72 border-r flex flex-col">
-        <div className="p-3 border-b space-y-2">
-          <div className="flex gap-1">
-            <Button
-              variant={scope === "client" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setScope("client"); setSelectedId(null); }}
-              data-testid="button-scope-client"
-            >
-              <Users className="h-3.5 w-3.5 mr-1" />
-              Clients
-            </Button>
-            <Button
-              variant={scope === "matter" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setScope("matter"); setSelectedId(null); }}
-              data-testid="button-scope-matter"
-            >
-              <Briefcase className="h-3.5 w-3.5 mr-1" />
-              Matters
-            </Button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder={`Search ${scope}s...`}
-              className="w-full pl-7 pr-2 py-1.5 text-sm bg-transparent border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
-              data-testid="input-search-scope"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {scopeItems.length === 0 && (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No {scope}s found
+    <div className="flex flex-col md:flex-row h-full" data-testid="master-chat-page">
+      {showSidebar && (
+        <div className="w-full md:w-72 border-b md:border-b-0 md:border-r flex flex-col md:max-h-full max-h-[100%]">
+          <div className="p-3 border-b space-y-2">
+            <div className="flex gap-1">
+              <Button
+                variant={scope === "client" ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setScope("client"); setSelectedId(null); }}
+                data-testid="button-scope-client"
+              >
+                <Users className="h-3.5 w-3.5 mr-1" />
+                Clients
+              </Button>
+              <Button
+                variant={scope === "matter" ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setScope("matter"); setSelectedId(null); }}
+                data-testid="button-scope-matter"
+              >
+                <Briefcase className="h-3.5 w-3.5 mr-1" />
+                Matters
+              </Button>
             </div>
-          )}
-          {scopeItems.map((item: any) => (
-            <button
-              key={item.id}
-              className={`w-full text-left p-3 border-b text-sm hover-elevate ${selectedId === item.id ? "bg-accent/50" : ""}`}
-              onClick={() => setSelectedId(item.id)}
-              data-testid={`select-${scope}-${item.id}`}
-            >
-              <div className="font-medium truncate">{item.name}</div>
-              {scope === "matter" && item.status && (
-                <Badge variant="outline" className="text-[10px] mt-1">{item.status}</Badge>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                placeholder={`Search ${scope}s...`}
+                className="w-full pl-7 pr-2 py-1.5 text-sm bg-transparent border rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+                data-testid="input-search-scope"
+              />
+            </div>
+          </div>
 
-      <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            {scopeItems.length === 0 && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No {scope}s found
+              </div>
+            )}
+            {scopeItems.map((item: any) => (
+              <button
+                key={item.id}
+                className={`w-full text-left p-3 border-b text-sm hover-elevate ${selectedId === item.id ? "bg-accent/50" : ""}`}
+                onClick={() => setSelectedId(item.id)}
+                data-testid={`select-${scope}-${item.id}`}
+              >
+                <div className="font-medium truncate">{item.name}</div>
+                {scope === "matter" && item.status && (
+                  <Badge variant="outline" className="text-[10px] mt-1">{item.status}</Badge>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showChat && (
+      <div className="flex-1 flex flex-col min-h-0">
         {!selectedId ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <MessageSquare className="h-12 w-12 mb-3 opacity-20" />
@@ -332,6 +340,16 @@ export default function MasterChatPage() {
           <>
             <div className="flex items-center justify-between gap-2 p-3 border-b">
               <div className="flex items-center gap-2 min-w-0">
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedId(null)}
+                    data-testid="button-back-to-list"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
                 {scope === "client" ? <Users className="h-4 w-4 shrink-0 text-primary" /> : <Briefcase className="h-4 w-4 shrink-0 text-primary" />}
                 <span className="font-medium truncate">{selectedName || "Chat"}</span>
                 <Badge variant="outline" className="text-[10px]">{scope}</Badge>
@@ -472,6 +490,7 @@ export default function MasterChatPage() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

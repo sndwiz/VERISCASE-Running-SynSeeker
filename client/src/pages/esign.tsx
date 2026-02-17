@@ -430,14 +430,14 @@ export default function ESignPage() {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <PenTool className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">E-Sign</h1>
+          <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-page-title">E-Sign</h1>
         </div>
         <Button onClick={() => setCreateOpen(true)} data-testid="button-create-envelope">
           <Plus className="h-4 w-4 mr-1" /> New Envelope
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {statsLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-10 w-full" /></CardContent></Card>
@@ -507,6 +507,7 @@ export default function ESignPage() {
               <p className="text-sm mt-1">Create a new envelope to get started with e-signatures.</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table data-testid="table-envelopes">
               <TableHeader>
                 <TableRow>
@@ -579,6 +580,7 @@ export default function ESignPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -680,7 +682,7 @@ export default function ESignPage() {
                   <Input
                     placeholder="Role (e.g. Client)" value={signer.role}
                     onChange={(e) => updateSigner(idx, "role", e.target.value)}
-                    className="w-[120px]"
+                    className="w-full sm:w-[120px]"
                     data-testid={`input-signer-role-${idx}`}
                   />
                   {newSigners.length > 1 && (

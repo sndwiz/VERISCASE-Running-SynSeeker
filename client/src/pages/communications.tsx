@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  PanelLeft,
 } from "lucide-react";
 
 type NavSection = "portals" | "text-messages" | "internal-messages" | "logs";
@@ -340,7 +342,14 @@ function LogsContent() {
 
 export default function CommunicationsPage() {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState<NavSection>("portals");
+  const [showNav, setShowNav] = useState(true);
+
+  const handleNavSelect = (section: NavSection) => {
+    setActiveSection(section);
+    if (isMobile) setShowNav(false);
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -357,17 +366,30 @@ export default function CommunicationsPage() {
     }
   };
 
+  const navVisible = isMobile ? showNav : true;
+  const contentVisible = isMobile ? !showNav : true;
+
   return (
     <div className="flex flex-col h-full" data-testid="communications-page">
-      <div className="border-b px-6 py-4">
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">Communications</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage client portals, messages, and communication logs
-        </p>
+      <div className="border-b px-3 py-3 md:px-6 md:py-4">
+        <div className="flex items-center gap-2">
+          {isMobile && !showNav && (
+            <Button variant="ghost" size="icon" onClick={() => setShowNav(true)} data-testid="button-open-comm-nav">
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">Communications</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage client portals, messages, and communication logs
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div className="w-56 border-r flex flex-col bg-muted/30 shrink-0">
+        {navVisible && (
+        <div className={`${isMobile ? "w-full" : "w-56"} border-r flex flex-col bg-muted/30 shrink-0`}>
           <div className="p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -378,15 +400,15 @@ export default function CommunicationsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem data-testid="menu-item-new-portal" onClick={() => { setActiveSection("portals"); toast({ title: "Client Portal", description: "Configure client portal settings in the Client Portal Management section." }); }}>
+                <DropdownMenuItem data-testid="menu-item-new-portal" onClick={() => { handleNavSelect("portals"); toast({ title: "Client Portal", description: "Configure client portal settings in the Client Portal Management section." }); }}>
                   <Globe className="h-4 w-4 mr-2" />
                   Client portal
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-new-text" onClick={() => { setActiveSection("text-messages"); toast({ title: "Text Messaging", description: "Configure Twilio SMS integration in Settings to enable text messaging." }); }}>
+                <DropdownMenuItem data-testid="menu-item-new-text" onClick={() => { handleNavSelect("text-messages"); toast({ title: "Text Messaging", description: "Configure Twilio SMS integration in Settings to enable text messaging." }); }}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Text message
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-new-internal" onClick={() => { setActiveSection("internal-messages"); toast({ title: "Internal Messaging", description: "Create internal messages to communicate securely with your team." }); }}>
+                <DropdownMenuItem data-testid="menu-item-new-internal" onClick={() => { handleNavSelect("internal-messages"); toast({ title: "Internal Messaging", description: "Create internal messages to communicate securely with your team." }); }}>
                   <Users className="h-4 w-4 mr-2" />
                   Internal message
                 </DropdownMenuItem>
@@ -414,7 +436,7 @@ export default function CommunicationsPage() {
                     key={item.id}
                     variant={isActive ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2"
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => handleNavSelect(item.id)}
                     data-testid={`nav-item-${item.id}`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -425,10 +447,13 @@ export default function CommunicationsPage() {
             </nav>
           </ScrollArea>
         </div>
+        )}
 
+        {contentVisible && (
         <div className="flex-1 flex flex-col min-w-0">
           {renderContent()}
         </div>
+        )}
       </div>
     </div>
   );

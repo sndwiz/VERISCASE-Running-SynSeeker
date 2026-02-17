@@ -92,7 +92,7 @@ export default function MatterBillingPage() {
 
   if (loadingSummary || loadingMatter) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 md:p-6 space-y-4 md:space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
@@ -105,20 +105,21 @@ export default function MatterBillingPage() {
   const collectionPct = s.totalBilled > 0 ? (s.totalPaid / s.totalBilled) * 100 : 0;
 
   return (
-    <div className="p-6 space-y-6" data-testid="matter-billing-page">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="matter-billing-page">
       <div className="flex items-center gap-4 flex-wrap">
         {client && (
           <Link href={`/clients/${client.id}/billing`}>
             <Button variant="ghost" size="sm" data-testid="button-back-to-client-billing">
               <ArrowLeft className="h-4 w-4 mr-1" />
-              {client.name}
+              <span className="hidden sm:inline">{client.name}</span>
+              <span className="sm:hidden">Back</span>
             </Button>
           </Link>
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Briefcase className="h-5 w-5 text-muted-foreground shrink-0" />
-            <h1 className="text-2xl font-semibold truncate" data-testid="text-matter-billing-title">
+            <h1 className="text-xl md:text-2xl font-semibold truncate" data-testid="text-matter-billing-title">
               {matter?.name || "Matter"} - Billing
             </h1>
           </div>
@@ -212,6 +213,7 @@ export default function MatterBillingPage() {
         <TabsContent value="time" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -256,6 +258,7 @@ export default function MatterBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -263,6 +266,7 @@ export default function MatterBillingPage() {
         <TabsContent value="invoices" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -301,6 +305,7 @@ export default function MatterBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -308,6 +313,7 @@ export default function MatterBillingPage() {
         <TabsContent value="expenses" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -346,6 +352,7 @@ export default function MatterBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -353,6 +360,7 @@ export default function MatterBillingPage() {
         <TabsContent value="trust" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -396,6 +404,7 @@ export default function MatterBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -1413,8 +1413,8 @@ export default function DetectiveBoardPage() {
 
   if (!selectedMatterId) {
     return (
-      <div className="h-full flex" data-testid="page-detective-board" style={{ background: "#1a1a2e" }}>
-        <div style={{ width: 280, background: panelBg, borderRight: "1px solid rgba(255,255,255,0.1)", padding: 20 }}>
+      <div className="h-full flex flex-col lg:flex-row" data-testid="page-detective-board" style={{ background: "#1a1a2e" }}>
+        <div className="w-full lg:w-[280px] shrink-0" style={{ background: panelBg, borderRight: "1px solid rgba(255,255,255,0.1)", padding: 20 }}>
           <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: panelMuted, marginBottom: 12 }}>
             Select Matter
           </div>
@@ -1436,24 +1436,18 @@ export default function DetectiveBoardPage() {
             <p style={{ fontSize: 14 }}>Choose a case from the left panel to view its investigation board</p>
           </div>
         </div>
-        <div style={{ width: 320, background: panelBg, borderLeft: "1px solid rgba(255,255,255,0.1)" }} />
+        <div className="hidden lg:block" style={{ width: 320, background: panelBg, borderLeft: "1px solid rgba(255,255,255,0.1)" }} />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex" data-testid="page-detective-board" style={{ background: "#1a1a2e", color: panelText }}>
+    <div className="h-full flex flex-col lg:flex-row" data-testid="page-detective-board" style={{ background: "#1a1a2e", color: panelText }}>
       {/* LEFT SIDEBAR */}
-      <div style={{
-        width: 280,
-        minWidth: 280,
+      <div className="w-full lg:w-[280px] lg:min-w-[280px] shrink-0 overflow-y-auto flex flex-col" style={{
         background: panelBg,
         borderRight: "1px solid rgba(255,255,255,0.1)",
         padding: 20,
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 0,
       }}>
         {/* Matter selector */}
         <div style={{ marginBottom: 24 }}>
@@ -1696,7 +1690,8 @@ export default function DetectiveBoardPage() {
       {/* CENTER - CORK BOARD */}
       <div
         ref={containerRef}
-        style={{ flex: 1, position: "relative", overflow: "hidden", background: "#111" }}
+        className="flex-1 min-h-[300px] lg:min-h-0"
+        style={{ position: "relative", overflow: "hidden", background: "#111" }}
       >
         {isConnecting && (
           <div style={{
@@ -1726,7 +1721,7 @@ export default function DetectiveBoardPage() {
         )}
 
         {/* Board Toolbar */}
-        <div style={{ position: "absolute", top: 12, right: 12, zIndex: 30, display: "flex", gap: 8 }}>
+        <div style={{ position: "absolute", top: 12, right: 12, zIndex: 30, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <button
             data-testid="button-board-export"
             onClick={() => {
@@ -1802,6 +1797,7 @@ export default function DetectiveBoardPage() {
             background: "rgba(0,0,0,0.85)",
             borderRadius: 8,
             padding: 12,
+            maxWidth: "calc(100vw - 24px)",
             width: 280,
           }}>
             <input
@@ -1961,7 +1957,7 @@ export default function DetectiveBoardPage() {
         />
 
         {/* Controls hint bar */}
-        <div data-testid="controls-hint-bar" style={{
+        <div data-testid="controls-hint-bar" className="hidden sm:block" style={{
           position: "absolute",
           bottom: 0,
           left: 0,
@@ -2066,13 +2062,9 @@ export default function DetectiveBoardPage() {
       </div>
 
       {/* RIGHT SIDEBAR */}
-      <div style={{
-        width: 320,
-        minWidth: 320,
+      <div className="w-full lg:w-[320px] lg:min-w-[320px] shrink-0 flex flex-col" style={{
         background: panelBg,
         borderLeft: "1px solid rgba(255,255,255,0.1)",
-        display: "flex",
-        flexDirection: "column",
       }}>
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>

@@ -356,10 +356,10 @@ export default function PdfProPage() {
   };
 
   return (
-    <div className="p-4 space-y-4 max-w-7xl mx-auto">
+    <div className="p-3 md:p-4 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-center flex-wrap gap-3">
         <FileText className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-2xl font-bold" data-testid="text-page-title">PDF Pro</h1>
+        <h1 className="text-xl md:text-2xl font-bold" data-testid="text-page-title">PDF Pro</h1>
       </div>
 
       <Card>

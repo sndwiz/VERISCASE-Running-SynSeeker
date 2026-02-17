@@ -227,7 +227,7 @@ export default function ClientsPage() {
         <div className="p-4 border-b space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold">Clients</h1>
+              <h1 className="text-xl md:text-2xl font-bold">Clients</h1>
               <p className="text-muted-foreground">Manage client information and relationships</p>
             </div>
             <Dialog open={showCreateDialog} onOpenChange={(open) => {
@@ -238,8 +238,8 @@ export default function ClientsPage() {
             }}>
               <DialogTrigger asChild>
                 <Button data-testid="button-create-client">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Client
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Client</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -408,7 +408,7 @@ export default function ClientsPage() {
         </ScrollArea>
       </div>
 
-      <div className="w-full md:w-[400px] flex flex-col">
+      <div className="w-full md:w-80 lg:w-[400px] flex flex-col">
         {selectedClient ? (
           <>
             <div className="p-4 border-b">
@@ -422,7 +422,7 @@ export default function ClientsPage() {
                     )}
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold">{selectedClient.name}</h2>
+                    <h2 className="text-lg md:text-xl font-semibold">{selectedClient.name}</h2>
                     <Badge variant="outline" className="mt-1">
                       {selectedClient.type === "business" ? "Business" : "Individual"}
                     </Badge>

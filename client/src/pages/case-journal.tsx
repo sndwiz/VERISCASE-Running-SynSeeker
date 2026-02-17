@@ -181,7 +181,7 @@ export default function CaseJournalPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 p-4 border-b flex-wrap">
+      <div className="flex items-center gap-3 p-3 md:p-4 border-b flex-wrap">
         <Link href={`/matters/${matterId}`}>
           <Button variant="ghost" size="icon" data-testid="button-back-to-matter">
             <ArrowLeft className="h-4 w-4" />
@@ -196,12 +196,12 @@ export default function CaseJournalPage() {
               placeholder="Search entries..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 w-48"
+              className="pl-8 w-full sm:w-48"
               data-testid="input-journal-search"
             />
           </div>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-36" data-testid="select-filter-type">
+            <SelectTrigger className="w-full sm:w-36" data-testid="select-filter-type">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -212,7 +212,7 @@ export default function CaseJournalPage() {
             </SelectContent>
           </Select>
           <Select value={filterPrivacy} onValueChange={setFilterPrivacy}>
-            <SelectTrigger className="w-36" data-testid="select-filter-privacy">
+            <SelectTrigger className="w-full sm:w-36" data-testid="select-filter-privacy">
               <SelectValue placeholder="Privacy" />
             </SelectTrigger>
             <SelectContent>
@@ -249,7 +249,7 @@ export default function CaseJournalPage() {
               const isOwn = entry.authorId === user?.id;
 
               return (
-                <Card key={entry.id} className="p-4" data-testid={`card-journal-${entry.id}`}>
+                <Card key={entry.id} className="p-3 md:p-4" data-testid={`card-journal-${entry.id}`}>
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 text-muted-foreground">
                       <EntryIcon type={entry.entryType} />

@@ -322,7 +322,7 @@ export default function LegalAIPage() {
 
   return (
     <div className="flex h-full" data-testid="legal-ai-workspace">
-      <div className="w-60 shrink-0 flex flex-col bg-sidebar border-r" data-testid="legal-ai-sidebar">
+      <div className="hidden md:flex w-60 shrink-0 flex-col bg-sidebar border-r" data-testid="legal-ai-sidebar">
         <div className="p-3 space-y-1">
           <Button
             variant={activeTab === "veribot" ? "secondary" : "ghost"}
@@ -488,7 +488,7 @@ function VeribotView({
       <div className="p-3 md:p-6 space-y-4 md:space-y-6 max-w-6xl mx-auto">
         <div className="flex items-center gap-3" data-testid="matter-selector-section">
           <Select value={selectedMatterId} onValueChange={onMatterChange}>
-            <SelectTrigger className="w-64" data-testid="select-matter">
+            <SelectTrigger className="w-full md:w-64" data-testid="select-matter">
               <SelectValue placeholder="Select Matter" />
             </SelectTrigger>
             <SelectContent>
@@ -521,7 +521,7 @@ function VeribotView({
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={jurisdiction} onValueChange={onJurisdictionChange}>
-                <SelectTrigger className="w-56" data-testid="select-jurisdiction">
+                <SelectTrigger className="w-full sm:w-56" data-testid="select-jurisdiction">
                   <div className="flex items-center gap-2">
                     <Flag className="h-3.5 w-3.5 shrink-0" />
                     <SelectValue />
@@ -558,7 +558,7 @@ function VeribotView({
             <h2 className="text-lg font-semibold" data-testid="text-workflows-header">Workflows</h2>
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={workflowFilter} onValueChange={onWorkflowFilterChange}>
-                <SelectTrigger className="w-44" data-testid="select-workflow-filter">
+                <SelectTrigger className="w-full sm:w-44" data-testid="select-workflow-filter">
                   <div className="flex items-center gap-2">
                     <Filter className="h-3.5 w-3.5 shrink-0" />
                     <SelectValue placeholder="Filter" />
@@ -579,7 +579,7 @@ function VeribotView({
                   placeholder="Find..."
                   value={workflowSearch}
                   onChange={(e) => onWorkflowSearchChange(e.target.value)}
-                  className="pl-9 w-48"
+                  className="pl-9 w-full sm:w-48"
                   data-testid="input-workflow-search"
                 />
               </div>
@@ -673,7 +673,7 @@ function LibraryView({
             />
           </div>
           <Select value={filterCategory} onValueChange={onFilterChange}>
-            <SelectTrigger className="w-44" data-testid="select-library-filter">
+            <SelectTrigger className="w-full sm:w-44" data-testid="select-library-filter">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -807,7 +807,7 @@ function DraftView({
               placeholder="Search drafts..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9 w-56"
+              className="pl-9 w-full sm:w-56"
               data-testid="input-draft-search"
             />
           </div>

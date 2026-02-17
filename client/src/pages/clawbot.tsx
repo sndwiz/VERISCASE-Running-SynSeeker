@@ -168,18 +168,18 @@ export default function ClawbotPage() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="container mx-auto p-6 max-w-6xl space-y-6">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center shadow-lg">
-              <Terminal className="h-7 w-7 text-white" />
+      <div className="container mx-auto p-3 md:p-6 max-w-6xl space-y-6">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center shadow-lg">
+              <Terminal className="h-5 w-5 md:h-7 md:w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold" data-testid="text-clawbot-title">Clawbot Gateway</h1>
+              <h1 className="text-2xl md:text-3xl font-bold" data-testid="text-clawbot-title">Clawbot Gateway</h1>
               <p className="text-muted-foreground">Connect to OpenClaw for autonomous computer control</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -188,7 +188,7 @@ export default function ClawbotPage() {
               data-testid="button-refresh-status"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${statusLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
             <Button
               variant="outline"
@@ -197,7 +197,7 @@ export default function ClawbotPage() {
               data-testid="button-toggle-config"
             >
               <Settings className="h-4 w-4 mr-2" />
-              Configure
+              <span className="hidden sm:inline">Configure</span>
             </Button>
           </div>
         </div>

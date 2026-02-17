@@ -93,7 +93,7 @@ export default function ClientBillingPage() {
 
   if (loadingSummary || loadingClient) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-3 md:p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
@@ -114,7 +114,7 @@ export default function ClientBillingPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6" data-testid="client-billing-page">
+    <div className="p-3 md:p-6 space-y-6" data-testid="client-billing-page">
       <div className="flex items-center gap-4 flex-wrap">
         <Link href="/billing">
           <Button variant="ghost" size="sm" data-testid="button-back-to-billing">
@@ -123,7 +123,7 @@ export default function ClientBillingPage() {
           </Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold truncate" data-testid="text-client-billing-title">
+          <h1 className="text-xl md:text-2xl font-semibold truncate" data-testid="text-client-billing-title">
             {client?.name || "Client"} - Billing
           </h1>
           <p className="text-sm text-muted-foreground">{clientMatters.length} active matters</p>
@@ -151,6 +151,7 @@ export default function ClientBillingPage() {
             <CardTitle className="text-base">Matters</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -178,6 +179,7 @@ export default function ClientBillingPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -193,6 +195,7 @@ export default function ClientBillingPage() {
         <TabsContent value="invoices" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -231,6 +234,7 @@ export default function ClientBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -238,6 +242,7 @@ export default function ClientBillingPage() {
         <TabsContent value="expenses" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -272,6 +277,7 @@ export default function ClientBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -279,6 +285,7 @@ export default function ClientBillingPage() {
         <TabsContent value="payments" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -313,6 +320,7 @@ export default function ClientBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -320,6 +328,7 @@ export default function ClientBillingPage() {
         <TabsContent value="trust" className="mt-4">
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -363,6 +372,7 @@ export default function ClientBillingPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

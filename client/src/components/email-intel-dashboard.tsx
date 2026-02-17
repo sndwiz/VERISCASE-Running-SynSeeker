@@ -162,7 +162,7 @@ export default function EmailIntelDashboard() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
             <Brain className="w-5 h-5 text-primary" />
@@ -208,7 +208,7 @@ export default function EmailIntelDashboard() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-6 pt-2 border-b">
+        <div className="px-3 md:px-6 pt-2 border-b overflow-x-auto">
           <TabsList className="bg-transparent p-0 h-auto gap-4">
             <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 pb-2">
               <BarChart3 className="w-4 h-4 mr-1" /> Overview
@@ -231,7 +231,7 @@ export default function EmailIntelDashboard() {
         </div>
 
         {/* ── OVERVIEW TAB ── */}
-        <TabsContent value="overview" className="flex-1 p-6 overflow-auto m-0">
+        <TabsContent value="overview" className="flex-1 p-3 md:p-6 overflow-auto m-0">
           {/* Alert banner */}
           {pendingAlerts > 0 && (
             <div className="mb-4 p-4 rounded-lg border border-red-500/30 bg-red-500/5 flex items-center gap-3">
@@ -251,7 +251,7 @@ export default function EmailIntelDashboard() {
           )}
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-6">
             <StatCard icon={Mail} label="Emails Analyzed" value={stats.totalEmails || 0} />
             <StatCard icon={Bell} label="Pending Alerts" value={pendingAlerts} color="text-red-400" />
             <StatCard icon={Shield} label="High Risk" value={stats.highRiskEmails || 0} color="text-orange-400" />
@@ -302,9 +302,9 @@ export default function EmailIntelDashboard() {
 
         {/* ── INBOX TAB ── */}
         <TabsContent value="inbox" className="flex-1 m-0 overflow-hidden">
-          <div className="flex h-full">
+          <div className="flex flex-col md:flex-row h-full">
             {/* Email list */}
-            <div className="w-[380px] border-r flex flex-col">
+            <div className="w-full md:w-[380px] border-r flex flex-col">
               <div className="p-3 border-b flex items-center gap-2">
                 <Select value={emailFilter} onValueChange={setEmailFilter}>
                   <SelectTrigger className="h-8 text-xs w-[120px]">
@@ -350,12 +350,12 @@ export default function EmailIntelDashboard() {
         </TabsContent>
 
         {/* ── ALERTS TAB ── */}
-        <TabsContent value="alerts" className="flex-1 p-6 overflow-auto m-0">
+        <TabsContent value="alerts" className="flex-1 p-3 md:p-6 overflow-auto m-0">
           <AlertsPanel />
         </TabsContent>
 
         {/* ── CONTACTS TAB ── */}
-        <TabsContent value="contacts" className="flex-1 p-6 overflow-auto m-0">
+        <TabsContent value="contacts" className="flex-1 p-3 md:p-6 overflow-auto m-0">
           <ContactsPanel />
         </TabsContent>
       </Tabs>
@@ -427,7 +427,7 @@ function EmailDetail({ emailId }: { emailId: string }) {
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-6">
+      <div className="p-3 md:p-6">
         {/* Header */}
         <h2 className="text-lg font-semibold mb-1">{e.subject}</h2>
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
@@ -680,7 +680,7 @@ function ContactsPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {(Array.isArray(contacts) ? contacts : []).map((c: any) => (
           <Card key={c.id} className="hover:border-primary/50 transition-colors cursor-pointer">
-            <CardContent className="p-4">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <div className="font-semibold">{(c.names || []).join(", ") || c.email}</div>
@@ -755,7 +755,7 @@ function AnalyzeEmailForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Subject</Label>
           <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject" />
@@ -765,7 +765,7 @@ function AnalyzeEmailForm({ onSuccess }: { onSuccess: () => void }) {
           <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">From</Label>
           <Input value={sender} onChange={e => setSender(e.target.value)} placeholder="sender@example.com" />

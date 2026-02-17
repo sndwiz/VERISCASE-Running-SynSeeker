@@ -141,7 +141,7 @@ function ReportCatalog() {
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="reports-catalog">
       <div>
-        <h1 className="text-2xl font-semibold" data-testid="text-reports-title">Reports</h1>
+        <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-reports-title">Reports</h1>
         <p className="text-sm text-muted-foreground">Pre-built reports across billing, productivity, cases, AI operations, and compliance</p>
       </div>
 
@@ -152,7 +152,7 @@ function ReportCatalog() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search reports..."
-            className="pl-9 w-64"
+            className="pl-9 w-full sm:w-64"
             data-testid="input-search-reports"
           />
         </div>
@@ -433,7 +433,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 justify-start">
-            <h1 className="text-2xl font-semibold" data-testid="text-report-name">{reportMeta?.name || reportId}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-report-name">{reportMeta?.name || reportId}</h1>
             {reportMeta && <CategoryBadge category={reportMeta.category} categoryColor={reportMeta.categoryColor} />}
           </div>
         </div>
@@ -450,7 +450,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
                 value={filterText}
                 onChange={(e) => { setFilterText(e.target.value); setPage(1); }}
                 placeholder="Filter data..."
-                className="pl-8 w-48"
+                className="pl-8 w-full sm:w-48"
                 data-testid="input-filter-report"
               />
             </div>
@@ -486,7 +486,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
         {data?.summary && Object.keys(data.summary).length > 0 && (
           <Card data-testid="card-summary">
             <CardContent className="py-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 {Object.entries(data.summary).map(([key, item]) => (
                   <div key={key} className="space-y-1">
                     <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -588,7 +588,7 @@ function ReportDetail({ reportId }: { reportId: string }) {
       </div>
 
       {showColumnSidebar && (
-        <Card className="w-64 shrink-0 border-l rounded-none h-full overflow-auto" data-testid="card-column-sidebar">
+        <Card className="w-full md:w-64 shrink-0 border-l rounded-none h-full overflow-auto" data-testid="card-column-sidebar">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 py-3 px-4">
             <CardTitle className="text-sm">Columns</CardTitle>
             <Button variant="outline" size="icon" onClick={() => setShowColumnSidebar(false)} data-testid="button-close-columns">

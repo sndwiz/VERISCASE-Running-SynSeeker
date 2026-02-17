@@ -123,7 +123,7 @@ export default function BillingDashboard() {
     <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="billing-dashboard">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-billing-title">Firm Billing Dashboard</h1>
+          <h1 className="text-xl md:text-2xl font-semibold" data-testid="text-billing-title">Firm Billing Dashboard</h1>
           <p className="text-sm text-muted-foreground">Financial overview across all clients and matters</p>
         </div>
       </div>

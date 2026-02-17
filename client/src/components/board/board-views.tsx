@@ -274,12 +274,12 @@ export function KanbanView({ board, groups, tasks, statusLabels, onTaskClick, on
   };
 
   return (
-    <div className="flex-1 overflow-auto p-4" data-testid="kanban-view">
-      <div className="flex gap-4 min-h-full">
+    <div className="flex-1 overflow-auto p-2 md:p-4" data-testid="kanban-view">
+      <div className="flex flex-col md:flex-row gap-4 min-h-full">
         {columns.map(col => (
           <div
             key={col.status}
-            className="flex flex-col min-w-[280px] w-[280px] shrink-0"
+            className="flex flex-col w-full md:min-w-[280px] md:w-[280px] md:shrink-0"
             onDrop={(e) => handleDrop(e, col.status)}
             onDragOver={handleDragOver}
           >

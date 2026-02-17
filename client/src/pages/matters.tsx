@@ -319,8 +319,8 @@ export default function MattersPage() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-matter">
-              <Plus className="h-4 w-4 mr-2" />
-              New Matter
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Matter</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -850,7 +850,7 @@ export default function MattersPage() {
         )}
       </ScrollArea>
 
-      <div className="flex items-center justify-between gap-4 px-4 py-3 border-t">
+      <div className="flex items-center justify-between gap-2 px-3 md:px-4 py-3 border-t flex-wrap">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -879,8 +879,8 @@ export default function MattersPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" data-testid="button-export">
-            <Download className="h-4 w-4 mr-1" />
-            Export
+            <Download className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>

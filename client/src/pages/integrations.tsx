@@ -369,7 +369,7 @@ export default function IntegrationsPage() {
                 <p className="text-xs text-muted-foreground">How often to pull new emails and calendar events</p>
               </div>
               <Select defaultValue="15">
-                <SelectTrigger className="w-32" data-testid="select-sync-frequency">
+                <SelectTrigger className="w-full sm:w-32" data-testid="select-sync-frequency">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

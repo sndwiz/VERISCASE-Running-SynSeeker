@@ -268,7 +268,7 @@ function ScanSummaryCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div>
             <p className="text-xs text-muted-foreground">Total Files</p>
             <p className="text-lg font-semibold" data-testid="text-total-files">{summary.totalFiles}</p>
@@ -291,7 +291,7 @@ function ScanSummaryCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <p className="text-xs text-muted-foreground mb-2">File Types</p>
             <div className="flex flex-wrap gap-1.5">
@@ -390,7 +390,7 @@ function IntentDialog({
         <div className="space-y-4">
           <div>
             <Label className="text-sm font-medium mb-2 block">Analysis Types</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {intentOptions.map(({ id, label, icon: Icon }) => (
                 <label
                   key={id}
@@ -481,7 +481,7 @@ function ResultsViewer({
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={onTabChange}>
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex-wrap h-auto">
             {availableTabs.map(t => (
               <TabsTrigger key={t.key} value={t.key} data-testid={`tab-${t.key}`}>
                 {t.label}

@@ -137,8 +137,8 @@ export default function SmsPage() {
   const selectedContact = contacts.find((c) => c.phone_number === selectedPhone);
 
   return (
-    <div className="flex h-full" data-testid="page-sms">
-      <div className="w-80 border-r flex flex-col shrink-0">
+    <div className="flex flex-col md:flex-row h-full" data-testid="page-sms">
+      <div className="w-full md:w-80 border-b md:border-b-0 md:border-r flex flex-col shrink-0 max-h-[40vh] md:max-h-none">
         <div className="p-3 border-b space-y-2">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
@@ -323,7 +323,7 @@ export default function SmsPage() {
                 value={contactNameInput}
                 onChange={(e) => setContactNameInput(e.target.value)}
                 placeholder="Contact name"
-                className="w-40"
+                className="w-full sm:w-40"
                 data-testid="input-contact-name"
               />
             </div>

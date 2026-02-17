@@ -155,8 +155,8 @@ export default function ProcessRecorderPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-80 border-r flex flex-col">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="w-full md:w-80 md:border-r flex flex-col border-b md:border-b-0">
           <div className="p-3 border-b">
             <p className="text-xs text-muted-foreground">{recordings.length} recording{recordings.length !== 1 ? "s" : ""}</p>
           </div>
@@ -197,7 +197,7 @@ export default function ProcessRecorderPage() {
           </ScrollArea>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-3 md:p-4">
           {selectedRecording ? (
             <div className="space-y-4 max-w-3xl">
               <div className="flex items-center justify-between gap-4 flex-wrap">

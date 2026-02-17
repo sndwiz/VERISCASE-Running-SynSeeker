@@ -153,19 +153,19 @@ export default function KnowledgeBasePage() {
               placeholder="Search knowledge base..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-8 w-52"
+              className="pl-8 w-full sm:w-52"
               data-testid="input-kb-search"
             />
           </div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-44" data-testid="select-kb-category"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44" data-testid="select-kb-category"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-36" data-testid="select-kb-status"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-36" data-testid="select-kb-status"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               {STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
@@ -180,7 +180,7 @@ export default function KnowledgeBasePage() {
 
       <div className="flex-1 overflow-y-auto p-3 md:p-4">
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6 max-w-4xl mx-auto">
             {CATEGORIES.map(cat => {
               const count = stats.byCategory[cat.value] || 0;
               const Icon = cat.icon;

@@ -271,31 +271,32 @@ export default function MatterDetailPage() {
 
   return (
     <div className="flex flex-col h-full" data-testid="page-matter-detail">
-      <div className="border-b p-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="border-b p-3 md:p-4">
+        <div className="flex items-center justify-between gap-2 md:gap-4 flex-wrap">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/matters")} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold truncate" data-testid="text-matter-title">
+              <h1 className="text-lg md:text-xl font-semibold truncate" data-testid="text-matter-title">
                 {matter.caseNumber}
               </h1>
-              <p className="text-sm text-muted-foreground truncate">{matter.name}</p>
+              <p className="text-xs md:text-sm text-muted-foreground truncate">{matter.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setShowEditDialog(true)} data-testid="button-edit-matter">
               <Edit className="h-4 w-4 mr-1" />
-              Edit matter
+              <span className="hidden sm:inline">Edit matter</span>
+              <span className="sm:hidden">Edit</span>
             </Button>
           </div>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <div className="border-b px-4">
-          <TabsList className="bg-transparent gap-0 h-auto p-0">
+        <div className="border-b px-2 md:px-4 overflow-x-auto">
+          <TabsList className="bg-transparent gap-0 h-auto p-0 w-max md:w-auto">
             {[
               { value: "dashboard", label: "Dashboard" },
               { value: "activities", label: "Activities" },
@@ -310,7 +311,7 @@ export default function MatterDetailPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2.5"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none px-2 md:px-4 py-2.5 text-xs md:text-sm whitespace-nowrap"
                 data-testid={`tab-${tab.value}`}
               >
                 {tab.label}
@@ -385,7 +386,7 @@ export default function MatterDetailPage() {
                       <CardTitle className="text-base">Details</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
                         <DetailRow label="Matter description" value={matter.name} />
                         <DetailRow label="Responsible attorney" value={getResponsiblePartyName()} />
                         <DetailRow label="Practice area" value={matter.practiceArea} />
@@ -433,11 +434,17 @@ export default function MatterDetailPage() {
                   </Card>
 
                   <Card>
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
+                    <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2 flex-wrap">
                       <CardTitle className="text-base">Conflict Checks</CardTitle>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" data-testid="button-link-conflict">Link conflict check</Button>
-                        <Button variant="outline" size="sm" data-testid="button-run-conflict">Run conflict check</Button>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button variant="outline" size="sm" data-testid="button-link-conflict">
+                          <span className="hidden sm:inline">Link conflict check</span>
+                          <span className="sm:hidden">Link</span>
+                        </Button>
+                        <Button variant="outline" size="sm" data-testid="button-run-conflict">
+                          <span className="hidden sm:inline">Run conflict check</span>
+                          <span className="sm:hidden">Run</span>
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -617,7 +624,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="activities" className="m-0">
-            <div className="p-6">
+            <div className="p-3 md:p-6">
               <div className="text-center py-12 text-muted-foreground">
                 <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
                 <p className="font-medium mb-1">No time or expense entries found.</p>
@@ -631,7 +638,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="communications" className="m-0">
-            <div className="p-6 space-y-4">
+            <div className="p-3 md:p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Discussion Threads</h3>
                 <Button size="sm" onClick={() => setShowAddThreadDialog(true)} data-testid="button-add-thread">
@@ -672,7 +679,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="notes" className="m-0">
-            <div className="p-6">
+            <div className="p-3 md:p-6">
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="h-10 w-10 mx-auto mb-3 opacity-50" />
                 <p className="font-medium">No notes yet</p>
@@ -682,7 +689,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="documents" className="m-0">
-            <div className="p-6 space-y-4">
+            <div className="p-3 md:p-6 space-y-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <h3 className="font-semibold">Documents</h3>
                 <label>
@@ -760,7 +767,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="tasks" className="m-0">
-            <div className="p-6 space-y-4">
+            <div className="p-3 md:p-6 space-y-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <h3 className="font-semibold">Tasks</h3>
               </div>
@@ -795,7 +802,7 @@ export default function MatterDetailPage() {
           </TabsContent>
 
           <TabsContent value="contacts" className="m-0">
-            <div className="p-6 space-y-4">
+            <div className="p-3 md:p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">All Contacts</h3>
                 <Button size="sm" onClick={() => setShowAddContactDialog(true)} data-testid="button-add-contact-tab">
@@ -814,7 +821,7 @@ export default function MatterDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium">{client.name}</p>
                         <p className="text-sm text-muted-foreground">Client</p>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
                           {client.email && (
                             <div className="flex items-center gap-2">
                               <Mail className="h-3.5 w-3.5 text-muted-foreground" />
@@ -828,7 +835,7 @@ export default function MatterDetailPage() {
                             </div>
                           )}
                           {client.address && (
-                            <div className="flex items-center gap-2 col-span-2">
+                            <div className="flex items-center gap-2 sm:col-span-2">
                               <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               <span>{client.address}</span>
                             </div>
@@ -863,7 +870,7 @@ export default function MatterDetailPage() {
                                 {contact.organization}
                               </p>
                             )}
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
                               {contact.email && (
                                 <div className="flex items-center gap-2">
                                   <Mail className="h-3.5 w-3.5 text-muted-foreground" />
@@ -923,7 +930,7 @@ export default function MatterDetailPage() {
             <DialogDescription>Add a contact related to this matter.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name</Label>
                 <Input
@@ -962,7 +969,7 @@ export default function MatterDetailPage() {
                 data-testid="input-contact-org"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
@@ -1096,7 +1103,7 @@ function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Matter Name</Label>
             <Input
@@ -1114,7 +1121,7 @@ function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Practice Area</Label>
             <Select value={form.practiceArea} onValueChange={v => setForm(p => ({ ...p, practiceArea: v }))}>
@@ -1137,7 +1144,7 @@ function EditMatterForm({ matter, clients, teamMembers, onSave, isPending }: {
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Court Name</Label>
             <Input
@@ -1223,7 +1230,7 @@ function OCRSessionsPanel({ matterId }: { matterId: string }) {
 
   if (sessions.length === 0) {
     return (
-      <div className="p-6 text-center text-muted-foreground">
+      <div className="p-3 md:p-6 text-center text-muted-foreground">
         <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
         <p className="text-lg font-medium">No OCR sessions yet</p>
         <p className="text-sm">Upload documents in the Insights tab to begin processing.</p>
@@ -1236,8 +1243,8 @@ function OCRSessionsPanel({ matterId }: { matterId: string }) {
   const totalPages = sessions.reduce((sum, s) => sum + (s.pageCount || 0), 0);
 
   return (
-    <div className="p-6 space-y-6" data-testid="ocr-sessions-panel">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6" data-testid="ocr-sessions-panel">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Total Sessions</p>
