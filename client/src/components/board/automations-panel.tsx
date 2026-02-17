@@ -875,32 +875,56 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="space-y-4 pb-4">
-                    {TRIGGER_CATEGORIES.map(cat => {
-                      const items = filteredTriggers.filter(t => t.category === cat.id);
-                      if (items.length === 0) return null;
-                      return (
-                        <div key={cat.id}>
-                          <p className="text-xs text-muted-foreground mb-1 px-1">{cat.label}</p>
-                          <div className="space-y-0.5">
-                            {items.map(trigger => (
-                              <button
-                                key={trigger.id}
-                                className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-sm hover-elevate"
-                                onClick={() => {
-                                  setSelectedTrigger(trigger);
-                                  setBuilderStep(selectedAction ? "configuring" : "idle");
-                                  setTriggerSearch("");
-                                }}
-                                data-testid={`trigger-option-${trigger.id}`}
-                              >
-                                <TriggerIcon trigger={trigger} size="md" />
-                                <span>{trigger.label}</span>
-                              </button>
-                            ))}
+                    {triggerSearch ? (
+                      <div className="space-y-0.5">
+                        {filteredTriggers.length === 0 ? (
+                          <p className="text-sm text-muted-foreground px-2 py-4">No triggers found</p>
+                        ) : (
+                          filteredTriggers.map(trigger => (
+                            <button
+                              key={trigger.id}
+                              className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-sm hover-elevate"
+                              onClick={() => {
+                                setSelectedTrigger(trigger);
+                                setBuilderStep(selectedAction ? "configuring" : "idle");
+                                setTriggerSearch("");
+                              }}
+                              data-testid={`trigger-option-${trigger.id}`}
+                            >
+                              <TriggerIcon trigger={trigger} size="md" />
+                              <span>{trigger.label}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      TRIGGER_CATEGORIES.map(cat => {
+                        const items = filteredTriggers.filter(t => t.category === cat.id);
+                        if (items.length === 0) return null;
+                        return (
+                          <div key={cat.id}>
+                            <p className="text-xs text-muted-foreground mb-1 px-1">{cat.label}</p>
+                            <div className="space-y-0.5">
+                              {items.map(trigger => (
+                                <button
+                                  key={trigger.id}
+                                  className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-sm hover-elevate"
+                                  onClick={() => {
+                                    setSelectedTrigger(trigger);
+                                    setBuilderStep(selectedAction ? "configuring" : "idle");
+                                    setTriggerSearch("");
+                                  }}
+                                  data-testid={`trigger-option-${trigger.id}`}
+                                >
+                                  <TriggerIcon trigger={trigger} size="md" />
+                                  <span>{trigger.label}</span>
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </ScrollArea>
               </div>
@@ -924,7 +948,30 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="space-y-4 pb-4">
-                    {ACTION_CATEGORIES.map(cat => {
+                    {actionSearch ? (
+                      <div className="space-y-0.5">
+                        {filteredActions.length === 0 ? (
+                          <p className="text-sm text-muted-foreground px-2 py-4">No actions found</p>
+                        ) : (
+                          filteredActions.map(action => (
+                            <button
+                              key={action.id}
+                              className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-sm hover-elevate"
+                              onClick={() => {
+                                setSelectedAction(action);
+                                setBuilderStep("configuring");
+                                setActionSearch("");
+                              }}
+                              data-testid={`action-option-${action.id}`}
+                            >
+                              <ActionIcon action={action} size="md" />
+                              <span>{action.label}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                    ACTION_CATEGORIES.map(cat => {
                       const items = filteredActions.filter(a => a.category === cat.id);
                       if (items.length === 0) return null;
                       return (
@@ -949,7 +996,8 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                           </div>
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </ScrollArea>
               </div>
