@@ -411,23 +411,21 @@ export const TaskRow = memo(function TaskRow({
     {subtasksExpanded && (
       <div
         className="border-b border-border/30"
-        style={{ borderLeft: `3px solid ${groupColor}40` }}
         data-testid={`subtasks-panel-${task.id}`}
       >
         <div className="bg-muted/20">
-          <div className="flex items-center gap-0 text-[11px] font-medium text-muted-foreground py-1 pl-14 border-b border-border/20">
-            <div className="flex-1 min-w-[180px] px-2">Subitem</div>
-            <div className="w-[120px] px-1 border-l border-border/20">Owner</div>
-            <div className="w-[120px] px-1 border-l border-border/20">Status</div>
-          </div>
-
           {subtasks.map((subtask) => (
             <div
               key={subtask.id}
-              className="flex items-center gap-0 py-1 pl-14 group border-b border-border/15"
+              className="flex items-center gap-0 border-b border-border/15 group"
+              style={{ minHeight: "32px" }}
               data-testid={`subtask-row-${subtask.id}`}
             >
-              <div className="flex items-center gap-2 flex-1 min-w-[180px] px-2">
+              <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center border-r border-border" />
+              <div
+                className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-2 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow"
+              >
+                <div className="w-4 flex-shrink-0" />
                 <Checkbox
                   checked={subtask.completed}
                   onCheckedChange={(checked) => handleToggleSubtask(subtask.id, !!checked)}
@@ -443,26 +441,10 @@ export const TaskRow = memo(function TaskRow({
                 >
                   {subtask.title}
                 </span>
-              </div>
-              <div className="w-[120px] px-1 border-l border-border/20">
-                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                  ?
-                </div>
-              </div>
-              <div className="w-[120px] px-1 border-l border-border/20">
-                <span className={`text-xs px-2 py-0.5 rounded ${
-                  subtask.completed 
-                    ? "bg-green-500/20 text-green-600 dark:text-green-400" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  {subtask.completed ? "Done" : "Pending"}
-                </span>
-              </div>
-              <div className="w-8 flex items-center justify-center">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="invisible group-hover:visible text-destructive h-6 w-6"
+                  className="invisible group-hover:visible text-destructive h-5 w-5 ml-auto shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteSubtask(subtask.id);
@@ -472,58 +454,90 @@ export const TaskRow = memo(function TaskRow({
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
+              {columns.map((col) => (
+                <div
+                  key={col.id}
+                  className="px-1.5 flex items-center border-r border-border overflow-hidden"
+                  style={{ width: col.width, minWidth: col.width, maxWidth: col.width, minHeight: "32px" }}
+                >
+                  {col.type === "status" ? (
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      subtask.completed
+                        ? "bg-green-500/20 text-green-600 dark:text-green-400"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      {subtask.completed ? "Done" : "Pending"}
+                    </span>
+                  ) : null}
+                </div>
+              ))}
+              <div className="w-10 flex-shrink-0" />
             </div>
           ))}
 
           {isAddingSubtask ? (
-            <div className="flex items-center gap-2 py-1.5 pl-14 pr-2 border-b border-border/15">
-              <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <Input
-                value={newSubtaskTitle}
-                onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                placeholder="Enter subitem title..."
-                className="flex-1 text-sm h-7"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddSubtask();
-                  if (e.key === "Escape") {
-                    setIsAddingSubtask(false);
-                    setNewSubtaskTitle("");
-                  }
-                }}
-                data-testid="input-new-subtask"
-              />
-              <Button
-                size="sm"
-                onClick={handleAddSubtask}
-                disabled={!newSubtaskTitle.trim()}
-                data-testid="button-save-subtask"
-              >
-                Add
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setIsAddingSubtask(false);
-                  setNewSubtaskTitle("");
-                }}
-                data-testid="button-cancel-subtask"
-              >
-                Cancel
-              </Button>
+            <div className="flex items-center gap-0 border-b border-border/15" style={{ minHeight: "32px" }}>
+              <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center border-r border-border" />
+              <div className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-2 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow">
+                <div className="w-4 flex-shrink-0" />
+                <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Input
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  placeholder="Enter subitem title..."
+                  className="flex-1 text-sm h-7 border-0 shadow-none focus-visible:ring-1 focus-visible:ring-primary bg-transparent"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddSubtask();
+                    if (e.key === "Escape") {
+                      setIsAddingSubtask(false);
+                      setNewSubtaskTitle("");
+                    }
+                  }}
+                  data-testid="input-new-subtask"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskTitle.trim()}
+                  data-testid="button-save-subtask"
+                >
+                  Add
+                </Button>
+              </div>
+              {columns.map((col) => (
+                <div
+                  key={col.id}
+                  className="border-r border-border"
+                  style={{ width: col.width, minWidth: col.width }}
+                />
+              ))}
+              <div className="w-10 flex-shrink-0" />
             </div>
           ) : (
             <div
-              className="flex items-center gap-2 py-1.5 pl-14 px-2 text-sm text-muted-foreground cursor-pointer hover-elevate"
+              className="flex items-center gap-0 border-b border-border/15 cursor-pointer hover-elevate"
+              style={{ minHeight: "32px" }}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsAddingSubtask(true);
               }}
               data-testid={`button-add-subtask-${task.id}`}
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Add subitem</span>
+              <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center border-r border-border" />
+              <div className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-2 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow">
+                <div className="w-4 flex-shrink-0" />
+                <Plus className="h-3.5 w-3.5" />
+                <span className="text-sm text-muted-foreground">Add subitem</span>
+              </div>
+              {columns.map((col) => (
+                <div
+                  key={col.id}
+                  className="border-r border-border"
+                  style={{ width: col.width, minWidth: col.width }}
+                />
+              ))}
+              <div className="w-10 flex-shrink-0" />
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Plus, X, Loader2, ChevronDown, Search, Sparkles, Mail, MessageSquare, Bell } from "lucide-react";
+import { Zap, Plus, X, Loader2, ChevronDown, Search, Sparkles, Mail, MessageSquare, Bell, Trash2, ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -271,6 +271,70 @@ function TemplateIcon({ icon }: { icon?: string }) {
   }
 }
 
+function triggerLabel(type: string): string {
+  const map: Record<string, string> = {
+    item_created: "Item created",
+    status_changed: "Status changes",
+    priority_changed: "Priority changes",
+    column_changed: "Column changes",
+    name_changed: "Name changes",
+    update_created: "Update created",
+    subitem_created: "Subitem created",
+    due_date_approaching: "Due date approaching",
+    due_date_passed: "Due date passed",
+    item_overdue: "Item overdue",
+    file_uploaded: "File uploaded",
+    email_received: "Email received",
+    email_activity: "Email activity",
+    button_clicked: "Button clicked",
+    item_moved: "Item moved",
+    date_changed: "Date changes",
+    schedule: "On schedule",
+    time_daily_at: "Daily schedule",
+    file_classified: "File classified",
+    signal_deadline_detected: "Deadline detected",
+    signal_privilege_detected: "Privilege detected",
+    signal_contradiction_detected: "Contradiction detected",
+  };
+  return map[type] || type.replace(/_/g, " ");
+}
+
+function actionLabel(type: string): string {
+  const map: Record<string, string> = {
+    send_notification: "Send notification",
+    change_status: "Change status",
+    change_priority: "Change priority",
+    assign_person: "Assign person",
+    send_email: "Send email",
+    slack_notify: "Notify Slack",
+    send_slack: "Notify Slack",
+    send_sms: "Send SMS",
+    create_item: "Create item",
+    create_subtask: "Create subtask",
+    move_item: "Move item",
+    set_date: "Set date",
+    adjust_date: "Adjust date",
+    update_field: "Update field",
+    add_tag: "Add tag",
+    request_ocr: "Request OCR",
+    time_tracking: "Time tracking",
+    connect_item: "Connect item",
+    create_connect: "Create & connect",
+    ai_fill: "AI fill column",
+    ai_sentiment: "AI sentiment",
+    ai_write: "AI write",
+    ai_extract: "AI extract",
+    ai_improve: "AI improve",
+    ai_translate: "AI translate",
+    ai_language: "AI detect language",
+    ai_categorize: "AI categorize",
+    ai_summarize: "AI summarize",
+    request_approval: "Request approval",
+    move_to_group: "Move to group",
+  };
+  return map[type] || type.replace(/_/g, " ");
+}
+
 interface AutomationsPanelProps {
   boardId: string;
   open: boolean;
@@ -318,6 +382,15 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
     },
     onError: () => {
       toast({ title: "Failed to create automation", variant: "destructive" });
+    },
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: (ruleId: string) =>
+      apiRequest("DELETE", `/api/automations/${ruleId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/boards", boardId, "automations"] });
+      toast({ title: "Automation deleted" });
     },
   });
 
@@ -385,20 +458,38 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
               </div>
             ) : (
               rules.map((rule) => (
-                <Card key={rule.id} className="hover-elevate" data-testid={`automation-card-${rule.id}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                <Card key={rule.id} className={`hover-elevate ${!rule.isActive ? "opacity-60" : ""}`} data-testid={`automation-card-${rule.id}`}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Zap className={`h-4 w-4 shrink-0 ${rule.isActive ? "text-primary" : "text-muted-foreground"}`} />
                         <h4 className="font-medium text-sm truncate">{rule.name}</h4>
-                        {rule.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{rule.description}</p>
-                        )}
                       </div>
-                      <Switch
-                        checked={rule.isActive}
-                        onCheckedChange={() => toggleRuleMutation.mutate(rule)}
-                        data-testid={`toggle-automation-${rule.id}`}
-                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Switch
+                          checked={rule.isActive}
+                          onCheckedChange={() => toggleRuleMutation.mutate(rule)}
+                          data-testid={`toggle-automation-${rule.id}`}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => deleteRuleMutation.mutate(rule.id)}
+                          data-testid={`button-delete-automation-${rule.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        When: {triggerLabel(rule.triggerType)}
+                      </Badge>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        Then: {actionLabel(rule.actionType)}
+                      </Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -462,20 +553,20 @@ export function AutomationsPanel({ boardId, open, onClose }: AutomationsPanelPro
                     {filteredTemplates.map((template) => (
                       <Card 
                         key={template.id} 
-                        className="bg-slate-900 border-slate-800 flex flex-col h-full"
+                        className="flex flex-col h-full"
                         data-testid={`template-${template.id}`}
                       >
                         <CardContent className="p-4 flex flex-col h-full">
                           <div className="mb-3">
                             <TemplateIcon icon={template.icon} />
                           </div>
-                          <p className="text-sm text-slate-300 flex-1 leading-relaxed">
+                          <p className="text-sm text-muted-foreground flex-1 leading-relaxed">
                             <TemplateDescription description={template.description} />
                           </p>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="mt-4 w-full border-slate-700 text-slate-300 hover:bg-slate-800"
+                            className="mt-4 w-full"
                             onClick={() => handleUseTemplate(template)}
                             disabled={createRuleMutation.isPending}
                             data-testid={`button-use-template-${template.id}`}

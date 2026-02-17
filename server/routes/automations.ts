@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../storage";
-import { insertAutomationRuleSchema, updateAutomationRuleSchema } from "@shared/schema";
+import { insertAutomationRuleSchema, updateAutomationRuleSchema, type AutomationRule } from "@shared/schema";
 import { z } from "zod";
 import { triggerAutomation, getAutomationLog, type AutomationEvent } from "../automation-engine";
 import { logger } from "../utils/logger";
@@ -45,7 +45,7 @@ export function registerAutomationRoutes(app: Express): void {
 
   app.patch("/api/automations/:id", async (req, res) => {
     try {
-      const data = updateAutomationRuleSchema.parse(req.body);
+      const data = updateAutomationRuleSchema.parse(req.body) as Partial<AutomationRule>;
       const rule = await storage.updateAutomationRule(req.params.id, data);
       if (!rule) {
         return res.status(404).json({ error: "Automation rule not found" });

@@ -548,18 +548,30 @@ export type AutomationTriggerType =
   | "file_uploaded"
   | "column_changed"
   | "item_name_changed"
+  | "name_changed"
   | "update_created"
   | "button_clicked"
   | "email_received"
   | "subitem_created"
   | "activity_created"
+  | "email_activity"
   | "item_moved_to_board"
+  | "item_moved"
+  | "item_overdue"
   | "approval_status_changed"
   | "approval_required"
   | "document_uploaded"
   | "deadline_warning"
   | "compliance_check"
-  | "custom";
+  | "date_changed"
+  | "schedule"
+  | "time_daily_at"
+  | "file_classified"
+  | "signal_deadline_detected"
+  | "signal_privilege_detected"
+  | "signal_contradiction_detected"
+  | "custom"
+  | string;
 
 export type AutomationActionType =
   | "change_status"
@@ -622,7 +634,8 @@ export type AutomationActionType =
   | "synseekr_search_documents"
   | "synseekr_timeline_events"
   | "route_to_detective"
-  | "assign_reviewer";
+  | "assign_reviewer"
+  | string;
 
 export interface AutomationCondition {
   field: string;
@@ -1159,11 +1172,7 @@ export const insertAutomationRuleSchema = z.object({
   name: z.string(),
   description: z.string().optional().default(""),
   isActive: z.boolean().optional().default(true),
-  triggerType: z.enum([
-    "item_created", "status_changed", "priority_changed", "due_date_approaching", "due_date_passed",
-    "assigned", "unassigned", "moved_to_group", "field_changed", "file_uploaded",
-    "column_changed", "item_name_changed", "update_created", "button_clicked", "email_received", "custom"
-  ]),
+  triggerType: z.string(),
   triggerField: z.string().optional(),
   triggerValue: z.string().optional(),
   conditions: z.array(z.object({
@@ -1171,26 +1180,8 @@ export const insertAutomationRuleSchema = z.object({
     operator: z.enum(["equals", "not_equals", "contains", "greater_than", "less_than", "is_empty", "is_not_empty"]),
     value: z.any(),
   })).optional().default([]),
-  actionType: z.enum([
-    "change_status", "change_priority", "move_to_group", "assign_person", "unassign_person",
-    "send_notification", "create_subtask", "update_field", "trigger_webhook", "create_item",
-    "set_date", "start_time_tracking", "stop_time_tracking",
-    // AI Actions
-    "ai_fill_column", "ai_summarize", "ai_categorize", "ai_detect_language", "ai_translate",
-    "ai_sentiment", "ai_improve", "ai_extract", "ai_write",
-    // Integration Actions
-    "send_slack", "send_sms", "send_email", "custom",
-    // Legal/Approval Actions
-    "request_approval", "create_approval_record", "notify_approver", "escalate_review",
-    "generate_confirmation", "log_compliance", "adjust_date", "connect_boards",
-    // SynSeekr Actions
-    "synseekr_analyze_document", "synseekr_extract_entities", "synseekr_rag_query",
-    "synseekr_run_investigation", "synseekr_detect_contradictions", "synseekr_classify_document",
-    "synseekr_run_agent", "synseekr_search_documents", "synseekr_timeline_events",
-    // Detective/Review Actions
-    "route_to_detective", "assign_reviewer"
-  ]),
-  actionConfig: z.record(z.any()),
+  actionType: z.string(),
+  actionConfig: z.record(z.any()).optional().default({}),
 });
 
 export const updateAutomationRuleSchema = insertAutomationRuleSchema.partial().omit({ boardId: true });
