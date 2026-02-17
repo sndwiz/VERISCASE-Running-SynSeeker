@@ -55,6 +55,7 @@ export default function BoardPage() {
   const [columnCenterOpen, setColumnCenterOpen] = useState(false);
   const [activeView, setActiveView] = useState<BoardViewType>("table");
   const [aiAutofillColumnId, setAiAutofillColumnId] = useState<string | null>(null);
+  const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [density, setDensity] = useState<"comfort" | "compact" | "ultra-compact">(() => {
     const saved = localStorage.getItem("board-density");
     return (saved as "comfort" | "compact" | "ultra-compact") || "comfort";
@@ -98,18 +99,46 @@ export default function BoardPage() {
 
 
   const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query)
-    );
-  }, [tasks, searchQuery]);
+    let filtered = tasks;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query)
+      );
+    }
+    if (personFilter) {
+      filtered = filtered.filter(
+        (task) => task.assignees?.some(a => a.name === personFilter)
+      );
+    }
+    return filtered;
+  }, [tasks, searchQuery, personFilter]);
 
   const sortedGroups = useMemo(() => {
     return [...groups].sort((a, b) => a.order - b.order);
   }, [groups]);
+
+  const allCollapsed = useMemo(() => {
+    return groups.length > 0 && groups.every(g => g.collapsed);
+  }, [groups]);
+
+  const handleCollapseAll = useCallback(() => {
+    groups.forEach(g => {
+      if (!g.collapsed) {
+        updateGroupMutation.mutate({ groupId: g.id, updates: { collapsed: true } });
+      }
+    });
+  }, [groups, updateGroupMutation]);
+
+  const handleExpandAll = useCallback(() => {
+    groups.forEach(g => {
+      if (g.collapsed) {
+        updateGroupMutation.mutate({ groupId: g.id, updates: { collapsed: false } });
+      }
+    });
+  }, [groups, updateGroupMutation]);
 
   const handleAddTask = (groupId?: string) => {
     setDefaultGroupId(groupId);
@@ -417,6 +446,29 @@ export default function BoardPage() {
         taskCount={tasks.length}
         onOpenAutomations={() => setAutomationsPanelOpen(true)}
         onOpenColumnCenter={() => setColumnCenterOpen(true)}
+        onInvite={() => toast({ title: "Invite feature coming soon" })}
+        onExport={() => {
+          const csv = [
+            ["Title", "Status", "Priority", "Due Date"].join(","),
+            ...tasks.map(t => [t.title, t.status, t.priority, t.dueDate || ""].join(","))
+          ].join("\n");
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${board.name}-export.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast({ title: "Board exported as CSV" });
+        }}
+        onOpenIntegrations={() => toast({ title: "Integrations panel coming soon" })}
+        onOpenSidekick={() => toast({ title: "Opening Sidekick..." })}
+        tasks={tasks}
+        personFilter={personFilter}
+        onPersonFilterChange={setPersonFilter}
+        onCollapseAll={handleCollapseAll}
+        onExpandAll={handleExpandAll}
+        allCollapsed={allCollapsed}
       />
 
       <div className="flex items-center justify-between border-b px-2">

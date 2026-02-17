@@ -139,7 +139,7 @@ function GroupSummaryRow({
     >
       <div className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit border-r border-border" />
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 sticky left-10 z-30 bg-inherit border-r border-border flex items-center"
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow flex items-center"
       >
         <span className="text-xs font-medium text-muted-foreground">
           {tasks.length}
@@ -386,7 +386,7 @@ export const TaskGroup = memo(function TaskGroup({
                 className="w-10 flex-shrink-0 sticky left-0 z-30 bg-inherit flex items-center justify-center border-r border-border"
               />
               <div
-                className="min-w-[200px] w-[280px] flex-shrink-0 sticky left-10 z-30 bg-inherit border-r border-border"
+                className="min-w-[200px] w-[280px] flex-shrink-0 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow"
               >
                 {isInlineEditing ? (
                   <Input

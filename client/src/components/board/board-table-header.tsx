@@ -54,7 +54,7 @@ export function BoardTableHeader({
         />
       </div>
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center sticky left-10 z-40 bg-muted/60 dark:bg-muted/30 border-r border-border"
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center sticky left-10 z-40 bg-muted/60 dark:bg-muted/30 border-r border-border sticky-col-shadow"
       >
         Task
       </div>

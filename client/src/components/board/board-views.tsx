@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, Plus,
   Table2, Columns3, Calendar as CalendarIcon, BarChart3,
   GanttChart, Palette, FileText, Image, FormInput, LayoutDashboard,
-  MoreHorizontal,
+  MoreHorizontal, Sparkles, ListTodo, Target, Wand2, AppWindow, Package, ExternalLink,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -15,6 +15,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import type { Board, Group, Task, CustomStatusLabel } from "@shared/schema";
 import { defaultStatusLabels } from "@shared/schema";
@@ -37,7 +40,7 @@ const ALL_VIEWS: ViewTabDef[] = [
   { id: "chart", label: "Chart", icon: BarChart3 },
   { id: "canvas", label: "Canvas", icon: Palette },
   { id: "doc", label: "Doc", icon: FileText },
-  { id: "files", label: "Files", icon: Image },
+  { id: "files", label: "File Gallery", icon: Image },
   { id: "form", label: "Form", icon: FormInput },
 ];
 
@@ -105,10 +108,10 @@ export function ViewTabs({ activeView, onViewChange }: ViewTabsProps) {
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel className="text-xs">Board Views</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {moreViews.map(v => {
+          {ALL_VIEWS.map(v => {
             const Icon = v.icon;
             return (
               <DropdownMenuItem
@@ -125,6 +128,53 @@ export function ViewTabs({ activeView, onViewChange }: ViewTabsProps) {
               </DropdownMenuItem>
             );
           })}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3" />
+            Build with Vibe
+          </DropdownMenuLabel>
+          <DropdownMenuItem className="gap-2" data-testid="menu-vibe-task-tracker">
+            <ListTodo className="h-4 w-4" />
+            Task Tracker
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" data-testid="menu-vibe-priority-hub">
+            <Target className="h-4 w-4" />
+            Priority Hub
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" data-testid="menu-vibe-from-scratch">
+            <Wand2 className="h-4 w-4" />
+            Build app from scratch
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="gap-2">
+              <AppWindow className="h-4 w-4" />
+              Apps
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-48">
+              <DropdownMenuLabel className="text-xs">Installed Apps</DropdownMenuLabel>
+              <DropdownMenuItem className="gap-2 text-muted-foreground text-xs" disabled>
+                No apps installed yet
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs">Recommended</DropdownMenuLabel>
+              <DropdownMenuItem className="gap-2" data-testid="menu-app-time-tracking">
+                <Package className="h-4 w-4" />
+                Time Tracking
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" data-testid="menu-app-notifications">
+                <Package className="h-4 w-4" />
+                Notifications
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" data-testid="menu-explore-apps">
+                <ExternalLink className="h-4 w-4" />
+                Explore more apps
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

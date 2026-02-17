@@ -320,7 +320,7 @@ export const TaskRow = memo(function TaskRow({
       </div>
 
       <div
-        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-1 sticky left-10 z-30 bg-inherit border-r border-border"
+        className="min-w-[200px] w-[280px] flex-shrink-0 px-3 flex items-center gap-1 sticky left-10 z-30 bg-inherit border-r border-border sticky-col-shadow"
         onClick={onClick}
         data-testid={`task-title-${task.id}`}
       >
@@ -339,7 +339,7 @@ export const TaskRow = memo(function TaskRow({
             )}
           </Button>
         )}
-        <span className="text-sm truncate" title={task.title}>{task.title}</span>
+        <span className="text-sm truncate task-title-text" title={task.title}>{task.title}</span>
         {hasSubtasks && (
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded-sm shrink-0"
@@ -354,8 +354,8 @@ export const TaskRow = memo(function TaskRow({
       {columns.map((col, colIdx) => (
         <div
           key={col.id}
-          className="px-1.5 flex items-center border-r border-border"
-          style={{ width: col.width, minWidth: col.width, minHeight: "36px" }}
+          className="px-1.5 flex items-center border-r border-border overflow-hidden metadata-cell"
+          style={{ width: col.width, minWidth: col.width, maxWidth: col.width, minHeight: "36px" }}
           data-cell-index={colIdx}
         >
           {renderCell(col)}
