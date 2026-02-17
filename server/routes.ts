@@ -210,6 +210,10 @@ export async function registerRoutes(
   // Bootstrap first admin user after routes are set up (fallback for existing users)
   bootstrapFirstAdmin();
 
+  // Start due date monitoring for automations
+  import("./automation-engine").then(({ startDueDateMonitor }) => startDueDateMonitor());
+
+
   // Set up WebSocket server for real-time chat
   setupSocketIO(httpServer);
 

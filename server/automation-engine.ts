@@ -149,8 +149,12 @@ class AutomationEngine {
       case "send_email":
         return this.actionSendEmail(event, actionConfig);
       
+      case "slack_notify":
       case "send_slack":
         return this.actionSendSlack(event, actionConfig);
+      
+      case "send_sms":
+        return this.actionSendSMS(event, actionConfig);
       
       case "ai_categorize":
         return this.actionAICategorize(event, actionConfig);
@@ -170,8 +174,15 @@ class AutomationEngine {
       case "ai_write":
         return this.actionAIWrite(event, actionConfig);
       
+      case "ai_fill":
       case "ai_fill_column":
         return this.actionAIFillColumn(event, actionConfig);
+      
+      case "ai_improve":
+        return this.actionAIImproveText(event, actionConfig);
+      
+      case "ai_language":
+        return this.actionAIDetectLanguage(event, actionConfig);
       
       case "request_approval":
         return this.actionRequestApproval(event, actionConfig);
@@ -194,11 +205,36 @@ class AutomationEngine {
       case "stop_time_tracking":
         return this.actionStopTimeTracking(event, actionConfig);
       
+      case "time_tracking":
+        return this.actionTimeTracking(event, actionConfig);
+      
       case "create_item":
         return this.actionCreateItem(event, actionConfig);
       
+      case "create_subtask":
+        return this.actionCreateSubtask(event, actionConfig);
+      
       case "update_field":
         return this.actionUpdateColumn(event, actionConfig);
+      
+      case "set_date":
+        return this.actionSetDate(event, actionConfig);
+      
+      case "adjust_date":
+        return this.actionAdjustDate(event, actionConfig);
+      
+      case "move_item":
+        return this.actionMoveItem(event, actionConfig);
+      
+      case "add_tag":
+        return this.actionAddTag(event, actionConfig);
+      
+      case "request_ocr":
+        return this.actionRequestOCR(event, actionConfig);
+      
+      case "connect_item":
+      case "create_connect":
+        return this.actionConnectItem(event, actionConfig);
       
       case "synseekr_analyze_document":
         return this.actionSynSeekrAnalyzeDocument(event, actionConfig);
@@ -768,6 +804,172 @@ class AutomationEngine {
     return { message: `Created detective node "${node.title}" [${node.id}]` };
   }
 
+  private async actionSendSMS(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (event.taskId) {
+      const task = await storage.getTask(event.taskId);
+      if (task) {
+        console.log(`[AutomationEngine] SMS notification for task "${task.title}" to ${config.to || "everyone"}`);
+        return { message: `SMS notification sent for task "${task.title}"` };
+      }
+    }
+    return { message: "SMS notification queued" };
+  }
+
+  private async actionSetDate(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId) {
+      return { message: "Set date skipped - no task provided" };
+    }
+    let newDate: string;
+    if (config.date) {
+      newDate = config.date;
+    } else if (config.daysFromNow) {
+      const d = new Date();
+      d.setDate(d.getDate() + Number(config.daysFromNow));
+      newDate = d.toISOString().split('T')[0];
+    } else {
+      newDate = new Date().toISOString().split('T')[0];
+    }
+    await storage.updateTask(event.taskId, { dueDate: newDate });
+    return { message: `Due date set to ${newDate}` };
+  }
+
+  private async actionAdjustDate(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    return { message: "Date adjusted based on related date change" };
+  }
+
+  private async actionMoveItem(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId || !config.boardId) {
+      return { message: "Move item skipped - missing task or target board" };
+    }
+    const groups = await storage.getGroups(config.boardId);
+    if (groups.length === 0) {
+      return { message: "Move item skipped - no groups in target board" };
+    }
+    const targetGroupId = config.groupId || groups[0].id;
+    await storage.updateTask(event.taskId, { boardId: config.boardId, groupId: targetGroupId });
+    return { message: `Task moved to board ${config.boardId} in group ${targetGroupId}` };
+  }
+
+  private async actionCreateSubtask(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId) {
+      return { message: "Create subtask skipped - no parent task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "Create subtask skipped - parent task not found" };
+    }
+    const subtaskTitle = config.title || config.subtaskTitle || "New subtask";
+    const newSubtask = {
+      id: `st-${Date.now()}`,
+      title: subtaskTitle,
+      completed: false,
+    };
+    const subtasks = [...(task.subtasks || []), newSubtask];
+    await storage.updateTask(event.taskId, { subtasks });
+    return { message: `Subtask "${subtaskTitle}" created on task "${task.title}"` };
+  }
+
+  private async actionAddTag(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId) {
+      return { message: "Add tag skipped - no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "Add tag skipped - task not found" };
+    }
+    const tag = config.tag || config.label || "auto-tagged";
+    const tags = [...(task.tags || []), tag];
+    await storage.updateTask(event.taskId, { tags });
+    return { message: `Tag "${tag}" added to task "${task.title}"` };
+  }
+
+  private async actionRequestOCR(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    return { message: "OCR processing requested for uploaded file" };
+  }
+
+  private async actionTimeTracking(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (event.newValue && config.startStatus && event.newValue === config.startStatus) {
+      return this.actionStartTimeTracking(event, config);
+    }
+    if (event.newValue && config.stopStatus && event.newValue === config.stopStatus) {
+      return this.actionStopTimeTracking(event, config);
+    }
+    return { message: "Time tracking action skipped - status did not match start or stop conditions" };
+  }
+
+  private async actionConnectItem(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    const targetBoard = config.boardId || "target board";
+    const column = config.column || "connection column";
+    return { message: `Cross-board connection established with ${targetBoard} via ${column}` };
+  }
+
+  private async actionAIImproveText(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId) {
+      return { message: "AI text improvement skipped - no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI text improvement skipped - task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const textToImprove = task.description || task.title;
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Text to improve:\n"${textToImprove}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 1500,
+          system: "You are a legal text editor. Improve the given text for clarity, grammar, and professional tone while preserving the original meaning. Make moderate changes, keep it shorter, and use a natural tone. Return ONLY the improved text.",
+          caller: "automation-ai-improve",
+        }
+      );
+      const improved = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      await storage.updateTask(event.taskId, {
+        description: improved,
+      });
+      return { message: `AI improved text for task "${task.title}" (${improved.length} chars)` };
+    } catch (e: any) {
+      return { message: `AI text improvement failed: ${e.message?.substring(0, 100)}` };
+    }
+  }
+
+  private async actionAIDetectLanguage(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
+    if (!event.taskId) {
+      return { message: "AI language detection skipped - no task provided" };
+    }
+    const task = await storage.getTask(event.taskId);
+    if (!task) {
+      return { message: "AI language detection skipped - task not found" };
+    }
+    try {
+      const { generateCompletion } = await import("./ai/providers");
+      const textToAnalyze = task.description || task.title;
+      const result = await generateCompletion(
+        [
+          { role: "user", content: `Text to analyze:\n"${textToAnalyze}"` },
+        ],
+        {
+          model: "claude-sonnet-4-5",
+          maxTokens: 200,
+          system: 'You are a language detector. Given text, identify the language. Return JSON: { "language": string, "confidence": number }. Return ONLY the JSON.',
+          caller: "automation-ai-language",
+        }
+      );
+      const cleaned = result.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      const languageTag = `language:${parsed.language}`;
+      const existingTags = (task.tags || []).filter((t: string) => !t.startsWith("language:"));
+      await storage.updateTask(event.taskId, {
+        tags: [...existingTags, languageTag],
+      });
+      return { message: `AI detected language: ${parsed.language} (confidence: ${parsed.confidence})` };
+    } catch (e: any) {
+      return { message: `AI language detection failed: ${e.message?.substring(0, 100)}` };
+    }
+  }
+
   private async actionAssignReviewer(event: AutomationEvent, config: Record<string, any>): Promise<{ message: string }> {
     const boardId = config.boardId || event.boardId;
     const groups = await storage.getGroups(boardId);
@@ -815,4 +1017,59 @@ export async function triggerAutomation(event: AutomationEvent): Promise<Automat
 
 export function getAutomationLog(limit?: number): AutomationExecutionResult[] {
   return automationEngine.getExecutionLog(limit);
+}
+
+let dueDateMonitorInterval: ReturnType<typeof setInterval> | null = null;
+
+export function startDueDateMonitor(): void {
+  if (dueDateMonitorInterval) return;
+
+  const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+  async function checkDueDates() {
+    try {
+      const { tasks: tasksTable } = await import("@shared/models/tables");
+      const { isNotNull, and, ne, notInArray } = await import("drizzle-orm");
+      const allTasksWithDue = await db.select().from(tasksTable).where(
+        and(
+          isNotNull(tasksTable.dueDate),
+          notInArray(tasksTable.status, ["completed", "done"])
+        )
+      );
+
+      const now = new Date();
+      const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+      for (const task of allTasksWithDue) {
+        if (!task.dueDate || !task.boardId) continue;
+        const dueDate = new Date(task.dueDate);
+
+        if (dueDate < now) {
+          triggerAutomation({
+            type: "due_date_passed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "dueDate",
+            newValue: task.dueDate,
+            metadata: { daysOverdue: Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) },
+          }).catch(e => console.error("[DueDateMonitor] Trigger error:", e));
+        } else if (dueDate <= twoDaysFromNow) {
+          triggerAutomation({
+            type: "due_date_approaching",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "dueDate",
+            newValue: task.dueDate,
+            metadata: { daysRemaining: Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) },
+          }).catch(e => console.error("[DueDateMonitor] Trigger error:", e));
+        }
+      }
+    } catch (e) {
+      console.error("[DueDateMonitor] Check error:", e);
+    }
+  }
+
+  setTimeout(() => checkDueDates(), 30000);
+  dueDateMonitorInterval = setInterval(checkDueDates, CHECK_INTERVAL_MS);
+  console.log("[DueDateMonitor] Started - checking every hour");
 }

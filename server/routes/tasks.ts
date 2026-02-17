@@ -184,6 +184,36 @@ export function registerTaskRoutes(app: Express): void {
             newValue: data.priority,
           }).catch(e => console.error("[tasks] Automation trigger error:", e));
         }
+        if (data.title && oldTask.title !== data.title) {
+          triggerAutomation({
+            type: "name_changed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "title",
+            previousValue: oldTask.title,
+            newValue: data.title,
+          }).catch(e => console.error("[tasks] Automation trigger error:", e));
+        }
+        if (data.dueDate !== undefined && oldTask.dueDate !== data.dueDate) {
+          triggerAutomation({
+            type: "date_changed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "dueDate",
+            previousValue: oldTask.dueDate,
+            newValue: data.dueDate,
+          }).catch(e => console.error("[tasks] Automation trigger error:", e));
+        }
+        if (data.customFields && JSON.stringify(oldTask.customFields) !== JSON.stringify(data.customFields)) {
+          triggerAutomation({
+            type: "column_changed",
+            boardId: task.boardId,
+            taskId: task.id,
+            field: "customFields",
+            previousValue: oldTask.customFields,
+            newValue: data.customFields,
+          }).catch(e => console.error("[tasks] Automation trigger error:", e));
+        }
       }
 
       res.json(task);
@@ -243,6 +273,14 @@ export function registerTaskRoutes(app: Express): void {
       await storage.updateTask(taskId, {
         files: [...existingFiles, fileRecord],
       });
+
+      triggerAutomation({
+        type: "file_uploaded",
+        boardId: task.boardId,
+        taskId: task.id,
+        newValue: file.originalname,
+        metadata: { fileName: file.originalname, mimeType: file.mimetype, size: file.size, fileId: fileRecord.id },
+      }).catch(e => console.error("[tasks] Automation trigger error:", e));
 
       res.status(201).json(fileRecord);
     } catch (error: any) {
@@ -347,6 +385,15 @@ export function registerTaskRoutes(app: Express): void {
       if (!updatedTask) {
         return res.status(500).json({ error: "Failed to move task" });
       }
+
+      triggerAutomation({
+        type: "item_moved",
+        boardId: targetBoardId,
+        taskId: updatedTask.id,
+        previousValue: task.boardId,
+        newValue: targetBoardId,
+        metadata: { fromBoardId: task.boardId, toBoardId: targetBoardId, groupId: targetGroupId },
+      }).catch(e => console.error("[tasks] Automation trigger error:", e));
 
       res.json(updatedTask);
     } catch (error) {

@@ -596,10 +596,20 @@ export type AutomationActionType =
   | "log_compliance"
   // Integration Actions
   | "send_slack"
+  | "slack_notify"
   | "send_sms"
   | "send_email"
   | "create_contact"
   | "notify_channel"
+  // Template aliases (frontend uses these names)
+  | "ai_fill"
+  | "ai_language"
+  | "time_tracking"
+  | "move_item"
+  | "add_tag"
+  | "request_ocr"
+  | "connect_item"
+  | "create_connect"
   | "custom"
   // SynSeekr Server Actions
   | "synseekr_analyze_document"
