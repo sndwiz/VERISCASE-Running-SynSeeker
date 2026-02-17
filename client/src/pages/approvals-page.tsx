@@ -210,7 +210,15 @@ export default function ApprovalsPage() {
   };
 
   const filteredApprovals = approvals.filter(a => {
-    if (filterStatus && filterStatus !== "__all__" && a.status !== filterStatus) return false;
+    if (filterStatus && filterStatus !== "__all__") {
+      if (filterStatus === "pending") {
+        if (a.status !== "pending" && a.status !== "vetting") return false;
+      } else if (filterStatus === "approved") {
+        if (a.status !== "approved" && a.status !== "confirmed") return false;
+      } else {
+        if (a.status !== filterStatus) return false;
+      }
+    }
     if (filterType && filterType !== "__all__" && a.type !== filterType) return false;
     return true;
   });

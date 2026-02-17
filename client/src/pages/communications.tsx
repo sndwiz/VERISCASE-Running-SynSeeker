@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 function ClientPortalsContent() {
+  const { toast } = useToast();
   const [portalTab, setPortalTab] = useState("my-portals");
   const [sortBy, setSortBy] = useState("newest");
 
@@ -101,7 +103,7 @@ function ClientPortalsContent() {
               Share a message, document, bill or calendar event with your clients on a matter via VeriCase for Clients.
             </p>
           </div>
-          <Button data-testid="button-new-client-portal">
+          <Button data-testid="button-new-client-portal" onClick={() => toast({ title: "Client Portal", description: "Configure client portal settings in the Client Portal Management section." })}>
             <Plus className="h-4 w-4 mr-2" />
             New client portal
           </Button>
@@ -126,6 +128,7 @@ function ClientPortalsContent() {
 }
 
 function TextMessagesContent() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [composeMessage, setComposeMessage] = useState("");
 
@@ -134,7 +137,7 @@ function TextMessagesContent() {
       <div className="p-4 border-b space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold" data-testid="text-messages-title">Text Messages</h2>
-          <Button data-testid="button-compose-text">
+          <Button data-testid="button-compose-text" onClick={() => toast({ title: "Text Messaging", description: "Configure Twilio SMS integration in Settings to enable text messaging." })}>
             <Plus className="h-4 w-4 mr-2" />
             Compose
           </Button>
@@ -164,7 +167,7 @@ function TextMessagesContent() {
               Send and receive text messages directly from VeriCase. Keep all client communications in one place.
             </p>
           </div>
-          <Button data-testid="button-send-first-text">
+          <Button data-testid="button-send-first-text" onClick={() => toast({ title: "Text Messaging", description: "Configure Twilio SMS integration in Settings to enable text messaging." })}>
             <Send className="h-4 w-4 mr-2" />
             Send your first message
           </Button>
@@ -189,6 +192,7 @@ function TextMessagesContent() {
 }
 
 function InternalMessagesContent() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
@@ -196,7 +200,7 @@ function InternalMessagesContent() {
       <div className="p-4 border-b space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold" data-testid="text-internal-title">Internal Messages</h2>
-          <Button data-testid="button-compose-internal">
+          <Button data-testid="button-compose-internal" onClick={() => toast({ title: "Internal Messaging", description: "Create internal messages to communicate securely with your team." })}>
             <Plus className="h-4 w-4 mr-2" />
             New Message
           </Button>
@@ -226,7 +230,7 @@ function InternalMessagesContent() {
               Communicate securely with your team. Internal messages stay private and are linked to matters for easy reference.
             </p>
           </div>
-          <Button data-testid="button-start-internal-conversation">
+          <Button data-testid="button-start-internal-conversation" onClick={() => toast({ title: "Internal Messaging", description: "Create internal messages to communicate securely with your team." })}>
             <MessageSquare className="h-4 w-4 mr-2" />
             Start a conversation
           </Button>
@@ -335,6 +339,7 @@ function LogsContent() {
 }
 
 export default function CommunicationsPage() {
+  const { toast } = useToast();
   const [activeSection, setActiveSection] = useState<NavSection>("portals");
 
   const renderContent = () => {
@@ -373,23 +378,23 @@ export default function CommunicationsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem data-testid="menu-item-new-portal">
+                <DropdownMenuItem data-testid="menu-item-new-portal" onClick={() => { setActiveSection("portals"); toast({ title: "Client Portal", description: "Configure client portal settings in the Client Portal Management section." }); }}>
                   <Globe className="h-4 w-4 mr-2" />
                   Client portal
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-new-text">
+                <DropdownMenuItem data-testid="menu-item-new-text" onClick={() => { setActiveSection("text-messages"); toast({ title: "Text Messaging", description: "Configure Twilio SMS integration in Settings to enable text messaging." }); }}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Text message
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-new-internal">
+                <DropdownMenuItem data-testid="menu-item-new-internal" onClick={() => { setActiveSection("internal-messages"); toast({ title: "Internal Messaging", description: "Create internal messages to communicate securely with your team." }); }}>
                   <Users className="h-4 w-4 mr-2" />
                   Internal message
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-new-email">
+                <DropdownMenuItem data-testid="menu-item-new-email" onClick={() => toast({ title: "Email", description: "Connect your email account in Settings to send and receive emails." })}>
                   <Mail className="h-4 w-4 mr-2" />
                   Email
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-item-log-call">
+                <DropdownMenuItem data-testid="menu-item-log-call" onClick={() => toast({ title: "Phone Call Logged", description: "Call logging will be available after configuring your communications integration." })}>
                   <Phone className="h-4 w-4 mr-2" />
                   Log a phone call
                 </DropdownMenuItem>

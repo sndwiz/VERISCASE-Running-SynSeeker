@@ -80,6 +80,7 @@ export default function AIChatPage() {
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [autoSendPending, setAutoSendPending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingLandingMessage = useRef<string | null>(null);
 
@@ -116,8 +117,10 @@ export default function AIChatPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
       setSelectedConversationId(data.id);
       if (pendingLandingMessage.current) {
-        setMessage(pendingLandingMessage.current);
+        const pendingText = pendingLandingMessage.current;
         pendingLandingMessage.current = null;
+        setMessage(pendingText);
+        setAutoSendPending(true);
       }
     },
     onError: () => {
@@ -254,6 +257,13 @@ export default function AIChatPage() {
       setStreamingContent("");
     }
   };
+
+  useEffect(() => {
+    if (autoSendPending && message.trim() && selectedConversationId && !isStreaming) {
+      setAutoSendPending(false);
+      handleSendMessage();
+    }
+  }, [autoSendPending, message, selectedConversationId, isStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

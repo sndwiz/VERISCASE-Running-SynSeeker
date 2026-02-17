@@ -456,6 +456,7 @@ export default function DocumentMakerPage() {
                             size="icon"
                             variant="ghost"
                             data-testid={`button-view-audit-${approval.id}`}
+                            onClick={() => toast({ title: "Audit Trail", description: `${approval.status} by ${approval.reviewerName || "reviewer"} on ${new Date(approval.reviewedAt || approval.createdAt).toLocaleDateString()}` })}
                           >
                             <History className="h-4 w-4" />
                           </Button>
@@ -647,7 +648,19 @@ export default function DocumentMakerPage() {
             <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
               Close
             </Button>
-            <Button className="gap-1" data-testid="button-download-document">
+            <Button className="gap-1" data-testid="button-download-document" onClick={() => {
+              if (selectedDocument?.content) {
+                const blob = new Blob([selectedDocument.content], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${selectedDocument.title || "document"}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }
+            }}>
               <Download className="h-4 w-4" />
               Download
             </Button>

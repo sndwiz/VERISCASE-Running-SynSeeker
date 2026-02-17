@@ -570,7 +570,7 @@ export default function FilingCabinetPage() {
                                   <Edit className="h-4 w-4 mr-2" />
                                   Classify
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); if (file.serverPath) { window.open(file.serverPath, '_blank'); } else { toast({ title: "Download", description: "This file does not have a downloadable attachment." }); } }}>
                                   <Download className="h-4 w-4 mr-2" />
                                   Download
                                 </DropdownMenuItem>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,7 @@ function ParticipantAvatars({ participants, max = 3 }: { participants: MeetingPa
 }
 
 function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect: (m: Meeting) => void }) {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const filtered = meetings.filter(m =>
     m.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -137,7 +139,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
             </li>
           </ul>
           <div className="flex items-center gap-3 flex-wrap">
-            <Button className="bg-white text-slate-900" data-testid="button-record-meeting">
+            <Button className="bg-white text-slate-900" data-testid="button-record-meeting" onClick={() => toast({ title: "Meeting Recording", description: "Connect your microphone to start recording. This feature requires a local SynSeekr server." })}>
               <Mic className="h-4 w-4 mr-2" />
               Record a Meeting
             </Button>
@@ -237,6 +239,7 @@ function MeetingListView({ meetings, onSelect }: { meetings: Meeting[]; onSelect
 }
 
 function OverviewTab({ meeting }: { meeting: Meeting }) {
+  const { toast } = useToast();
   return (
     <div className="space-y-4 md:space-y-6" data-testid="tab-overview">
       <Card>
@@ -245,7 +248,10 @@ function OverviewTab({ meeting }: { meeting: Meeting }) {
             <Sparkles className="h-4 w-4 text-primary" />
             <CardTitle className="text-base">General Summary</CardTitle>
           </div>
-          <Button size="icon" variant="ghost" data-testid="button-copy-summary">
+          <Button size="icon" variant="ghost" data-testid="button-copy-summary" onClick={() => {
+            navigator.clipboard.writeText(meeting.summary || meeting.title || "");
+            toast({ title: "Summary copied to clipboard" });
+          }}>
             <Copy className="h-4 w-4" />
           </Button>
         </CardHeader>
