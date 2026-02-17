@@ -4,7 +4,7 @@ import {
   ArrowDown, MoreHorizontal, ChevronDown, ArrowRight, Users, Calendar,
   Clock, Hash, Archive, Trash2, Copy, Layers, BarChart3, GitBranch,
   FileText, User, UserPlus, Type, CheckSquare, Square, Tag, Send,
-  Play, Pause, Circle, AlertCircle
+  Play, Pause, Circle, AlertCircle, Activity, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -562,6 +562,116 @@ function InlineSentence({ trigger, action, config, setConfig, columns, groups, b
   );
 }
 
+interface AutomationRun {
+  id: string;
+  ruleId: string;
+  boardId?: string;
+  taskId?: string;
+  taskTitle?: string;
+  triggerType?: string;
+  actionType?: string;
+  ruleName?: string;
+  explanation?: string;
+  conditionsEvaluated?: any[];
+  fieldsChanged?: any[];
+  status: string;
+  error?: string;
+  executedAt: string;
+  completedAt?: string;
+}
+
+function RunHistoryPanel({ boardId }: { boardId: string }) {
+  const { data: runs = [], isLoading } = useQuery<AutomationRun[]>({
+    queryKey: [`/api/boards/${boardId}/automation-runs?limit=50`],
+    refetchInterval: 15000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (runs.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-2">
+        <Activity className="h-8 w-8 text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">No automation runs yet.</p>
+        <p className="text-muted-foreground text-xs">Runs will appear here as automations fire on this board.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ScrollArea className="flex-1">
+      <div className="space-y-2 p-1">
+        {runs.map(run => (
+          <Card key={run.id} className={`${run.status === "failed" ? "border-destructive/40" : ""}`} data-testid={`card-automation-run-${run.id}`}>
+            <CardContent className="p-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  {run.status === "completed" ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                  ) : run.status === "failed" ? (
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="text-sm font-medium truncate" data-testid={`text-run-rule-${run.id}`}>{run.ruleName || "Unknown Rule"}</span>
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0" data-testid={`text-run-time-${run.id}`}>
+                  {run.executedAt ? formatRelativeTime(run.executedAt) : ""}
+                </span>
+              </div>
+
+              {run.explanation && (
+                <p className="text-xs text-muted-foreground leading-relaxed pl-6" data-testid={`text-run-explanation-${run.id}`}>{run.explanation}</p>
+              )}
+
+              {run.taskTitle && (
+                <div className="flex items-center gap-1.5 pl-6">
+                  <FileText className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground" data-testid={`text-run-task-${run.id}`}>{run.taskTitle}</span>
+                </div>
+              )}
+
+              {run.fieldsChanged && (run.fieldsChanged as any[]).length > 0 && (
+                <div className="flex flex-wrap gap-1 pl-6">
+                  {(run.fieldsChanged as any[]).map((fc: any, i: number) => (
+                    <Badge key={i} variant="secondary" className="text-xs" data-testid={`badge-field-change-${run.id}-${i}`}>
+                      {fc.field} {fc.newValue ? `\u2192 ${fc.newValue}` : ""}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {run.error && (
+                <p className="text-xs text-destructive pl-6" data-testid={`text-run-error-${run.id}`}>{run.error}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
 export interface AutomationPrefill {
   triggerId?: string;
   actionId?: string;
@@ -591,6 +701,34 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
   const [selectedTrigger, setSelectedTrigger] = useState<TriggerDef | undefined>();
   const [selectedAction, setSelectedAction] = useState<ActionDef | undefined>();
   const [builderConfig, setBuilderConfig] = useState<Record<string, any>>({});
+  const [dryRunResult, setDryRunResult] = useState<{
+    matchCount: number;
+    matches: Array<{ taskId: string; taskTitle: string; predictedChanges: any[] }>;
+    conflicts: Array<{ ruleId: string; ruleName: string; type: string; description: string }>;
+  } | null>(null);
+  const [showDryRun, setShowDryRun] = useState(false);
+
+  const dryRunMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedTrigger || !selectedAction) throw new Error("Select trigger and action first");
+      const res = await apiRequest("POST", `/api/boards/${boardId}/automations/dry-run`, {
+        triggerType: selectedTrigger.id,
+        triggerField: builderConfig.targetColumn || null,
+        triggerValue: builderConfig.targetValue || null,
+        actionType: selectedAction.id,
+        actionConfig: builderConfig,
+        conditions: [],
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setDryRunResult(data);
+      setShowDryRun(true);
+    },
+    onError: () => {
+      toast({ title: "Dry run failed", variant: "destructive" });
+    },
+  });
 
   useEffect(() => {
     if (open && prefill) {
@@ -757,6 +895,7 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
   if (!open) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0" data-testid="panel-automations">
         <DialogHeader className="px-6 pt-6 pb-0">
@@ -904,9 +1043,7 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
             )}
 
             {activeTab === "run_history" && (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-muted-foreground text-sm">No run history available yet.</p>
-              </div>
+              <RunHistoryPanel boardId={boardId} />
             )}
           </div>
         )}
@@ -992,17 +1129,31 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
                     </button>
                   )}
 
-                  <Button
-                    className="mt-4"
-                    disabled={!selectedTrigger || !selectedAction || createRuleMutation.isPending}
-                    onClick={handleCreateAutomation}
-                    data-testid="button-create-automation-submit"
-                  >
-                    {createRuleMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Create automation
-                  </Button>
+                  <div className="flex gap-2 mt-4 flex-wrap">
+                    <Button
+                      variant="outline"
+                      disabled={!selectedTrigger || !selectedAction || dryRunMutation.isPending}
+                      onClick={() => dryRunMutation.mutate()}
+                      data-testid="button-test-rule"
+                    >
+                      {dryRunMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      Test Rule
+                    </Button>
+                    <Button
+                      disabled={!selectedTrigger || !selectedAction || createRuleMutation.isPending}
+                      onClick={handleCreateAutomation}
+                      data-testid="button-create-automation-submit"
+                    >
+                      {createRuleMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      Create automation
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1156,6 +1307,79 @@ export function AutomationsPanel({ boardId, open, onClose, prefill }: Automation
         )}
       </DialogContent>
     </Dialog>
+
+    <Dialog open={showDryRun} onOpenChange={setShowDryRun}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Play className="h-4 w-4" />
+            Dry Run Results
+          </DialogTitle>
+          <DialogDescription>
+            Simulation of what this rule would do against current board items.
+          </DialogDescription>
+        </DialogHeader>
+        {dryRunResult && (
+          <div className="space-y-4" data-testid="panel-dry-run-results">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 p-3 rounded-md bg-muted text-center">
+                <p className="text-2xl font-bold" data-testid="text-dry-run-match-count">{dryRunResult.matchCount}</p>
+                <p className="text-xs text-muted-foreground">items would match</p>
+              </div>
+              <div className="flex-1 p-3 rounded-md bg-muted text-center">
+                <p className="text-2xl font-bold" data-testid="text-dry-run-conflict-count">{dryRunResult.conflicts.length}</p>
+                <p className="text-xs text-muted-foreground">conflicts found</p>
+              </div>
+            </div>
+
+            {dryRunResult.conflicts.length > 0 && (
+              <div className="space-y-2" data-testid="section-dry-run-conflicts">
+                <h4 className="text-sm font-medium flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-4 w-4" />
+                  Conflicts Detected
+                </h4>
+                {dryRunResult.conflicts.map((c, i) => (
+                  <div key={i} className="p-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10 space-y-1" data-testid={`card-conflict-${i}`}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {c.type === "potential_loop" ? "Loop Risk" : "Competing Write"}
+                      </Badge>
+                      <span className="text-xs font-medium">{c.ruleName}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{c.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dryRunResult.matches.length > 0 && (
+              <div className="space-y-2" data-testid="section-dry-run-matches">
+                <h4 className="text-sm font-medium">Matching Items</h4>
+                <ScrollArea className="max-h-[200px]">
+                  <div className="space-y-1">
+                    {dryRunResult.matches.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50" data-testid={`card-match-${i}`}>
+                        <span className="text-sm truncate">{m.taskTitle}</span>
+                        {m.predictedChanges.length > 0 && (
+                          <div className="flex gap-1 shrink-0">
+                            {m.predictedChanges.map((pc: any, j: number) => (
+                              <Badge key={j} variant="secondary" className="text-xs">
+                                {pc.field} {pc.newValue ? `\u2192 ${pc.newValue}` : ""}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

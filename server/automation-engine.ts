@@ -73,8 +73,72 @@ class AutomationEngine {
     return true;
   }
 
+  private generateExplanation(rule: AutomationRule, event: AutomationEvent, actionMessage: string, taskTitle?: string): string {
+    const triggerDesc = this.describeTrigger(rule, event);
+    const condDesc = (rule.conditions && (rule.conditions as any[]).length > 0)
+      ? `Conditions checked: ${(rule.conditions as any[]).map((c: any) => `${c.field} ${c.operator} ${c.value}`).join(", ")}.`
+      : "No additional conditions.";
+    const taskDesc = taskTitle ? ` on "${taskTitle}"` : (event.taskId ? ` on task ${event.taskId}` : "");
+    return `Triggered by: ${triggerDesc}${taskDesc}. ${condDesc} Action: ${actionMessage}.`;
+  }
+
+  private describeTrigger(rule: AutomationRule, event: AutomationEvent): string {
+    const typeLabels: Record<string, string> = {
+      status_change: "status changed",
+      priority_change: "priority changed",
+      item_created: "item was created",
+      date_arrived: "date arrived",
+      column_change: "column value changed",
+      person_assigned: "person was assigned",
+      item_moved: "item was moved",
+      form_submitted: "form was submitted",
+      every_time_period: "scheduled time period",
+    };
+    let desc = typeLabels[rule.triggerType] || rule.triggerType;
+    if (event.field) desc += ` (field: ${event.field})`;
+    if (event.previousValue !== undefined && event.newValue !== undefined) {
+      desc += ` from "${event.previousValue}" to "${event.newValue}"`;
+    } else if (event.newValue !== undefined) {
+      desc += ` to "${event.newValue}"`;
+    }
+    return desc;
+  }
+
+  private detectFieldsChanged(rule: AutomationRule, actionMessage: string): any[] {
+    const changes: any[] = [];
+    const config = rule.actionConfig || {};
+    switch (rule.actionType) {
+      case "change_status":
+        changes.push({ field: "status", newValue: config.status || config.targetValue });
+        break;
+      case "change_priority":
+        changes.push({ field: "priority", newValue: config.priority });
+        break;
+      case "assign_person":
+        changes.push({ field: "assignees", newValue: config.personName || config.personId });
+        break;
+      case "move_to_group":
+        changes.push({ field: "groupId", newValue: config.groupId });
+        break;
+      case "set_date":
+        changes.push({ field: config.dateField || "dueDate", newValue: config.date });
+        break;
+      case "update_field":
+        changes.push({ field: config.field || config.column, newValue: config.value });
+        break;
+    }
+    return changes;
+  }
+
   private async executeRule(rule: AutomationRule, event: AutomationEvent): Promise<AutomationExecutionResult> {
     const timestamp = new Date().toISOString();
+    let taskTitle: string | undefined;
+    if (event.taskId) {
+      try {
+        const task = await storage.getTask(event.taskId);
+        taskTitle = task?.title;
+      } catch (_) {}
+    }
     
     try {
       const actionResult = await this.executeAction(rule, event);
@@ -84,12 +148,23 @@ class AutomationEngine {
         lastRun: new Date() as any,
       });
 
+      const explanation = this.generateExplanation(rule, event, actionResult.message, taskTitle);
+      const fieldsChanged = this.detectFieldsChanged(rule, actionResult.message);
+
       try {
         await db.insert(automationRuns).values({
           ruleId: rule.id,
+          boardId: event.boardId,
           taskId: event.taskId || null,
+          taskTitle: taskTitle || null,
+          triggerType: rule.triggerType,
+          actionType: rule.actionType,
+          ruleName: rule.name,
           triggerData: event as any,
           actionResult: { message: actionResult.message } as any,
+          explanation,
+          conditionsEvaluated: (rule.conditions || []) as any,
+          fieldsChanged: fieldsChanged as any,
           status: "completed",
           completedAt: new Date(),
         });
@@ -108,12 +183,25 @@ class AutomationEngine {
         timestamp,
       };
     } catch (error) {
+      const explanation = this.generateExplanation(
+        rule, event,
+        `FAILED: ${error instanceof Error ? error.message : "Unknown error"}`,
+        taskTitle
+      );
       try {
         await db.insert(automationRuns).values({
           ruleId: rule.id,
+          boardId: event.boardId,
           taskId: event.taskId || null,
+          taskTitle: taskTitle || null,
+          triggerType: rule.triggerType,
+          actionType: rule.actionType,
+          ruleName: rule.name,
           triggerData: event as any,
           actionResult: {} as any,
+          explanation,
+          conditionsEvaluated: (rule.conditions || []) as any,
+          fieldsChanged: [] as any,
           status: "failed",
           error: error instanceof Error ? error.message : "Unknown error",
         });
@@ -1006,6 +1094,65 @@ class AutomationEngine {
 
   clearExecutionLog(): void {
     this.executionLog = [];
+  }
+
+  async dryRunRule(rule: AutomationRule, boardId: string): Promise<{
+    matchCount: number;
+    matches: Array<{ taskId: string; taskTitle: string; predictedChanges: any[] }>;
+    conflicts: Array<{ ruleId: string; ruleName: string; type: string; description: string }>;
+  }> {
+    const tasks = await storage.getTasks(boardId);
+    const allRules = await storage.getAutomationRules(boardId);
+    const otherActiveRules = allRules.filter(r => r.id !== rule.id && r.isActive !== false);
+    const matches: Array<{ taskId: string; taskTitle: string; predictedChanges: any[] }> = [];
+
+    for (const task of tasks) {
+      const simEvent: AutomationEvent = {
+        type: rule.triggerType,
+        boardId,
+        taskId: task.id,
+        field: rule.triggerField || undefined,
+        newValue: rule.triggerValue || (task as any)[rule.triggerField || "status"],
+      };
+      if (this.matchesTrigger(rule, simEvent)) {
+        const predictedChanges = this.detectFieldsChanged(rule, "");
+        matches.push({ taskId: task.id, taskTitle: task.title, predictedChanges });
+      }
+    }
+
+    const conflicts: Array<{ ruleId: string; ruleName: string; type: string; description: string }> = [];
+    for (const other of otherActiveRules) {
+      if (rule.actionType === other.actionType && rule.triggerType === other.triggerType) {
+        const ruleConfig = rule.actionConfig || {};
+        const otherConfig = other.actionConfig || {};
+        const sameField = (ruleConfig as any).field === (otherConfig as any).field ||
+          (ruleConfig as any).column === (otherConfig as any).column;
+        if (sameField) {
+          const ruleVal = (ruleConfig as any).value || (ruleConfig as any).status || (ruleConfig as any).priority;
+          const otherVal = (otherConfig as any).value || (otherConfig as any).status || (otherConfig as any).priority;
+          if (ruleVal !== otherVal) {
+            conflicts.push({
+              ruleId: other.id, ruleName: other.name, type: "competing_write",
+              description: `Both rules write to the same field with different values ("${ruleVal}" vs "${otherVal}")`,
+            });
+          }
+        }
+      }
+
+      const ruleChanges = this.detectFieldsChanged(rule, "");
+      for (const change of ruleChanges) {
+        if (other.triggerField === change.field ||
+            (other.triggerType === "status_change" && change.field === "status") ||
+            (other.triggerType === "priority_change" && change.field === "priority")) {
+          conflicts.push({
+            ruleId: other.id, ruleName: other.name, type: "potential_loop",
+            description: `This rule changes "${change.field}" which triggers "${other.name}", creating a potential loop`,
+          });
+        }
+      }
+    }
+
+    return { matchCount: matches.length, matches: matches.slice(0, 20), conflicts };
   }
 }
 

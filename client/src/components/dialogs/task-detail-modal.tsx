@@ -48,6 +48,9 @@ import {
   Plus,
   AtSign,
   Smile,
+  Zap,
+  ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -746,6 +749,10 @@ export function TaskDetailModal({
 
                 <Separator />
 
+                <TaskAutomationHistory taskId={task.id} />
+
+                <Separator />
+
                 <div className="space-y-3">
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Task Actions</h4>
                   <div className="flex flex-wrap gap-2">
@@ -830,4 +837,75 @@ export function TaskDetailModal({
       </SheetContent>
     </Sheet>
   );
+}
+
+function TaskAutomationHistory({ taskId }: { taskId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: runs = [], isLoading } = useQuery<any[]>({
+    queryKey: [`/api/tasks/${taskId}/automation-runs?limit=20`],
+    enabled: expanded,
+  });
+
+  return (
+    <div className="space-y-2">
+      <button
+        className="flex items-center gap-2 w-full text-left"
+        onClick={() => setExpanded(!expanded)}
+        data-testid="button-toggle-automation-history"
+      >
+        <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex-1">
+          Automation History
+        </h4>
+        <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
+      </button>
+
+      {expanded && (
+        <div className="space-y-2 pl-5">
+          {isLoading && (
+            <div className="flex items-center gap-2 py-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Loading...</span>
+            </div>
+          )}
+          {!isLoading && runs.length === 0 && (
+            <p className="text-xs text-muted-foreground py-1">No automations have acted on this item.</p>
+          )}
+          {runs.map((run: any) => (
+            <div key={run.id} className="flex items-start gap-2 py-1.5 border-l-2 border-muted pl-3" data-testid={`automation-run-${run.id}`}>
+              <div className="flex-1 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  {run.status === "completed" ? (
+                    <Check className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                  )}
+                  <span className="text-xs font-medium">{run.ruleName || "Automation"}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {run.executedAt ? formatTaskRunTime(run.executedAt) : ""}
+                  </span>
+                </div>
+                {run.explanation && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{run.explanation}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatTaskRunTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  return diffDays < 7 ? `${diffDays}d ago` : date.toLocaleDateString();
 }

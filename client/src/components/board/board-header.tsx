@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, X, UserPlus, Download, Bot, Plug, User, EyeOff, ChevronsUpDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LayoutGrid, MoreHorizontal, Search, Filter, Plus, Columns, Settings, Trash2, ChevronUp, ChevronDown, Layers, Check, ArrowUpDown, Zap, X, UserPlus, Download, Bot, Plug, User, EyeOff, ChevronsUpDown, ShieldCheck, AlertTriangle, Clock, Users as UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -181,6 +182,8 @@ export function BoardHeader({
               </Badge>
             )}
           </Button>
+
+          <BoardHygieneIndicator boardId={board.id} />
 
           <Button 
             variant="outline" 
@@ -568,5 +571,125 @@ export function BoardHeader({
       />
 
     </div>
+  );
+}
+
+interface HygieneData {
+  healthScore: number;
+  totalTasks: number;
+  totalIssues: number;
+  checks: {
+    unassignedWithDeadline: Array<{ id: string; title: string; dueDate: string; severity: string }>;
+    overdueTasks: Array<{ id: string; title: string; dueDate: string; severity: string }>;
+    stuckItems: Array<{ id: string; title: string; status: string; severity: string }>;
+    noDescriptionCount: number;
+  };
+}
+
+function BoardHygieneIndicator({ boardId }: { boardId: string }) {
+  const { data: hygiene } = useQuery<HygieneData>({
+    queryKey: [`/api/boards/${boardId}/hygiene`],
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  if (!hygiene || hygiene.totalTasks === 0) return null;
+
+  const hasIssues = hygiene.totalIssues > 0;
+  const scoreColor = hygiene.healthScore >= 80
+    ? "text-green-600 dark:text-green-400"
+    : hygiene.healthScore >= 50
+    ? "text-amber-600 dark:text-amber-400"
+    : "text-destructive";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          data-testid="button-board-hygiene"
+        >
+          {hasIssues ? (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          ) : (
+            <ShieldCheck className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+          )}
+          <span className={`text-xs font-medium ${scoreColor}`} data-testid="text-health-score">{hygiene.healthScore}%</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="p-4 space-y-3" data-testid="panel-board-hygiene">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Board Health</h4>
+            <span className={`text-lg font-bold ${scoreColor}`} data-testid="text-health-score-detail">{hygiene.healthScore}%</span>
+          </div>
+
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${hygiene.healthScore >= 80 ? "bg-green-600 dark:bg-green-500" : hygiene.healthScore >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+              style={{ width: `${hygiene.healthScore}%` }}
+            />
+          </div>
+
+          <div className="space-y-2 text-xs">
+            {hygiene.checks.overdueTasks.length > 0 && (
+              <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/10" data-testid="hygiene-overdue-section">
+                <Clock className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium text-destructive">{hygiene.checks.overdueTasks.length} overdue</span>
+                  <div className="text-muted-foreground mt-0.5 space-y-0.5">
+                    {hygiene.checks.overdueTasks.slice(0, 3).map(t => (
+                      <p key={t.id} className="truncate" data-testid={`text-overdue-task-${t.id}`}>{t.title}</p>
+                    ))}
+                    {hygiene.checks.overdueTasks.length > 3 && (
+                      <p>+{hygiene.checks.overdueTasks.length - 3} more</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hygiene.checks.unassignedWithDeadline.length > 0 && (
+              <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 dark:bg-amber-500/15" data-testid="hygiene-unassigned-section">
+                <UsersIcon className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium text-amber-600 dark:text-amber-400">{hygiene.checks.unassignedWithDeadline.length} unassigned with deadline</span>
+                  <div className="text-muted-foreground mt-0.5 space-y-0.5">
+                    {hygiene.checks.unassignedWithDeadline.slice(0, 3).map(t => (
+                      <p key={t.id} className="truncate" data-testid={`text-unassigned-task-${t.id}`}>{t.title}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hygiene.checks.stuckItems.length > 0 && (
+              <div className="flex items-start gap-2 p-2 rounded-md bg-muted" data-testid="hygiene-stuck-section">
+                <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-medium">{hygiene.checks.stuckItems.length} stuck items</span>
+                  <p className="text-muted-foreground">Not updated in 10+ days</p>
+                </div>
+              </div>
+            )}
+
+            {hygiene.checks.noDescriptionCount > 0 && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-muted" data-testid="hygiene-no-description-section">
+                <span className="text-muted-foreground">{hygiene.checks.noDescriptionCount} tasks missing description</span>
+              </div>
+            )}
+
+            {!hasIssues && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-green-500/10 dark:bg-green-500/15 text-green-600 dark:text-green-400" data-testid="hygiene-all-clear">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span className="font-medium">All clear - board is in good shape</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

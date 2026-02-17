@@ -371,14 +371,27 @@ export const automationRules = pgTable("automation_rules", {
 export const automationRuns = pgTable("automation_runs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ruleId: varchar("rule_id").notNull().references(() => automationRules.id, { onDelete: "cascade" }),
+  boardId: varchar("board_id"),
   taskId: varchar("task_id"),
+  taskTitle: varchar("task_title", { length: 500 }),
+  triggerType: varchar("trigger_type", { length: 50 }),
+  actionType: varchar("action_type", { length: 50 }),
+  ruleName: varchar("rule_name", { length: 255 }),
   triggerData: jsonb("trigger_data").default({}),
   actionResult: jsonb("action_result").default({}),
+  explanation: text("explanation"),
+  conditionsEvaluated: jsonb("conditions_evaluated").default([]),
+  fieldsChanged: jsonb("fields_changed").default([]),
+  dryRun: boolean("dry_run").default(false),
   status: varchar("status", { length: 50 }).default("pending"),
   error: text("error"),
   executedAt: timestamp("executed_at").defaultNow(),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => [
+  index("IDX_automation_runs_board_id").on(table.boardId),
+  index("IDX_automation_runs_task_id").on(table.taskId),
+  index("IDX_automation_runs_rule_id").on(table.ruleId),
+]);
 
 // ============ DETECTIVE NODES ============
 export const detectiveNodes = pgTable("detective_nodes", {
