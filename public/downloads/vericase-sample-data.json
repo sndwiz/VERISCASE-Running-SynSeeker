@@ -1,0 +1,575 @@
+{
+  "exportVersion": "1.0",
+  "exportDate": "2026-02-18T04:33:00.197Z",
+  "source": "vericase",
+  "firmData": {
+    "clients": [
+      {
+        "id": "sample-client-001",
+        "name": "Johnson Family Trust",
+        "email": "rjohnson@email.com",
+        "phone": "(801) 555-0142",
+        "company": "Johnson Family Trust",
+        "address": "1247 East Maple Drive, Salt Lake City, UT 84105",
+        "notes": "Referred by attorney Mark Stevens. High-value estate planning client."
+      },
+      {
+        "id": "sample-client-002",
+        "name": "Maria Gonzalez",
+        "email": "mgonzalez@email.com",
+        "phone": "(801) 555-0198",
+        "company": null,
+        "address": "892 South Temple, Salt Lake City, UT 84111",
+        "notes": "Personal injury case from auto accident 11/2025. Treating at University Hospital."
+      },
+      {
+        "id": "sample-client-003",
+        "name": "TechVenture Inc.",
+        "email": "legal@techventure.io",
+        "phone": "(385) 555-0276",
+        "company": "TechVenture Inc.",
+        "address": "150 Main Street, Suite 400, Park City, UT 84060",
+        "notes": "Corporate client. Multiple active matters including employment dispute and IP licensing."
+      },
+      {
+        "id": "sample-client-004",
+        "name": "David & Sarah Mitchell",
+        "email": "dmitchell@email.com",
+        "phone": "(801) 555-0331",
+        "company": null,
+        "address": "3456 Wasatch Blvd, Sandy, UT 84093",
+        "notes": "Family law - divorce proceeding. Joint custody arrangement under negotiation."
+      },
+      {
+        "id": "sample-client-005",
+        "name": "Redrock Properties LLC",
+        "email": "info@redrockprops.com",
+        "phone": "(435) 555-0415",
+        "company": "Redrock Properties LLC",
+        "address": "78 Center Street, Moab, UT 84532",
+        "notes": "Real estate development company. Active commercial lease disputes."
+      }
+    ],
+    "matters": [
+      {
+        "id": "sample-matter-001",
+        "clientId": "sample-client-001",
+        "name": "Johnson Trust Amendment",
+        "caseNumber": "EST-2025-1847",
+        "matterType": "Estate Planning",
+        "status": "active",
+        "practiceArea": "Estate Planning",
+        "openedDate": "2025-09-15",
+        "courtName": null,
+        "judgeAssigned": null,
+        "opposingCounsel": null,
+        "description": "Amendment to family trust to include grandchildren as beneficiaries. Tax optimization review."
+      },
+      {
+        "id": "sample-matter-002",
+        "clientId": "sample-client-002",
+        "name": "Gonzalez v. Smith Auto Transport",
+        "caseNumber": "PI-2025-3392",
+        "matterType": "Personal Injury",
+        "status": "active",
+        "practiceArea": "Personal Injury",
+        "openedDate": "2025-11-20",
+        "courtName": "Third District Court, Salt Lake County",
+        "judgeAssigned": "Hon. Patricia Chen",
+        "opposingCounsel": "Bradley & Associates",
+        "description": "Motor vehicle accident. Client rear-ended on I-15. Cervical spine injuries, ongoing treatment."
+      },
+      {
+        "id": "sample-matter-003",
+        "clientId": "sample-client-003",
+        "name": "TechVenture v. Former Employee NDA Breach",
+        "caseNumber": "EMP-2025-0891",
+        "matterType": "Employment",
+        "status": "active",
+        "practiceArea": "Employment Law",
+        "openedDate": "2025-08-01",
+        "courtName": "United States District Court, District of Utah",
+        "judgeAssigned": "Hon. Robert Shelby",
+        "opposingCounsel": "Morrison & Foerster",
+        "description": "Former senior engineer violated NDA and non-compete. Trade secret misappropriation claim."
+      },
+      {
+        "id": "sample-matter-004",
+        "clientId": "sample-client-004",
+        "name": "Mitchell Divorce Proceeding",
+        "caseNumber": "FAM-2026-0112",
+        "matterType": "Family Law",
+        "status": "active",
+        "practiceArea": "Family Law",
+        "openedDate": "2026-01-10",
+        "courtName": "Third District Court, Salt Lake County",
+        "judgeAssigned": "Hon. James Walker",
+        "opposingCounsel": "Peterson Law Group",
+        "description": "Contested divorce. Primary issues: custody of two minors, division of marital assets including business interests."
+      },
+      {
+        "id": "sample-matter-005",
+        "clientId": "sample-client-005",
+        "name": "Redrock v. Canyon Holdings Lease Dispute",
+        "caseNumber": "RE-2025-2201",
+        "matterType": "Real Estate",
+        "status": "active",
+        "practiceArea": "Real Estate",
+        "openedDate": "2025-10-05",
+        "courtName": "Seventh District Court, Grand County",
+        "judgeAssigned": "Hon. Mary Liu",
+        "opposingCounsel": "Parsons Behle & Latimer",
+        "description": "Commercial lease dispute over property at 200 Main Street, Moab. Tenant alleging constructive eviction."
+      }
+    ],
+    "matterContacts": [
+      {
+        "id": "sample-contact-001",
+        "matterId": "sample-matter-002",
+        "name": "Dr. James Park",
+        "role": "Treating Physician",
+        "email": "jpark@uhospital.edu",
+        "phone": "(801) 555-0500"
+      },
+      {
+        "id": "sample-contact-002",
+        "matterId": "sample-matter-002",
+        "name": "Officer K. Martinez",
+        "role": "Investigating Officer",
+        "email": "kmartinez@slcpd.gov",
+        "phone": "(801) 555-0600"
+      },
+      {
+        "id": "sample-contact-003",
+        "matterId": "sample-matter-003",
+        "name": "Alex Chen",
+        "role": "Former Employee (Defendant)",
+        "email": "unknown",
+        "phone": null
+      },
+      {
+        "id": "sample-contact-004",
+        "matterId": "sample-matter-004",
+        "name": "Dr. Lisa Thornton",
+        "role": "Custody Evaluator",
+        "email": "lthornton@familyeval.com",
+        "phone": "(801) 555-0711"
+      },
+      {
+        "id": "sample-contact-005",
+        "matterId": "sample-matter-005",
+        "name": "Tom Richards",
+        "role": "Property Manager",
+        "email": "trichards@canyonholdings.com",
+        "phone": "(435) 555-0800"
+      }
+    ],
+    "timeEntries": [
+      {
+        "id": "sample-time-001",
+        "matterId": "sample-matter-001",
+        "userName": "Lauren",
+        "date": "2026-02-10",
+        "hours": 2.5,
+        "description": "Draft trust amendment provisions for grandchildren beneficiaries",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-002",
+        "matterId": "sample-matter-001",
+        "userName": "Lauren",
+        "date": "2026-02-12",
+        "hours": 1,
+        "description": "Conference call with client re: trust amendment terms",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-003",
+        "matterId": "sample-matter-002",
+        "userName": "Lauren",
+        "date": "2026-02-11",
+        "hours": 3,
+        "description": "Review medical records from University Hospital; draft demand letter",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-004",
+        "matterId": "sample-matter-002",
+        "userName": "Lauren",
+        "date": "2026-02-14",
+        "hours": 1.5,
+        "description": "Telephone conference with opposing counsel re: settlement",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-005",
+        "matterId": "sample-matter-003",
+        "userName": "Lauren",
+        "date": "2026-02-13",
+        "hours": 4,
+        "description": "Prepare motion for preliminary injunction; research trade secret law",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-006",
+        "matterId": "sample-matter-004",
+        "userName": "Lauren",
+        "date": "2026-02-15",
+        "hours": 2,
+        "description": "Draft parenting plan proposal; review financial declarations",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-007",
+        "matterId": "sample-matter-005",
+        "userName": "Lauren",
+        "date": "2026-02-16",
+        "hours": 1.5,
+        "description": "Site inspection of commercial property; photograph current conditions",
+        "billableStatus": "billable",
+        "hourlyRate": 350
+      },
+      {
+        "id": "sample-time-008",
+        "matterId": "sample-matter-003",
+        "userName": "Lauren",
+        "date": "2026-02-17",
+        "hours": 0.5,
+        "description": "Internal case strategy meeting",
+        "billableStatus": "non-billable",
+        "hourlyRate": 0
+      }
+    ],
+    "expenses": [
+      {
+        "id": "sample-expense-001",
+        "matterId": "sample-matter-002",
+        "description": "Medical record retrieval fee - University Hospital",
+        "amount": 125,
+        "date": "2026-02-10",
+        "category": "Medical Records",
+        "billable": true
+      },
+      {
+        "id": "sample-expense-002",
+        "matterId": "sample-matter-003",
+        "description": "Federal court filing fee - Motion for TRO",
+        "amount": 402,
+        "date": "2026-02-13",
+        "category": "Filing Fees",
+        "billable": true
+      },
+      {
+        "id": "sample-expense-003",
+        "matterId": "sample-matter-005",
+        "description": "Property inspection report - certified appraiser",
+        "amount": 850,
+        "date": "2026-02-16",
+        "category": "Expert Fees",
+        "billable": true
+      }
+    ],
+    "calendarEvents": [
+      {
+        "id": "sample-event-001",
+        "title": "Johnson Trust Review Meeting",
+        "date": "2026-02-25",
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "matterId": "sample-matter-001",
+        "type": "meeting",
+        "description": "Review final draft of trust amendment with client"
+      },
+      {
+        "id": "sample-event-002",
+        "title": "Gonzalez Deposition - Dr. Park",
+        "date": "2026-03-05",
+        "startTime": "09:00",
+        "endTime": "12:00",
+        "matterId": "sample-matter-002",
+        "type": "deposition",
+        "description": "Deposition of treating physician"
+      },
+      {
+        "id": "sample-event-003",
+        "title": "TRO Hearing - TechVenture v. Chen",
+        "date": "2026-02-28",
+        "startTime": "14:00",
+        "endTime": "16:00",
+        "matterId": "sample-matter-003",
+        "type": "hearing",
+        "description": "Hearing on motion for temporary restraining order"
+      },
+      {
+        "id": "sample-event-004",
+        "title": "Custody Mediation - Mitchell",
+        "date": "2026-03-10",
+        "startTime": "09:00",
+        "endTime": "17:00",
+        "matterId": "sample-matter-004",
+        "type": "mediation",
+        "description": "Full-day mediation session re: custody and property division"
+      },
+      {
+        "id": "sample-event-005",
+        "title": "Trial - Redrock v. Canyon Holdings",
+        "date": "2026-04-15",
+        "startTime": "09:00",
+        "endTime": "17:00",
+        "matterId": "sample-matter-005",
+        "type": "trial",
+        "description": "Bench trial - Day 1"
+      },
+      {
+        "id": "sample-event-006",
+        "title": "Filing Deadline - Gonzalez Discovery Responses",
+        "date": "2026-03-01",
+        "startTime": "17:00",
+        "endTime": "17:00",
+        "matterId": "sample-matter-002",
+        "type": "deadline",
+        "description": "Responses to first set of interrogatories and RFPs due"
+      }
+    ],
+    "boards": [
+      {
+        "id": "sample-board-001",
+        "name": "Gonzalez PI Case Tracker",
+        "description": "Track all tasks for the Gonzalez personal injury case",
+        "color": "#3b82f6",
+        "clientId": "sample-client-002",
+        "matterId": "sample-matter-002"
+      },
+      {
+        "id": "sample-board-002",
+        "name": "TechVenture Employment Litigation",
+        "description": "Task management for NDA breach litigation",
+        "color": "#ef4444",
+        "clientId": "sample-client-003",
+        "matterId": "sample-matter-003"
+      }
+    ],
+    "groups": [
+      {
+        "id": "sample-group-001",
+        "boardId": "sample-board-001",
+        "title": "Discovery",
+        "color": "#6366f1",
+        "order": 0
+      },
+      {
+        "id": "sample-group-002",
+        "boardId": "sample-board-001",
+        "title": "Medical Records",
+        "color": "#10b981",
+        "order": 1
+      },
+      {
+        "id": "sample-group-003",
+        "boardId": "sample-board-001",
+        "title": "Settlement Negotiation",
+        "color": "#f59e0b",
+        "order": 2
+      },
+      {
+        "id": "sample-group-004",
+        "boardId": "sample-board-002",
+        "title": "Pre-Trial Motions",
+        "color": "#ef4444",
+        "order": 0
+      },
+      {
+        "id": "sample-group-005",
+        "boardId": "sample-board-002",
+        "title": "Discovery",
+        "color": "#3b82f6",
+        "order": 1
+      },
+      {
+        "id": "sample-group-006",
+        "boardId": "sample-board-002",
+        "title": "Trial Preparation",
+        "color": "#8b5cf6",
+        "order": 2
+      }
+    ],
+    "tasks": [
+      {
+        "id": "sample-task-001",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-001",
+        "title": "Draft interrogatories to defendant",
+        "status": "in_progress",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-002",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-001",
+        "title": "Request production of insurance policy",
+        "status": "completed",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-003",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-002",
+        "title": "Obtain University Hospital records",
+        "status": "in_progress",
+        "priority": "medium",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-004",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-002",
+        "title": "Schedule IME with defense doctor",
+        "status": "pending",
+        "priority": "low",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-005",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-003",
+        "title": "Calculate special damages",
+        "status": "pending",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-006",
+        "boardId": "sample-board-001",
+        "groupId": "sample-group-003",
+        "title": "Draft demand letter",
+        "status": "in_progress",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-007",
+        "boardId": "sample-board-002",
+        "groupId": "sample-group-004",
+        "title": "File motion for TRO",
+        "status": "completed",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-008",
+        "boardId": "sample-board-002",
+        "groupId": "sample-group-004",
+        "title": "Prepare brief in support of preliminary injunction",
+        "status": "in_progress",
+        "priority": "high",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-009",
+        "boardId": "sample-board-002",
+        "groupId": "sample-group-005",
+        "title": "Subpoena defendant's GitHub commits",
+        "status": "pending",
+        "priority": "medium",
+        "assignee": "Lauren"
+      },
+      {
+        "id": "sample-task-010",
+        "boardId": "sample-board-002",
+        "groupId": "sample-group-005",
+        "title": "Review defendant's laptop forensic image",
+        "status": "pending",
+        "priority": "high",
+        "assignee": "Lauren"
+      }
+    ],
+    "invoices": [
+      {
+        "id": "sample-invoice-001",
+        "invoiceNumber": "INV-2026-0015",
+        "clientId": "sample-client-001",
+        "matterId": "sample-matter-001",
+        "issueDate": "2026-02-01",
+        "dueDate": "2026-03-03",
+        "status": "sent",
+        "subtotal": 1225,
+        "taxRate": 0,
+        "taxAmount": 0,
+        "totalAmount": 1225,
+        "paidAmount": 0,
+        "balanceDue": 1225
+      },
+      {
+        "id": "sample-invoice-002",
+        "invoiceNumber": "INV-2026-0016",
+        "clientId": "sample-client-002",
+        "matterId": "sample-matter-002",
+        "issueDate": "2026-02-15",
+        "dueDate": "2026-03-17",
+        "status": "draft",
+        "subtotal": 1575,
+        "taxRate": 0,
+        "taxAmount": 0,
+        "totalAmount": 1700,
+        "paidAmount": 0,
+        "balanceDue": 1700
+      }
+    ],
+    "trustTransactions": [
+      {
+        "id": "sample-trust-001",
+        "clientId": "sample-client-004",
+        "matterId": "sample-matter-004",
+        "type": "deposit",
+        "amount": 5000,
+        "date": "2026-01-15",
+        "description": "Initial retainer deposit - Mitchell divorce",
+        "reference": "CHK-44921"
+      },
+      {
+        "id": "sample-trust-002",
+        "clientId": "sample-client-004",
+        "matterId": "sample-matter-004",
+        "type": "withdrawal",
+        "amount": 700,
+        "date": "2026-02-01",
+        "description": "January fees earned - transferred to operating",
+        "reference": "XFER-0201"
+      }
+    ],
+    "evidenceVaultFiles": [],
+    "threads": [],
+    "threadMessages": [],
+    "auditLogs": [],
+    "teamMembers": []
+  },
+  "metadata": {
+    "totalRecords": 52,
+    "entityCounts": {
+      "clients": 5,
+      "matters": 5,
+      "matterContacts": 5,
+      "timeEntries": 8,
+      "expenses": 3,
+      "calendarEvents": 6,
+      "boards": 2,
+      "groups": 6,
+      "tasks": 10,
+      "invoices": 2,
+      "trustTransactions": 2,
+      "evidenceVaultFiles": 0,
+      "threads": 0,
+      "threadMessages": 0,
+      "auditLogs": 0,
+      "teamMembers": 0
+    }
+  }
+}

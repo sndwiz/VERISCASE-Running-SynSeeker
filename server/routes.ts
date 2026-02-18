@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
+import fs from "fs";
 import { registerAllRoutes } from "./routes/index";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import { registerAuthRoutes, bootstrapFirstAdmin } from "./replit_integrations/auth/routes";
@@ -203,6 +205,35 @@ export async function registerRoutes(
 
   // Trust reconciliation - member or above (financial)
   app.use("/api/trust/reconciliation", isAuthenticated, requireMemberOrAbove);
+
+  app.get("/api/downloads/:filename", isAuthenticated, (req, res) => {
+    const { filename } = req.params;
+    const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, "");
+    const filePath = path.join(process.cwd(), "public", "downloads", safeName);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+    res.download(filePath, safeName);
+  });
+
+  app.post("/api/admin/clear-all-data", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      await db.execute(sql`
+        DO $$ 
+        DECLARE 
+          r RECORD;
+        BEGIN
+          FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('users', 'sessions', 'roles', 'team_members')) LOOP
+            EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
+          END LOOP;
+        END $$;
+      `);
+      res.json({ success: true, message: "All case data cleared. User accounts preserved." });
+    } catch (error) {
+      console.error("Clear data error:", error);
+      res.status(500).json({ error: "Failed to clear data" });
+    }
+  });
 
   // Register all other API routes
   registerAllRoutes(app);
